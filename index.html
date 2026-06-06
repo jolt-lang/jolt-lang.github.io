@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jolt — Clojure on Janet</title>
+    <meta name="description" content="Jolt is a Clojure interpreter running on Janet. Pure Janet implementation with a Clojure-compatible standard library.">
+    <link rel="icon" type="image/svg+xml" href="img/jolt.svg">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --yellow:  #FFDD00;
+            --orange:  #FF5500;
+            --red:     #FF0055;
+            --surface: #161b22;
+            --bg:      #0a0a12;
+            --text:    #e2e4e9;
+            --muted:   #8b8fa3;
+            --border:  #21262d;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        /* ── Nav ─────────────────────────────────────────── */
+        nav {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+            backdrop-filter: blur(12px);
+            background: rgba(10,10,18,0.85);
+            border-bottom: 1px solid var(--border);
+        }
+        nav .inner {
+            max-width: 960px; margin: 0 auto;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 24px; height: 56px;
+        }
+        nav .logo { font-weight: 700; font-size: 1.25rem; color: var(--yellow); text-decoration: none; }
+        nav .links { display: flex; gap: 24px; list-style: none; }
+        nav .links a { color: var(--muted); text-decoration: none; font-size: 0.9rem; transition: color .15s; }
+        nav .links a:hover { color: var(--text); }
+
+        /* ── Hero ────────────────────────────────────────── */
+        .hero {
+            min-height: 100vh; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center;
+            padding: 120px 24px 80px;
+            position: relative; overflow: hidden;
+        }
+        .hero::before {
+            content: ''; position: absolute; inset: 0;
+            background: radial-gradient(ellipse 60% 50% at 50% 40%, rgba(255,85,0,0.12), transparent 70%),
+                        radial-gradient(ellipse 80% 60% at 50% 50%, rgba(255,0,85,0.06), transparent 70%);
+            pointer-events: none;
+        }
+        .hero .bolt {
+            width: min(280px, 60vw);
+            filter: drop-shadow(0 0 40px rgba(255,85,0,0.35)) drop-shadow(0 0 80px rgba(255,0,85,0.25));
+            animation: pulse 3s ease-in-out infinite;
+            position: relative; z-index: 1;
+        }
+        @keyframes pulse {
+            0%, 100% { filter: drop-shadow(0 0 40px rgba(255,85,0,0.35)) drop-shadow(0 0 80px rgba(255,0,85,0.25)); }
+            50%      { filter: drop-shadow(0 0 55px rgba(255,85,0,0.55)) drop-shadow(0 0 100px rgba(255,0,85,0.35)); }
+        }
+        .hero h1 {
+            font-size: clamp(2.5rem, 6vw, 4.5rem);
+            font-weight: 800; letter-spacing: -0.03em;
+            background: linear-gradient(135deg, var(--yellow), var(--orange), var(--red));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-top: 16px; position: relative; z-index: 1;
+        }
+        .hero .tagline {
+            font-size: clamp(1rem, 2.5vw, 1.35rem); color: var(--muted);
+            max-width: 560px; margin-top: 12px; position: relative; z-index: 1;
+        }
+        .hero .badges { margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; position: relative; z-index: 1; }
+        .hero .badges a { display: inline-block; }
+        .hero .badges img { height: 20px; }
+
+        /* ── Sections ────────────────────────────────────── */
+        section { padding: 80px 24px; }
+        section .inner { max-width: 900px; margin: 0 auto; }
+        section h2 {
+            font-size: 2rem; font-weight: 700; letter-spacing: -0.02em;
+            margin-bottom: 32px;
+            background: linear-gradient(135deg, var(--yellow), var(--orange));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            background-clip: text;
+            display: inline-block;
+        }
+        section h3 { font-size: 1.15rem; font-weight: 600; margin: 24px 0 8px; color: var(--text); }
+        section p, section li { color: var(--muted); }
+        section ul { padding-left: 20px; }
+        section li { margin-bottom: 6px; }
+
+        /* ── Feature grid ────────────────────────────────── */
+        .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 24px; }
+        .feat {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 12px; padding: 28px;
+            transition: border-color .2s;
+        }
+        .feat:hover { border-color: rgba(255,85,0,0.35); }
+        .feat .icon { font-size: 1.6rem; margin-bottom: 10px; }
+        .feat h4 { font-size: 1.05rem; font-weight: 600; margin-bottom: 6px; }
+        .feat p { font-size: 0.9rem; color: var(--muted); }
+
+        /* ── Code blocks ─────────────────────────────────── */
+        pre {
+            background: var(--surface); border: 1px solid var(--border);
+            border-radius: 10px; padding: 20px 24px; overflow-x: auto;
+            font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+            font-size: 0.875rem; line-height: 1.6;
+            margin: 16px 0;
+        }
+        code { font-family: inherit; }
+        .syn-comment { color: #6e7681; }
+        .syn-str { color: #a5d6ff; }
+        .syn-kw { color: #ff7b72; }
+        .syn-fn { color: #d2a8ff; }
+        .syn-num { color: #79c0ff; }
+        .syn-op { color: #ff7b72; }
+
+        /* ── Two-column ──────────────────────────────────── */
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: start; }
+        @media (max-width: 640px) { .two-col { grid-template-columns: 1fr; } }
+
+        /* ── Table ───────────────────────────────────────── */
+        .diff-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+        .diff-table th, .diff-table td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+        .diff-table th { color: var(--text); font-weight: 600; }
+        .diff-table td { color: var(--muted); }
+        .diff-table td:first-child { color: var(--text); font-weight: 500; white-space: nowrap; }
+
+        /* ── Footer ──────────────────────────────────────── */
+        footer {
+            border-top: 1px solid var(--border); padding: 40px 24px;
+            text-align: center; color: var(--muted); font-size: 0.85rem;
+        }
+        footer a { color: var(--orange); text-decoration: none; }
+        footer a:hover { text-decoration: underline; }
+
+        /* ── Lightning divider ───────────────────────────── */
+        .zigzag { display: flex; justify-content: center; gap: 8px; padding: 0; margin: -1px 0; }
+        .zigzag span { display: block; width: 2px; border-radius: 1px; }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="inner">
+        <a href="#" class="logo">⚡ Jolt</a>
+        <ul class="links">
+            <li><a href="#features">Features</a></li>
+            <li><a href="#quickstart">Quick Start</a></li>
+            <li><a href="#usage">Usage</a></li>
+            <li><a href="#differences">Differences</a></li>
+            <li><a href="https://github.com/yogthos/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+    </div>
+</nav>
+
+<header class="hero">
+    <img src="img/jolt.svg" alt="Jolt logo" class="bolt" width="280" height="280">
+    <h1>Jolt</h1>
+    <p class="tagline">
+        A Clojure interpreter running on Janet.<br>
+        Pure Janet — zero JVM, zero native deps.
+    </p>
+    <div class="badges">
+        <a href="https://github.com/yogthos/jolt/actions/workflows/tests.yml"><img src="https://github.com/yogthos/jolt/actions/workflows/tests.yml/badge.svg" alt="tests"></a>
+    </div>
+</header>
+
+<section id="features">
+    <div class="inner">
+        <h2>Why Jolt?</h2>
+        <div class="features">
+            <div class="feat">
+                <div class="icon">⚡</div>
+                <h4>SCI Runtime</h4>
+                <p>A minimal bootstrap that loads battle tested Small Clojure Interpreter as its standard library.</p>
+            </div>
+            <div class="feat">
+                <div class="icon">🪶</div>
+                <h4>Tiny Footprint</h4>
+                <p>No JVM. Janet's ~1 MB binary hosts the full Clojure runtime. Embed anywhere.</p>
+            </div>
+            <div class="feat">
+                <div class="icon">🧵</div>
+                <h4>Real Threads</h4>
+                <p><code>future</code> runs on OS threads via Janet's <code>ev/thread</code> — multi-core CPU-bound work out of the box.</p>
+            </div>
+            <div class="feat">
+                <div class="icon">🔄</div>
+                <h4>core.async</h4>
+                <p>Go blocks, channels, transducers, and <code>alts!</code> — backed by Janet's stackful fibers, no CPS rewrite.</p>
+            </div>
+            <div class="feat">
+                <div class="icon">🧱</div>
+                <h4>Persistent Data</h4>
+                <p>Immutable vectors (32-way tries), maps, and sets — Clojure-compatible value semantics.</p>
+            </div>
+            <div class="feat">
+                <div class="icon">🔌</div>
+                <h4>Host Interop</h4>
+                <p>Call Janet functions, access Janet's standard library, and shell out — all through CLJS-style <code>.</code> syntax.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section id="quickstart" style="background: var(--surface);">
+    <div class="inner">
+        <h2>Quick Start</h2>
+        <pre><code><span class="syn-comment"># clone and build</span>
+git clone https://github.com/yogthos/jolt.git
+<span class="syn-kw">cd</span> jolt
+git submodule update --init   <span class="syn-comment"># pulls vendor/sci</span>
+jpm build                     <span class="syn-comment"># compiles build/jolt</span>
+
+<span class="syn-comment"># requires jpm and Janet ≥ 1.41</span></code></pre>
+    </div>
+</section>
+
+<section id="usage">
+    <div class="inner">
+        <h2>Usage</h2>
+
+        <h3>REPL</h3>
+        <pre><code>build/jolt
+<span class="syn-comment">;; user=&gt; (defn fib [n] (if (&lt; n 2) n (+ (fib (- n 1)) (fib (- n 2)))))</span>
+<span class="syn-comment">;; #'user/fib</span>
+<span class="syn-comment">;; user=&gt; (map fib (range 10))</span>
+<span class="syn-comment">;; (0 1 1 2 3 5 8 13 21 34)</span></code></pre>
+
+        <h3>Run a file</h3>
+        <pre><code>build/jolt file.clj [args]     <span class="syn-comment"># run a file</span>
+build/jolt -e EXPR [args]      <span class="syn-comment"># evaluate and print</span>
+build/jolt -h                  <span class="syn-comment"># help</span></code></pre>
+
+        <h3>Use as a library</h3>
+        <pre><code><span class="syn-comment">;; from Janet</span>
+<span class="syn-kw">(use</span> jolt/api)
+
+<span class="syn-kw">(def</span> <span class="syn-fn">ctx</span> (init))
+(eval-string ctx <span class="syn-str">"(+ 1 2)"</span>)            <span class="syn-comment">; → 3</span>
+(eval-string ctx <span class="syn-str">"(map inc [1 2 3])"</span>)  <span class="syn-comment">; → [2 3 4]</span></code></pre>
+
+        <h3>Compiled mode</h3>
+        <pre><code><span class="syn-kw">(def</span> <span class="syn-fn">ctx</span> (init {:compile? true}))
+(eval-string ctx <span class="syn-str">"(defn fib [n] (if (&lt; n 2) n (+ (fib (- n 1)) (fib (- n 2)))))"</span>)
+(eval-string ctx <span class="syn-str">"(fib 30)"</span>)   <span class="syn-comment">; → 832040, ~600× faster than interpreted</span></code></pre>
+    </div>
+</section>
+
+<section id="differences" style="background: var(--surface);">
+    <div class="inner">
+        <h2>Differences from Clojure</h2>
+        <p style="margin-bottom:16px;">Jolt targets Clojure semantics on Janet — not the JVM. Notable divergences:</p>
+        <table class="diff-table">
+            <thead>
+                <tr><th>Aspect</th><th>Jolt</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>Host</td><td>Janet, not JVM — no Java interop</td></tr>
+                <tr><td>Numbers</td><td>Janet ints &amp; doubles; no ratios or BigDecimal</td></tr>
+                <tr><td>Collections</td><td>Immutable persistent structures (32-way tries)</td></tr>
+                <tr><td>Concurrency</td><td>No STM; atoms &amp; futures on real OS threads</td></tr>
+                <tr><td>core.async</td><td>Stackful fibers — <code>&lt;!</code> works anywhere</td></tr>
+                <tr><td>Regex</td><td>Compiled to Janet's PEG engine</td></tr>
+                <tr><td>Mutable mode</td><td>Optional: <code>JOLT_MUTABLE=1 jpm build</code></td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<footer>
+    <p>
+        Jolt is <a href="https://github.com/yogthos/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>.
+        Built with <a href="https://janet-lang.org" target="_blank" rel="noopener">Janet</a>.
+    </p>
+</footer>
+
+</body>
+</html>
