@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jolt — Clojure on Janet</title>
-    <meta name="description" content="Jolt is a Clojure interpreter running on Janet. Pure Janet implementation with a Clojure-compatible standard library.">
+    <meta name="description" content="Jolt is a Clojure implementation on Janet — compiles to native Janet bytecode with an interpreter fallback. Pure Janet, with a Clojure-compatible standard library.">
     <link rel="icon" type="image/svg+xml" href="img/jolt.svg">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -82,9 +82,6 @@
             font-size: clamp(1rem, 2.5vw, 1.35rem); color: var(--muted);
             max-width: 560px; margin-top: 12px; position: relative; z-index: 1;
         }
-        .hero .badges { margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; position: relative; z-index: 1; }
-        .hero .badges a { display: inline-block; }
-        .hero .badges img { height: 20px; }
 
         /* ── Sections ────────────────────────────────────── */
         section { padding: 80px 24px; }
@@ -164,7 +161,7 @@
             <li><a href="#quickstart">Quick Start</a></li>
             <li><a href="#usage">Usage</a></li>
             <li><a href="#differences">Differences</a></li>
-            <li><a href="https://github.com/yogthos/jolt" target="_blank" rel="noopener">GitHub</a></li>
+            <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
         </ul>
     </div>
 </nav>
@@ -173,12 +170,9 @@
     <img src="img/jolt.svg" alt="Jolt logo" class="bolt" width="280" height="280">
     <h1>Jolt</h1>
     <p class="tagline">
-        A Clojure interpreter running on Janet.<br>
+        A Clojure implementation on Janet.<br>
         Pure Janet — zero JVM, zero native deps.
     </p>
-    <div class="badges">
-        <a href="https://github.com/yogthos/jolt/actions/workflows/tests.yml"><img src="https://github.com/yogthos/jolt/actions/workflows/tests.yml/badge.svg" alt="tests"></a>
-    </div>
 </header>
 
 <section id="features">
@@ -187,8 +181,8 @@
         <div class="features">
             <div class="feat">
                 <div class="icon">⚡</div>
-                <h4>SCI Runtime</h4>
-                <p>A minimal bootstrap that loads battle tested Small Clojure Interpreter as its standard library.</p>
+                <h4>Compiles by Default</h4>
+                <p>Compiles each form to native Janet bytecode, falling back to a tree-walking interpreter so results always match — a minimal, SCI-style bootstrap with its own Clojure-compatible standard library.</p>
             </div>
             <div class="feat">
                 <div class="icon">🪶</div>
@@ -223,7 +217,7 @@
     <div class="inner">
         <h2>Quick Start</h2>
         <pre><code><span class="syn-comment"># clone and build</span>
-git clone https://github.com/yogthos/jolt.git
+git clone https://github.com/jolt-lang/jolt.git
 <span class="syn-kw">cd</span> jolt
 git submodule update --init   <span class="syn-comment"># pulls vendor/sci</span>
 jpm build                     <span class="syn-comment"># compiles build/jolt</span>
@@ -243,10 +237,24 @@ jpm build                     <span class="syn-comment"># compiles build/jolt</s
 <span class="syn-comment">;; user=&gt; (map fib (range 10))</span>
 <span class="syn-comment">;; (0 1 1 2 3 5 8 13 21 34)</span></code></pre>
 
+        <h3>nREPL</h3>
+        <pre><code>build/jolt nrepl-server         <span class="syn-comment"># 127.0.0.1:7888, writes .nrepl-port</span>
+build/jolt nrepl-server 12345  <span class="syn-comment"># choose a port</span>
+<span class="syn-comment"># In a project, jolt nrepl-server auto-resolves deps.edn, so the server starts</span>
+<span class="syn-comment"># with the app and its dependencies loaded — connect CIDER/Calva via .nrepl-port.</span></code></pre>
+
         <h3>Run a file</h3>
         <pre><code>build/jolt file.clj [args]     <span class="syn-comment"># run a file</span>
 build/jolt -e EXPR [args]      <span class="syn-comment"># evaluate and print</span>
 build/jolt -h                  <span class="syn-comment"># help</span></code></pre>
+
+        <h3>Dependencies (deps.edn)</h3>
+        <pre><code><span class="syn-comment"># jolt resolves a deps.edn (git + :local deps) into the load path itself —</span>
+<span class="syn-comment"># no separate tool. A deps.edn in the dir is auto-resolved for repl/-m/-e/nrepl.</span>
+jolt -M:test [args]            <span class="syn-comment"># run an alias's :main-opts</span>
+jolt run -m myapp.core         <span class="syn-comment"># resolve deps, then run</span>
+jolt -M:nrepl                  <span class="syn-comment"># nREPL server with the project + deps loaded</span>
+jolt path                      <span class="syn-comment"># print the resolved source roots</span></code></pre>
 
         <h3>Use as a library</h3>
         <pre><code><span class="syn-comment">;; from Janet</span>
@@ -286,7 +294,7 @@ build/jolt -h                  <span class="syn-comment"># help</span></code></p
 
 <footer>
     <p>
-        Jolt is <a href="https://github.com/yogthos/jolt" target="_blank" rel="noopener">open source</a>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
         under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>.
         Built with <a href="https://janet-lang.org" target="_blank" rel="noopener">Janet</a>.
     </p>
