@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>Native Interop (FFI) — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li class="selected">
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Supported Libraries</a>
+      </li>
+      
+    </ul>
+  </aside>
+
+  <main class="docs-main">
+    <h1>Native Interop (FFI)</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#declaring_the_native_library">Declaring the native library</a></li><li><a href="#binding_a_function">Binding a function</a><ol><li><a href="#&lt;code&gt;:blocking&lt;/code&gt;">{:tag :code, :attrs nil, :content [":blocking"]}</a></li></ol></li><li><a href="#types_at_the_boundary">Types at the boundary</a></li><li><a href="#memory_and_strings">Memory and strings</a><ol><li><a href="#out-parameters">Out-parameters</a></li><li><a href="#structs_by_offset">Structs by offset</a></li><li><a href="#binary_data">Binary data</a></li></ol></li><li><a href="#checklist_for_a_binding">Checklist for a binding</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <p>Jolt has no JVM, so it has no <code>java.&#42;</code> to lean on for talking to the outside world. Instead it ships a foreign-function interface (<code>jolt.ffi</code>) that binds C shared libraries directly. This is how the real libraries work: the <a href='https://github.com/jolt-lang/db'>db</a> library binds <code>libsqlite3</code>/<code>libpq</code>, and the <a href='https://github.com/jolt-lang/http-client'>http-client</a> binds POSIX sockets, OpenSSL, and zlib. This page is the guide for writing your own.</p><p>The FFI is a thin, explicit layer: you declare the library, bind each C function with its argument and return types, and marshal memory by hand. There is no automatic struct introspection and no garbage collection of foreign memory — you manage it, the way you would in C.</p><h2 id="declaring&#95;the&#95;native&#95;library">Declaring the native library</h2><p>A library names the shared objects it needs in its <code>deps.edn</code> under <code>:jolt/native</code>. Jolt loads them at startup, before any namespace is required, so the bindings resolve. From the db library:</p><pre><code class="clojure">:jolt/native &#91;{:name &quot;sqlite3&quot;
+               :darwin &#91;&quot;libsqlite3.0.dylib&quot; &quot;libsqlite3.dylib&quot;&#93;
+               :linux  &#91;&quot;libsqlite3.so.0&quot; &quot;libsqlite3.so&quot;&#93;}
+              {:name &quot;pq&quot;
+               :darwin &#91;&quot;libpq.5.dylib&quot; &quot;libpq.dylib&quot;&#93;
+               :linux  &#91;&quot;libpq.so.5&quot; &quot;libpq.so&quot;&#93;
+               :optional true}&#93;
+</code></pre><p>Each entry is a map:</p><ul><li><code>:name</code> — a human-readable label, used only in the "library not found" error.</li><li><code>:darwin</code> / <code>:linux</code> / <code>:windows</code> — per-platform candidates, a string or a vector tried in order. Jolt picks the key for the host OS (<code>os.name</code>) and loads the first candidate that resolves. List the versioned name first (<code>libsqlite3.so.0</code>), the bare name as a fallback.</li><li><code>:optional true</code> — a missing library is skipped instead of erroring. Use it for feature-gated drivers (the db library makes Postgres optional). Check <code>&#40;jolt.ffi/loaded? &quot;libpq.so.5&quot;&#41;</code> before using such a binding.</li><li><code>:process true</code> — bind symbols already in the running process (libc, POSIX) rather than loading a file. The http-client uses this for <code>socket</code>/<code>connect</code>/<code>send</code>/<code>recv</code>:<pre><code class="clojure">:jolt/native &#91;{:name &quot;libc &#40;POSIX sockets&#41;&quot; :process true}
+              {:name &quot;z&quot;   :darwin &#91;&quot;libz.dylib&quot;&#93;      :linux &#91;&quot;libz.so.1&quot; &quot;libz.so&quot;&#93;}
+              {:name &quot;ssl&quot; :darwin &#91;&quot;libssl.dylib&quot;&#93;     :linux &#91;&quot;libssl.so.3&quot; &quot;libssl.so&quot;&#93;}&#93;
+</code></pre></li></ul><p>If you're binding outside a <code>deps.edn</code> project, call <code>&#40;jolt.ffi/load-library &quot;libsqlite3.dylib&quot;&#41;</code> (or <code>&#40;jolt.ffi/load-library&#41;</code> with no argument for the process's own symbols) before the first call.</p><h2 id="binding&#95;a&#95;function">Binding a function</h2><p><code>defcfn</code> defines a named binding; <code>foreign-fn</code> produces an anonymous one. The shape is the same:</p><pre><code class="clojure">&#40;require '&#91;jolt.ffi :as ffi&#93;&#41;
+
+&#40;ffi/defcfn name &quot;c&#95;symbol&quot; &#91;arg-types...&#93; return-type &#91;:blocking&#93;&#41;
+</code></pre><p>From the db library's SQLite bindings:</p><pre><code class="clojure">&#40;ffi/defcfn sqlite3-open         &quot;sqlite3&#95;open&quot;         &#91;:string :pointer&#93; :int&#41;
+&#40;ffi/defcfn sqlite3-prepare      &quot;sqlite3&#95;prepare&#95;v2&quot;   &#91;:pointer :string :int :pointer :pointer&#93; :int&#41;
+&#40;ffi/defcfn sqlite3-step         &quot;sqlite3&#95;step&quot;         &#91;:pointer&#93; :int&#41;
+&#40;ffi/defcfn sqlite3-column-text  &quot;sqlite3&#95;column&#95;text&quot;  &#91;:pointer :int&#93; :string&#41;
+&#40;ffi/defcfn sqlite3-column-int64 &quot;sqlite3&#95;column&#95;int64&quot; &#91;:pointer :int&#93; :int64&#41;
+&#40;ffi/defcfn sqlite3-bind-text    &quot;sqlite3&#95;bind&#95;text&quot;    &#91;:pointer :int :string :int :iptr&#93; :int&#41;
+</code></pre><p>Each defined function is an ordinary Clojure fn you call with Jolt values; arguments and the return value are marshaled according to the declared types.</p><h3 id="<code>:blocking</code>"><code>:blocking</code></h3><p>A trailing <code>:blocking</code> marks a call that may wait — network I/O, a lock, a sleep. The http-client marks every socket call:</p><pre><code class="clojure">&#40;ffi/defcfn c-connect &quot;connect&quot; &#91;:int :pointer :int&#93; :int :blocking&#41;
+&#40;ffi/defcfn c-recv    &quot;recv&quot;    &#91;:int :pointer :size&#95;t :int&#93; :ssize&#95;t :blocking&#41;
+</code></pre><p>This matters for correctness, not just speed: without <code>:blocking</code>, a thread parked inside a foreign call pins the garbage collector for every thread. With it, Jolt releases the collector while the call waits. Mark anything that can block; leave pure, fast calls unmarked.</p><h2 id="types&#95;at&#95;the&#95;boundary">Types at the boundary</h2><p>The argument and return types are keywords. The full set:</p><table><thead><tr><th>Keyword</th><th>C type</th><th>Jolt value</th></tr></thead><tbody><tr><td><code>:int</code> <code>:uint</code></td><td><code>int</code> / <code>unsigned</code></td><td>number</td></tr><tr><td><code>:long</code> <code>:ulong</code></td><td><code>long</code> / <code>unsigned long</code></td><td>number</td></tr><tr><td><code>:int64</code> <code>:uint64</code></td><td>64-bit integer</td><td>number</td></tr><tr><td><code>:size&#95;t</code> <code>:ssize&#95;t</code></td><td><code>size&#95;t</code> / <code>ssize&#95;t</code></td><td>number</td></tr><tr><td><code>:iptr</code> <code>:uptr</code></td><td>pointer-sized integer</td><td>number (handy for <code>NULL</code> sentinels)</td></tr><tr><td><code>:double</code> <code>:float</code></td><td><code>double</code> / <code>float</code></td><td>number</td></tr><tr><td><code>:char</code></td><td><code>char</code></td><td>number (code point)</td></tr><tr><td><code>:uint8</code> (<code>:u8</code>, <code>:byte</code>)</td><td><code>unsigned char</code></td><td>number 0–255</td></tr><tr><td><code>:pointer</code> (<code>:void&#42;</code>)</td><td>any pointer</td><td>number (machine address)</td></tr><tr><td><code>:string</code></td><td><code>char &#42;</code></td><td>string — marshaled both ways</td></tr><tr><td><code>:void</code></td><td><code>void</code></td><td>return ignored (nil)</td></tr></tbody></table><p>A <code>:string</code> argument is copied to a NUL-terminated C string for the call; a <code>:string</code> return reads a NUL-terminated C string back, decoding UTF-8 (falling back to Latin-1). Pointers are plain integers — you pass them around, offset them, and hand them back to C.</p><h2 id="memory&#95;and&#95;strings">Memory and strings</h2><p>Foreign memory is manual. Allocate, use, free — there is no finalizer:</p><pre><code class="clojure">&#40;ffi/alloc nbytes&#41;          ; -&gt; pointer &#40;address&#41;; you must free it
+&#40;ffi/free ptr&#41;              ; release it
+&#40;ffi/sizeof :pointer&#41;       ; size of a type, for laying out structs/out-params
+
+&#40;ffi/read  ptr type &#91;offset&#93;&#41;      ; read a typed value at ptr &#40;+ optional byte offset&#41;
+&#40;ffi/write ptr type offset value&#41;  ; write a typed value at ptr + offset
+
+&#40;ffi/string-&gt;ptr s&#41;         ; alloc a C string from s &#40;free it yourself&#41;
+&#40;ffi/ptr-&gt;string ptr&#41;       ; read a NUL-terminated C string back
+
+&#40;ffi/read-array ptr n&#41;      ; n bytes -&gt; byte-array &#40;binary-faithful&#41;
+&#40;ffi/write-array ptr arr&#41;   ; byte-array -&gt; memory
+&#40;ffi/read-bytes ptr n&#41;      ; n bytes -&gt; string &#40;UTF-8&#41;
+&#40;ffi/write-bytes ptr s&#41;     ; string's UTF-8 bytes -&gt; memory
+
+&#40;ffi/null&#41;  &#40;ffi/null? p&#41;   ; the null pointer, and the test
+&#40;ffi/loaded? name&#41;          ; was a library loaded?
+</code></pre><h3 id="out-parameters">Out-parameters</h3><p>C functions that "return" through a pointer argument are the common case. Allocate a cell, pass its address, read it back. From the db library opening a connection (<code>sqlite3&#95;open&#40;path, &amp;db&#41;</code>):</p><pre><code class="clojure">&#40;defn open &#91;path&#93;
+  &#40;let &#91;pp &#40;ffi/alloc &#40;ffi/sizeof :pointer&#41;&#41;&#93;   ; space for a db&#42;
+    &#40;try
+      &#40;let &#91;rc &#40;sqlite3-open path pp&#41;            ; C writes the handle into pp
+            db &#40;ffi/read pp :pointer&#41;&#93;           ; read it out
+        &#40;when-not &#40;= rc SQLITE-OK&#41;
+          &#40;throw &#40;ex-info &#40;str &quot;sqlite open failed: &quot; path&#41; {:rc rc}&#41;&#41;&#41;
+        db&#41;
+      &#40;finally &#40;ffi/free pp&#41;&#41;&#41;&#41;&#41;
+</code></pre><h3 id="structs&#95;by&#95;offset">Structs by offset</h3><p>There is no struct introspection — you write the layout out as byte offsets and use <code>ffi/read</code>/<code>ffi/write</code>. The http-client's zlib binding lays out <code>z&#95;stream</code> by hand:</p><pre><code class="clojure">&#40;def &#94;:private ZS 112&#41;            ; sizeof&#40;z&#95;stream&#41;, LP64
+&#40;def &#94;:private O-next-in 0&#41;
+&#40;def &#94;:private O-avail-in 8&#41;
+&#40;def &#94;:private O-next-out 24&#41;
+&#40;def &#94;:private O-avail-out 32&#41;
+
+&#40;let &#91;strm &#40;ffi/alloc ZS&#41;&#93;
+  &#40;dotimes &#91;i ZS&#93; &#40;ffi/write strm :uint8 i 0&#41;&#41;   ; zero the struct
+  &#40;ffi/write strm :pointer O-next-in  src-buf&#41;
+  &#40;ffi/write strm :uint    O-avail-in n&#41;
+  ...&#41;
+</code></pre><p>Offsets and sizes are platform-specific. The http-client keeps a per-OS offset where macOS and Linux disagree:</p><pre><code class="clojure">&#40;def &#94;:private macos?
+  &#40;str/includes? &#40;str/lower-case &#40;or &#40;System/getProperty &quot;os.name&quot;&#41; &quot;&quot;&#41;&#41; &quot;mac&quot;&#41;&#41;
+&#40;def &#94;:private O-ai-addr &#40;if macos? 32 24&#41;&#41;      ; addrinfo.ai&#95;addr
+</code></pre><h3 id="binary&#95;data">Binary data</h3><p>For bytes that aren't text, use the array helpers — they don't touch encoding. The http-client moves ciphertext through OpenSSL's in-memory BIOs this way:</p><pre><code class="clojure">&#40;let &#91;buf &#40;ffi/alloc n&#41;
+      got &#40;c-BIO-read wbio buf n&#41;&#93;
+  &#40;when &#40;pos? got&#41; &#40;net/send-bytes sock &#40;ffi/read-array buf got&#41;&#41;&#41;
+  &#40;ffi/free buf&#41;&#41;
+</code></pre><h2 id="checklist&#95;for&#95;a&#95;binding">Checklist for a binding</h2><ul><li>Declare the library in <code>deps.edn</code> <code>:jolt/native</code> with per-OS candidates; mark optional drivers <code>:optional</code>, process symbols <code>:process</code>.</li><li>Bind each C function with <code>defcfn</code>, exact argument/return types, and <code>:blocking</code> on anything that waits.</li><li>Free every <code>ffi/alloc</code> and <code>ffi/string-&gt;ptr</code> — wrap allocation in <code>try</code>/<code>finally</code>. Leaked foreign memory is never reclaimed.</li><li>Check C return codes and null pointers explicitly, and <code>throw</code> an <code>ex-info</code> on failure.</li><li>Keep struct offsets and type widths LP64-correct, and branch on <code>os.name</code> where macOS and Linux differ.</li></ul>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>

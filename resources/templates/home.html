@@ -42,6 +42,17 @@
       <div class="feat">
         <div class="icon">
           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+            <line x1="12" y1="22.08" x2="12" y2="12"></line>
+          </svg>
+        </div>
+        <h4>Standalone Binaries</h4>
+        <p><code>jolt build</code> ahead-of-time compiles a project — runtime, standard library, app, and its deps — into a single self-contained executable. No Chez, no JVM, no source needed to run it.</p>
+      </div>
+      <div class="feat">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <line x1="6" y1="3" x2="6" y2="15"></line>
             <circle cx="18" cy="6" r="3"></circle>
             <circle cx="6" cy="18" r="3"></circle>
@@ -117,6 +128,11 @@ $ bin/joltc -e <span class="syn-str">'(/ 1 2)'</span>
 bin/joltc -M:test [args]      <span class="syn-comment"># run an alias's :main-opts</span>
 bin/joltc path                <span class="syn-comment"># print the resolved source roots</span></code></pre>
 
+    <h3>Compile a standalone binary</h3>
+    <pre><code>bin/joltc build -m myapp.core -o myapp   <span class="syn-comment"># single self-contained executable</span>
+./myapp arg1 arg2                        <span class="syn-comment"># runs anywhere; args reach -main</span>
+<span class="syn-comment"># --opt for the optimized build, --dev for an unoptimized one</span></code></pre>
+
     <h3>nREPL</h3>
     <pre><code>bin/joltc nrepl-server        <span class="syn-comment"># auto-resolves deps.edn, writes .nrepl-port</span>
 <span class="syn-comment"># connect CIDER / Calva via the .nrepl-port file</span></code></pre>
@@ -128,18 +144,16 @@ bin/joltc path                <span class="syn-comment"># print the resolved sou
 <section id="differences" class="surface">
   <div class="inner">
     <h2>Differences from Clojure</h2>
-    <p style="margin-bottom:16px;">Jolt targets Clojure semantics but runs on Chez, not the JVM. Notable divergences:</p>
+    <p style="margin-bottom:16px;">Jolt targets Clojure semantics but runs on Chez, not the JVM. Most portable Clojure runs unchanged — persistent collections, the numeric tower, lazy seqs, transducers, multimethods, protocols/records, atoms, <code>future</code>/<code>agent</code>/<code>pmap</code>, <code>core.async</code>, runtime <code>eval</code>, and the full reader all behave as on the JVM. The genuine divergences:</p>
     <table class="diff-table">
       <thead>
-        <tr><th>Aspect</th><th>Jolt</th></tr>
+        <tr><th>Aspect</th><th>Difference</th></tr>
       </thead>
       <tbody>
-        <tr><td>Host</td><td>Chez Scheme, not the JVM — no Java interop; a shimmed subset of <code>java.*</code> is available</td></tr>
-        <tr><td>Numbers</td><td>Full numeric tower: exact integers, bignums, ratios, doubles; no <code>BigDecimal</code></td></tr>
-        <tr><td>Collections</td><td>Immutable persistent vectors (32-way tries) and HAMT maps/sets</td></tr>
-        <tr><td>Concurrency</td><td>Shared-heap <code>future</code>/<code>agent</code>/<code>pmap</code> on OS threads; atoms with CAS; no STM</td></tr>
-        <tr><td>core.async</td><td>Blocking channels with <code>go</code>/<code>&lt;!</code>/<code>&gt;!</code>/<code>alts!</code>/<code>timeout</code></td></tr>
-        <tr><td>Regex</td><td>Backed by <a href="https://github.com/ashinn/irregex" target="_blank" rel="noopener">irregex</a>; PCRE/Java-style patterns</td></tr>
+        <tr><td>Java interop</td><td>No JVM, so no general Java interop, reflection, or <code>gen-class</code>/<code>proxy</code> — a shimmed subset of <code>java.*</code> is available, plus a C <a href="/docs/native-interop.html">FFI</a></td></tr>
+        <tr><td>BigDecimal</td><td>Not available (<code>decimal?</code> is always false); the rest of the numeric tower matches</td></tr>
+        <tr><td>STM</td><td>No <code>ref</code>/<code>dosync</code> — shared state uses atoms; everything else concurrent matches Clojure</td></tr>
+        <tr><td>Regex</td><td>Compiled by <a href="https://github.com/ashinn/irregex" target="_blank" rel="noopener">irregex</a>, not <code>java.util.regex</code> — common patterns work, some Java-specific features differ</td></tr>
       </tbody>
     </table>
   </div>

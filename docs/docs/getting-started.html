@@ -55,6 +55,10 @@
       </li>
       
       <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
         <a href="/docs/libraries.html">Supported Libraries</a>
       </li>
       
@@ -66,7 +70,7 @@
     
     <nav class="toc">
       <h2>Contents</h2>
-      <ol class="contents"><li><a href="#requirements">Requirements</a></li><li><a href="#install_and_run">Install and run</a></li><li><a href="#evaluating_code">Evaluating code</a></li><li><a href="#running_a_project">Running a project</a></li><li><a href="#repl_and_editor_integration">REPL and editor integration</a></li><li><a href="#dependencies">Dependencies</a></li></ol>
+      <ol class="contents"><li><a href="#requirements">Requirements</a></li><li><a href="#install_and_run">Install and run</a></li><li><a href="#evaluating_code">Evaluating code</a></li><li><a href="#running_a_project">Running a project</a></li><li><a href="#compiling_a_standalone_binary">Compiling a standalone binary</a></li><li><a href="#repl_and_editor_integration">REPL and editor integration</a></li><li><a href="#dependencies">Dependencies</a></li></ol>
     </nav>
     
     <div id="content">
@@ -82,7 +86,9 @@ bin/joltc run -m myapp.core # resolve deps.edn, load the ns, call -main
 bin/joltc -M:alias &#91;args&#93;   # run an alias's :main-opts
 bin/joltc path              # print the resolved source roots
 </code></pre><p>You can also point Jolt at a directory of Clojure source with no dependency machinery, using <code>JOLT&#95;PATH</code> (a colon-separated list of directories, like a classpath):</p><pre><code class="bash">JOLT&#95;PATH=/path/to/lib/src bin/joltc run myfile.clj
-</code></pre><h2 id="repl&#95;and&#95;editor&#95;integration">REPL and editor integration</h2><pre><code class="bash">bin/joltc repl              # a line REPL with the project deps loaded
+</code></pre><h2 id="compiling&#95;a&#95;standalone&#95;binary">Compiling a standalone binary</h2><p><code>bin/joltc build</code> ahead-of-time compiles a project into a single self-contained executable. The runtime, <code>clojure.core</code>, the standard library, and your application — together with its <code>deps.edn</code> dependencies — are linked in, so the result needs no Chez install, no JVM, and no source on disk to run.</p><pre><code class="bash">bin/joltc build -m myapp.core -o myapp   # compile myapp.core's -main into ./myapp
+./myapp arg1 arg2                        # runs anywhere; args reach -main
+</code></pre><p>Three build modes trade dynamism for speed:</p><ul><li>default (<strong>release</strong>) — a closed-world binary on the proven code generator.</li><li><code>--opt</code> (<strong>optimized</strong>) — also runs the type-inference and scalar-replacement passes over the closed-world program.</li><li><code>--dev</code> — an unoptimized build.</li></ul><h2 id="repl&#95;and&#95;editor&#95;integration">REPL and editor integration</h2><pre><code class="bash">bin/joltc repl              # a line REPL with the project deps loaded
 bin/joltc nrepl-server      # an nREPL server &#40;default port 7888&#41;
 </code></pre><p><code>nrepl-server</code> writes a <code>.nrepl-port</code> file and auto-resolves a <code>deps.edn</code> in the directory, so the server starts with your app and its dependencies loaded. Connect CIDER or Calva to the port.</p><h2 id="dependencies">Dependencies</h2><p><code>bin/joltc</code> reads a <code>deps.edn</code> in the current directory, fetches its dependencies, and prepends the resolved source directories to the load path for the run. Git and local dependencies are supported (no Maven):</p><pre><code class="clojure">{:paths &#91;&quot;src&quot;&#93;
  :deps {weavejester/medley {:git/url &quot;https://github.com/weavejester/medley&quot;

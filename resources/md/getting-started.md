@@ -44,6 +44,21 @@ You can also point Jolt at a directory of Clojure source with no dependency mach
 JOLT_PATH=/path/to/lib/src bin/joltc run myfile.clj
 ```
 
+## Compiling a standalone binary
+
+`bin/joltc build` ahead-of-time compiles a project into a single self-contained executable. The runtime, `clojure.core`, the standard library, and your application — together with its `deps.edn` dependencies — are linked in, so the result needs no Chez install, no JVM, and no source on disk to run.
+
+```bash
+bin/joltc build -m myapp.core -o myapp   # compile myapp.core's -main into ./myapp
+./myapp arg1 arg2                        # runs anywhere; args reach -main
+```
+
+Three build modes trade dynamism for speed:
+
+- default (**release**) — a closed-world binary on the proven code generator.
+- `--opt` (**optimized**) — also runs the type-inference and scalar-replacement passes over the closed-world program.
+- `--dev` — an unoptimized build.
+
 ## REPL and editor integration
 
 ```bash
