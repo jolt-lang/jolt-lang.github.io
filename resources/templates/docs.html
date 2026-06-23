@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{title}} — Jolt{% endblock %}
+{% block body-class %}docs{% endblock %}
+
+{% block content %}
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      {% for topic in topics %}
+      <li {% ifequal topic.1 title %}class="selected"{% endifequal %}>
+        <a href="/docs/{{topic.0}}">{{topic.1}}</a>
+      </li>
+      {% endfor %}
+    </ul>
+  </aside>
+
+  <main class="docs-main">
+    <h1>{{title}}</h1>
+    {% if toc %}
+    <nav class="toc">
+      <h2>Contents</h2>
+      {{toc|safe}}
+    </nav>
+    {% endif %}
+    <div id="content">
+      {{content|safe}}
+    </div>
+  </main>
+</div>
+{% endblock %}
+
+{% block page-scripts %}
+{% script "/js/docs.js" %}
+{% endblock %}

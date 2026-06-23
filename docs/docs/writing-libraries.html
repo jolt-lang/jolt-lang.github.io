@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>Writing Libraries — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="logo">⚡ Jolt</a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li class="selected">
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Supported Libraries</a>
+      </li>
+      
+    </ul>
+  </aside>
+
+  <main class="docs-main">
+    <h1>Writing Libraries</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#project_layout">Project layout</a></li><li><a href="#depending_on_a_library">Depending on a library</a><ol><li><a href="#git_dependencies">Git dependencies</a></li><li><a href="#local_dependencies">Local dependencies</a></li></ol></li><li><a href="#aliases_and_tasks">Aliases and tasks</a></li><li><a href="#what_works_as_a_dependency">What works as a dependency</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <p>A Jolt library is ordinary Clojure source resolved through <code>deps.edn</code>. There is no separate packaging step — point a project at a git or local dependency and Jolt prepends its source directories to the load path.</p><h2 id="project&#95;layout">Project layout</h2><p>A library is a directory with a <code>deps.edn</code> and Clojure source under <code>:paths</code> (default <code>&#91;&quot;src&quot;&#93;</code>):</p><pre><code>my-lib/
+  deps.edn
+  src/
+    my&#95;lib/
+      core.clj
+</code></pre><p>Namespaces map to files the usual way: dots become directories and dashes become underscores, so <code>my-lib.core</code> lives at <code>src/my&#95;lib/core.clj</code>. Jolt tries <code>&lt;ns&gt;.clj</code> then <code>&lt;ns&gt;.cljc</code>.</p><h2 id="depending&#95;on&#95;a&#95;library">Depending on a library</h2><p>In a consuming project's <code>deps.edn</code>:</p><pre><code class="clojure">{:paths &#91;&quot;src&quot;&#93;
+ :deps {weavejester/medley {:git/url &quot;https://github.com/weavejester/medley&quot;
+                            :git/sha &quot;&lt;full-sha&gt;&quot;}
+        my/helpers          {:local/root &quot;../helpers&quot;}}}
+</code></pre><p>Then run it:</p><pre><code class="bash">bin/joltc run -m myapp.main
+</code></pre><h3 id="git&#95;dependencies">Git dependencies</h3><p><code>{:git/url … :git/sha …}</code> — use a <strong>full</strong> SHA (<code>git fetch</code> can't resolve a short one). An optional <code>:deps/root</code> selects a subdirectory of the repo. Transitive dependencies from each library's own <code>deps.edn</code> are resolved too. Resolution is breadth-first, so a top-level coordinate always wins over a transitive one for the same library.</p><p>Git clones land in a global, sha-immutable cache shared across projects — <code>$JOLT&#95;GITLIBS</code>, else <code>&#126;/.jolt/gitlibs</code>.</p><h3 id="local&#95;dependencies">Local dependencies</h3><p><code>{:local/root &quot;../path&quot;}</code> points at a sibling checkout — handy while developing two libraries together.</p><h2 id="aliases&#95;and&#95;tasks">Aliases and tasks</h2><p>Aliases add extra paths, deps, and main options:</p><pre><code class="clojure">{:aliases {:dev  {:extra-paths &#91;&quot;dev&quot;&#93;
+                  :extra-deps  {…}}
+           :test {:main-opts &#91;&quot;-m&quot; &quot;my-lib.test-runner&quot;&#93;}}}
+</code></pre><p><code>:extra-paths</code>/<code>:extra-deps</code> accumulate across selected aliases (<code>-A:dev:test</code>); <code>:main-opts</code> is last-wins and runs via <code>-M:alias</code>.</p><p>Tasks are named shell commands or Jolt invocations:</p><pre><code class="clojure">{:tasks {clean &quot;rm -rf target&quot;
+         test  {:main-opts &#91;&quot;-m&quot; &quot;my-lib.test-runner&quot;&#93;}}}
+</code></pre><p>Run one with <code>bin/joltc &lt;taskname&gt;</code>.</p><h2 id="what&#95;works&#95;as&#95;a&#95;dependency">What works as a dependency</h2><ul><li><strong>git deps</strong> — <code>{:git/url … :git/sha …}</code>, with optional <code>:deps/root</code>.</li><li><strong>local deps</strong> — <code>{:local/root &quot;../path&quot;}</code>.</li><li><strong>aliases</strong> — <code>:extra-paths</code>, <code>:extra-deps</code>, <code>:main-opts</code>.</li><li><strong>tasks</strong> — string (shell) or map (Jolt) entries.</li></ul><p>What doesn't:</p><ul><li><strong>No Maven.</strong> <code>:mvn/version</code> deps are skipped with a warning — git and local only. Vendor a Maven-only dependency as a git repo if you need it.</li><li><strong>Pure <code>clj</code>/<code>cljc</code> only.</strong> A library that needs the JVM (Java interop, host classes) or a <code>clojure.core</code> feature Jolt doesn't implement will fail to load, or fail at the call site. Coverage is per-function, so a namespace can load with most functions working and a few not.</li></ul><p>If a library reaches for a Java class, you can often supply it from Clojure — see <a href='/docs/host-interop.html'>Host Interop</a> for registering your own host-class shims from a library, the same mechanism Jolt's own libraries use to run unmodified Clojure code.</p>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>

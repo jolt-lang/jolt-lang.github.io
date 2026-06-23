@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block body-class %}home{% endblock %}
+
+{% block content %}
+<header class="hero">
+  <img src="/img/jolt.svg" alt="Jolt logo" class="bolt" width="280" height="280">
+  <h1>Jolt</h1>
+  <p class="tagline">
+    A Clojure implementation on Chez Scheme.<br>
+    Self-hosted compiler, Clojure-compatible standard library, no JVM.
+  </p>
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="/docs/getting-started.html">Get Started</a>
+    <a class="btn" href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a>
+  </div>
+</header>
+
+<section id="features">
+  <div class="inner">
+    <h2>Why Jolt?</h2>
+    <div class="features">
+      <div class="feat">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+          </svg>
+        </div>
+        <h4>Self-Hosted Compiler</h4>
+        <p>Reads Clojure, analyzes it to a host-neutral IR, emits Scheme, and runs it on Chez. The compiler is written in Clojure and compiles itself.</p>
+      </div>
+      <div class="feat">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path>
+            <line x1="16" y1="8" x2="2" y2="22"></line>
+            <line x1="17.5" y1="15" x2="9" y2="15"></line>
+          </svg>
+        </div>
+        <h4>No Build Step</h4>
+        <p>A checked-in bootstrap seed runs on a fresh clone immediately. The build is a self-hosting fixpoint — a rebuild reproduces the seed byte-for-byte.</p>
+      </div>
+      <div class="feat">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <line x1="6" y1="3" x2="6" y2="15"></line>
+            <circle cx="18" cy="6" r="3"></circle>
+            <circle cx="6" cy="18" r="3"></circle>
+            <path d="M18 9a9 9 0 0 1-9 9"></path>
+          </svg>
+        </div>
+        <h4>Real Concurrency</h4>
+        <p><code>future</code>/<code>promise</code>/<code>agent</code>/<code>pmap</code> run on OS threads over a shared heap, matching JVM semantics. <code>core.async</code> provides channels and <code>go</code> blocks.</p>
+      </div>
+      <div class="feat">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <line x1="4" y1="9" x2="20" y2="9"></line>
+            <line x1="4" y1="15" x2="20" y2="15"></line>
+            <line x1="10" y1="3" x2="8" y2="21"></line>
+            <line x1="16" y1="3" x2="14" y2="21"></line>
+          </svg>
+        </div>
+        <h4>Full Numeric Tower</h4>
+        <p>Exact integers and bignums, exact ratios (<code>(/ 1 2)</code> ⇒ <code>1/2</code>), and flonum doubles. <code>=</code> is category-aware; <code>==</code> is value-equality.</p>
+      </div>
+      <div class="feat">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+            <polyline points="2 12 12 17 22 12"></polyline>
+            <polyline points="2 17 12 22 22 17"></polyline>
+          </svg>
+        </div>
+        <h4>Persistent Data</h4>
+        <p>Immutable vectors (32-way tries), cons lists, and HAMT maps/sets with Clojure value semantics. Transients are real mutable scratch collections.</p>
+      </div>
+      <div class="feat">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M10 4 C 5 8, 5 16, 10 20"></path>
+            <path d="M14 4 C 19 8, 19 16, 14 20"></path>
+          </svg>
+        </div>
+        <h4>Clojure-Compatible</h4>
+        <p>Lazy/infinite seqs, transducers, destructuring, multimethods, protocols/records, metadata, namespaces, runtime <code>eval</code>, and the full reader.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="quickstart" class="surface">
+  <div class="inner">
+    <h2>Quick Start</h2>
+    <p>There is no build step — the bootstrap seed is checked in, so a fresh clone runs immediately.</p>
+    <pre><code><span class="syn-comment"># clone (submodules pull the vendored regex + sci sources)</span>
+git clone --recurse-submodules https://github.com/jolt-lang/jolt.git
+<span class="syn-kw">cd</span> jolt
+
+bin/joltc -e <span class="syn-str">'(+ 1 2)'</span>        <span class="syn-comment"># => 3</span>
+
+<span class="syn-comment"># requires only Chez Scheme (invoked as `chez`)</span></code></pre>
+  </div>
+</section>
+
+<section id="usage">
+  <div class="inner">
+    <h2>Usage</h2>
+
+    <h3>Evaluate an expression</h3>
+    <pre><code>$ bin/joltc -e <span class="syn-str">'(->> (range 10) (filter even?) (map (fn [x] (* x x))) (reduce +))'</span>
+<span class="syn-comment"># 120</span>
+$ bin/joltc -e <span class="syn-str">'(/ 1 2)'</span>
+<span class="syn-comment"># 1/2</span></code></pre>
+
+    <h3>Run a project</h3>
+    <pre><code>bin/joltc run -m myapp.core   <span class="syn-comment"># resolve deps.edn, then run -main</span>
+bin/joltc -M:test [args]      <span class="syn-comment"># run an alias's :main-opts</span>
+bin/joltc path                <span class="syn-comment"># print the resolved source roots</span></code></pre>
+
+    <h3>nREPL</h3>
+    <pre><code>bin/joltc nrepl-server        <span class="syn-comment"># auto-resolves deps.edn, writes .nrepl-port</span>
+<span class="syn-comment"># connect CIDER / Calva via the .nrepl-port file</span></code></pre>
+
+    <p class="cta">Read the <a href="/docs/getting-started.html">documentation</a> for installation, writing libraries, and host interop.</p>
+  </div>
+</section>
+
+<section id="differences" class="surface">
+  <div class="inner">
+    <h2>Differences from Clojure</h2>
+    <p style="margin-bottom:16px;">Jolt targets Clojure semantics but runs on Chez, not the JVM. Notable divergences:</p>
+    <table class="diff-table">
+      <thead>
+        <tr><th>Aspect</th><th>Jolt</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Host</td><td>Chez Scheme, not the JVM — no Java interop; a shimmed subset of <code>java.*</code> is available</td></tr>
+        <tr><td>Numbers</td><td>Full numeric tower: exact integers, bignums, ratios, doubles; no <code>BigDecimal</code></td></tr>
+        <tr><td>Collections</td><td>Immutable persistent vectors (32-way tries) and HAMT maps/sets</td></tr>
+        <tr><td>Concurrency</td><td>Shared-heap <code>future</code>/<code>agent</code>/<code>pmap</code> on OS threads; atoms with CAS; no STM</td></tr>
+        <tr><td>core.async</td><td>Blocking channels with <code>go</code>/<code>&lt;!</code>/<code>&gt;!</code>/<code>alts!</code>/<code>timeout</code></td></tr>
+        <tr><td>Regex</td><td>Backed by <a href="https://github.com/ashinn/irregex" target="_blank" rel="noopener">irregex</a>; PCRE/Java-style patterns</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endblock %}

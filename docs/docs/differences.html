@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>Differences from Clojure — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="logo">⚡ Jolt</a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li class="selected">
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Supported Libraries</a>
+      </li>
+      
+    </ul>
+  </aside>
+
+  <main class="docs-main">
+    <h1>Differences from Clojure</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#host_platform">Host platform</a></li><li><a href="#numbers">Numbers</a></li><li><a href="#concurrency">Concurrency</a></li><li><a href="#collections">Collections</a></li><li><a href="#regex">Regex</a></li><li><a href="#what&apos;s_supported">What's supported</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <p>Jolt targets Clojure semantics but runs on Chez Scheme, not the JVM. Most portable Clojure runs unchanged; the differences below are where the host shows through.</p><h2 id="host&#95;platform">Host platform</h2><p>There is no JVM, no reflection, and no <code>gen-class</code>/<code>proxy</code> of Java classes. Interop syntax (<code>Class.</code>, <code>Class/staticMethod</code>, <code>.method</code>) works against a shimmed subset of the <code>java.&#42;</code> standard library, and a class token resolves to a name. See <a href='/docs/host-interop.html'>Host Interop</a> for what's covered and how to register your own host classes.</p><h2 id="numbers">Numbers</h2><p>Jolt carries the full Scheme numeric tower, matching the JVM:</p><ul><li>exact integers and bignums</li><li>exact ratios — <code>&#40;/ 1 2&#41;</code> ⇒ <code>1/2</code></li><li>flonum doubles</li></ul><p><code>=</code> is category-aware (<code>&#40;= 3 3.0&#41;</code> ⇒ <code>false</code>); <code>==</code> is value-equality (<code>&#40;== 3 3.0&#41;</code> ⇒ <code>true</code>). <code>integer?</code>/<code>int?</code> test exact integers, <code>float?</code>/<code>double?</code> test flonums, and <code>ratio?</code> tests an exact non-integer. There is no <code>BigDecimal</code> (<code>decimal?</code> is always false).</p><h2 id="concurrency">Concurrency</h2><p><code>future</code>/<code>promise</code>/<code>agent</code>/<code>pmap</code> run on real OS threads over a <strong>shared heap</strong>, matching JVM semantics — not isolated-heap snapshots. Atoms use a per-atom mutex with JVM-style compare-and-set. There is no STM (refs/<code>dosync</code>).</p><p><code>clojure.core.async</code> provides blocking channels and <code>go</code>/<code>&lt;!</code>/<code>&gt;!</code>/<code>alts!</code>/<code>timeout</code>.</p><h2 id="collections">Collections</h2><p>Immutable persistent vectors (32-way tries), cons lists, and HAMT maps/sets, with Clojure value semantics. Hash-map and hash-set iteration order is unspecified — use <code>sorted-map</code>/<code>sorted-set</code> when order matters. Transients are real mutable scratch collections.</p><h2 id="regex">Regex</h2><p>Backed by <a href='https://github.com/ashinn/irregex'>irregex</a> (vendored). PCRE/Java-style patterns work through <code>re-find</code>, <code>re-matches</code>, <code>re-seq</code>, and the <code>clojure.string</code> regex functions, plus <code>#&quot;…&quot;</code> literals.</p><h2 id="what's&#95;supported">What's supported</h2><p>Lazy and infinite sequences, transducers, destructuring, multimethods with hierarchies, protocols and records (<code>deftype</code>/<code>defrecord</code>/<code>reify</code>/<code>extend-protocol</code>), metadata, namespaces, runtime <code>eval</code>/<code>load-string</code>/<code>defmacro</code>, and the full reader (<code>#&#40;&#41;</code>, <code>#&#95;</code>, <code>#?</code>, tagged literals, <code>#&quot;…&quot;</code>).</p><p>The conformance corpus — a host-neutral language spec whose expected values come from reference JVM Clojure — is the contract Jolt is held to. The per-function coverage of <code>clojure.core</code> lives in the <a href='https://github.com/jolt-lang/jolt/tree/main/docs/spec'>project's spec</a>.</p>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>

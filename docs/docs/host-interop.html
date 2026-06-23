@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>Host Interop — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="logo">⚡ Jolt</a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li class="selected">
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Supported Libraries</a>
+      </li>
+      
+    </ul>
+  </aside>
+
+  <main class="docs-main">
+    <h1>Host Interop</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#what&apos;s_shimmed">What's shimmed</a><ol><li><a href="#numbers_and_language">Numbers and language</a></li><li><a href="#strings,_collections,_i/o">Strings, collections, I/O</a></li><li><a href="#time,_net,_encoding">Time, net, encoding</a></li></ol></li><li><a href="#adding_your_own_shim_from_a_library">Adding your own shim from a library</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <p>Jolt runs on Chez Scheme, not the JVM, so there are no real Java classes behind interop forms. Instead the runtime ships shims for the slice of the JVM standard library that portable Clojure code reaches for, so libraries written against <code>clojure.core</code> and common <code>java.&#42;</code> classes run unchanged. The Clojure interop syntax works against these shims:</p><pre><code class="clojure">&#40;Math/sqrt 2&#41;                  ; static call
+Math/PI                        ; static field
+&#40;StringBuilder.&#41;               ; constructor
+&#40;.append sb &quot;x&quot;&#41;               ; instance method
+&#40;instance? String &quot;hi&quot;&#41;        ; class token
+</code></pre><p>A class token (<code>String</code>, <code>java.util.UUID</code>, …) resolves to a name; there is no reflection and no class hierarchy. <code>&#40;class x&#41;</code> returns the JVM class name for the scalar and collection types Clojure programs compare against.</p><h2 id="what's&#95;shimmed">What's shimmed</h2><p>This is the surface today, not the whole JVM. Methods not listed generally aren't implemented; a few are accepted but no-ops.</p><h3 id="numbers&#95;and&#95;language">Numbers and language</h3><ul><li><strong><code>java.lang.Math</code></strong> — <code>sqrt</code> <code>cbrt</code> <code>pow</code> <code>exp</code> <code>log</code> <code>log10</code> <code>floor</code> <code>ceil</code> <code>round</code> <code>abs</code> <code>max</code> <code>min</code> <code>sin</code> <code>cos</code> <code>tan</code> <code>asin</code> <code>acos</code> <code>atan</code> <code>signum</code> <code>random</code>; <code>PI</code>, <code>E</code>. (<code>clojure.math</code> mirrors these as functions.)</li><li><strong><code>Long</code> / <code>Integer</code></strong> — <code>parseLong</code>/<code>parseInt</code>/<code>valueOf</code> (optional radix), <code>MAX&#95;VALUE</code>, <code>MIN&#95;VALUE</code>.</li><li><strong><code>Double</code> / <code>Float</code></strong> — <code>parseDouble</code>, <code>valueOf</code>, <code>toString</code>, <code>isNaN</code>, <code>isInfinite</code>, the value/infinity/NaN fields.</li><li><strong><code>Boolean</code></strong> — <code>parseBoolean</code>, <code>TRUE</code>, <code>FALSE</code>.</li><li><strong><code>Character</code></strong> — <code>isUpperCase</code> <code>isLowerCase</code> <code>isDigit</code> <code>isWhitespace</code> (ASCII).</li><li><strong>Boxed-number methods</strong> — every number answers <code>.intValue</code> <code>.longValue</code> <code>.doubleValue</code> <code>.byteValue</code> <code>.shortValue</code> <code>.toString</code> <code>.hashCode</code>.</li><li><strong><code>java.lang.System</code></strong> — <code>currentTimeMillis</code> <code>nanoTime</code> <code>exit</code> <code>getProperty</code> <code>setProperty</code> <code>getProperties</code> <code>getenv</code>.</li><li><strong><code>java.lang.Thread</code></strong> — <code>sleep</code> (real), <code>yield</code>/<code>interrupted</code> (no-ops), <code>currentThread</code>.</li></ul><h3 id="strings,&#95;collections,&#95;i/o">Strings, collections, I/O</h3><ul><li><strong><code>String</code></strong> statics — <code>valueOf</code>, <code>format</code> (the <code>clojure.core/format</code> engine).</li><li><strong><code>StringBuilder</code></strong> — <code>append</code> <code>toString</code> <code>length</code> <code>charAt</code> <code>setLength</code>.</li><li><strong><code>java.util.ArrayList</code> / <code>HashMap</code></strong> — the mutable <code>add</code>/<code>get</code>/<code>put</code>/<code>size</code>/<code>remove</code>/<code>keySet</code>/… surface.</li><li><strong><code>java.util.regex.Pattern</code></strong> — <code>compile</code> (with <code>Pattern/MULTILINE</code>), <code>quote</code>, <code>.split</code>, <code>.pattern</code>.</li><li><strong><code>java.io.File</code></strong> — construction plus <code>getPath</code> <code>getName</code> <code>getAbsolutePath</code> <code>exists</code> <code>isDirectory</code> <code>listFiles</code> …</li><li><strong><code>StringReader</code> / <code>StringWriter</code> / <code>PushbackReader</code></strong> — the reader/<code>with-out-str</code> surface.</li></ul><h3 id="time,&#95;net,&#95;encoding">Time, net, encoding</h3><ul><li><strong><code>java.util.Date</code></strong> and <strong><code>java.time</code></strong> (<code>Instant</code>, <code>LocalDateTime</code>, <code>ZoneId</code>, <code>DateTimeFormatter</code>), <strong><code>java.text.SimpleDateFormat</code></strong> / <strong><code>NumberFormat</code></strong>.</li><li><strong><code>java.net.URL</code></strong> / <strong><code>URI</code></strong> — construction and component accessors.</li><li><strong><code>java.util.UUID</code></strong> — <code>randomUUID</code>, <code>fromString</code>.</li><li><strong><code>java.util.Base64</code></strong>, <strong><code>java.nio.charset.Charset</code></strong>.</li><li><strong>Exceptions</strong> — <code>Throwable</code> <code>Exception</code> <code>RuntimeException</code> <code>IllegalArgumentException</code> <code>IllegalStateException</code> <code>IOException</code> <code>NumberFormatException</code> <code>ArithmeticException</code> <code>NullPointerException</code> and friends, each with the <code>&#40;E.&#41;</code> / <code>&#40;E. msg&#41;</code> / <code>&#40;E. msg cause&#41;</code> constructors.</li></ul><p>What's deliberately absent: STM, reflection, <code>gen-class</code>/<code>proxy</code> of Java classes, and <code>BigDecimal</code>.</p><h2 id="adding&#95;your&#95;own&#95;shim&#95;from&#95;a&#95;library">Adding your own shim from a library</h2><p>The built-in shims above are baked into the runtime. A library or project can register its <strong>own</strong> host classes at load time — no rebuild, no host edits. Put the registration calls at the top level of a namespace your code requires. Four functions (in <code>clojure.core</code>) plus the tagged-table seam (in <code>jolt.host</code>) cover it.</p><p><code>&#95;&#95;register-class-ctor!</code> makes <code>&#40;Name. …&#41;</code> work; <code>&#95;&#95;register-class-statics!</code> makes <code>Name/field</code> and <code>&#40;Name/method …&#41;</code> work; <code>&#95;&#95;register-class-methods!</code> attaches instance methods to a tagged value; <code>&#95;&#95;register-instance-check!</code> teaches <code>instance?</code> about your class. <strong>Method and static names are strings</strong> — they match the literal name in the interop form.</p><p>A stateful object is a <em>tagged table</em>: <code>jolt.host/tagged-table</code> creates one, and <code>ref-put!</code>/<code>ref-get</code> set and read its fields. Read the tag back with <code>jolt.host/ref-get</code> (or test it with <code>jolt.host/table?</code>); a plain <code>get</code> or keyword lookup deliberately can't see a wrapper's own <code>:jolt/type</code>.</p><pre><code class="clojure">&#40;ns mylib.greeter
+  &#40;:require &#91;jolt.host :as host&#93;&#41;&#41;
+
+;; &#40;Greeter. name&#41; -&gt; a tagged value carrying its name
+&#40;&#95;&#95;register-class-ctor! &quot;Greeter&quot;
+  &#40;fn &#91;name&#93; &#40;-&gt; &#40;host/tagged-table :greeter&#41;
+                 &#40;host/ref-put! :name name&#41;&#41;&#41;&#41;
+
+;; &#40;.hello g&#41; -&gt; instance method, keyed by the literal method name
+&#40;&#95;&#95;register-class-methods! :greeter
+  {&quot;hello&quot; &#40;fn &#91;self&#93; &#40;str &quot;hi &quot; &#40;host/ref-get self :name&#41;&#41;&#41;}&#41;
+
+;; Greeter/VERSION &#40;field&#41; and &#40;Greeter/make x&#41; &#40;static method&#41;
+&#40;&#95;&#95;register-class-statics! &quot;Greeter&quot;
+  {&quot;VERSION&quot; &quot;1.0&quot;
+   &quot;make&quot;    &#40;fn &#91;name&#93; &#40;Greeter. name&#41;&#41;}&#41;
+
+;; &#40;instance? Greeter x&#41;
+&#40;&#95;&#95;register-instance-check!
+  &#40;fn &#91;class-name v&#93;
+    &#40;when &#40;= class-name &quot;Greeter&quot;&#41;
+      &#40;and &#40;host/table? v&#41; &#40;= :greeter &#40;host/ref-get v :jolt/type&#41;&#41;&#41;&#41;&#41;&#41;
+</code></pre><pre><code class="clojure">&#40;.hello &#40;Greeter. &quot;ada&quot;&#41;&#41;            ;=&gt; &quot;hi ada&quot;
+Greeter/VERSION                      ;=&gt; &quot;1.0&quot;
+&#40;.hello &#40;Greeter/make &quot;bob&quot;&#41;&#41;        ;=&gt; &quot;hi bob&quot;
+&#40;instance? Greeter &#40;Greeter. &quot;x&quot;&#41;&#41;   ;=&gt; true
+</code></pre><p>An instance-check predicate returns <code>true</code>/<code>false</code> to decide, or <code>nil</code> to defer to the next registered check and the built-ins — so several libraries can register checks without clobbering each other. This is the mechanism Jolt's HTTP client library uses to emulate <code>java.net.URL</code> and <code>HttpURLConnection</code> so <code>clj-http-lite</code> runs unchanged.</p>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>

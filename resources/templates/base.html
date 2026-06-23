@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>{% block title %}Jolt — Clojure on Chez Scheme{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    {% style "/css/highlight.css" %}
+    {% style "/css/screen.css" %}
+  </head>
+  <body class="{% block body-class %}{% endblock %}">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="logo">⚡ Jolt</a>
+        <ul class="links">
+          <li {% ifequal page "home.html" %}class="selected"{% endifequal %}><a href="/">Home</a></li>
+          <li {% ifequal page "docs.html" %}class="selected"{% endifequal %}><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    {% block header %}{% endblock %}
+
+    {% block content %}{% endblock %}
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    {% script "/js/highlight.pack.js" %}
+    {% script "/js/site.js" %}
+    {% block page-scripts %}{% endblock %}
+  </body>
+</html>

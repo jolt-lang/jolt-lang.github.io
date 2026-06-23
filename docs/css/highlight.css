@@ -1,0 +1,45 @@
+/* highlight.js — dark theme tuned to the Jolt palette (GitHub-dark style). */
+.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 0;
+  background: transparent;
+  color: #e2e4e9;
+}
+.hljs-comment,
+.hljs-quote { color: #6e7681; font-style: italic; }
+
+.hljs-keyword,
+.hljs-selector-tag,
+.hljs-operator,
+.hljs-doctag { color: #ff7b72; }
+
+.hljs-string,
+.hljs-regexp,
+.hljs-meta .hljs-string { color: #a5d6ff; }
+
+.hljs-number,
+.hljs-literal,
+.hljs-boolean { color: #79c0ff; }
+
+.hljs-title,
+.hljs-title.function_,
+.hljs-section,
+.hljs-name { color: #d2a8ff; }
+
+.hljs-symbol,
+.hljs-attr,
+.hljs-attribute,
+.hljs-variable,
+.hljs-template-variable { color: #7ee787; }
+
+.hljs-built_in,
+.hljs-builtin-name,
+.hljs-type,
+.hljs-class .hljs-title { color: #ffa657; }
+
+.hljs-meta { color: #8b949e; }
+.hljs-deletion { background: #490202; }
+.hljs-addition { background: #04260f; }
+.hljs-emphasis { font-style: italic; }
+.hljs-strong { font-weight: 700; }

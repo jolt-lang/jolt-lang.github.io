@@ -1,0 +1,46 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Install Leiningen
+        uses: DeLaGuardo/setup-clojure@13.1
+        with:
+          lein: 2.11.2
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-lein-${{ hashFiles('project.clj') }}
+          restore-keys: ${{ runner.os }}-lein-
+
+      - name: Build site
+        run: lein run build
+
+      - name: Deploy to GitHub Pages
+        run: |
+          git config user.email "dmitri.sotnikov@gmail.com"
+          git config user.name "Dmitri Sotnikov"
+          git add docs/
+          if [ -n "$(git status --porcelain)" ]; then
+            git commit -m "Deploy #${{ github.run_number }}"
+            git push
+          fi
