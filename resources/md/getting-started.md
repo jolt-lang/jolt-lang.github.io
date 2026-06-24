@@ -56,8 +56,42 @@ bin/joltc build -m myapp.core -o myapp   # compile myapp.core's -main into ./mya
 Three build modes trade dynamism for speed:
 
 - default (**release**) — a closed-world binary on the proven code generator.
-- `--opt` (**optimized**) — also runs the type-inference and scalar-replacement passes over the closed-world program.
+- `--opt` (**optimized**) — also runs the type-inference, inlining, and scalar-replacement passes over the closed-world program.
 - `--dev` — an unoptimized build.
+
+### Closed-world optimizations
+
+Two opt-in flags trade runtime dynamism for speed and a smaller binary. They commit to a *closed world* — the program is known in full at build time and isn't extended at runtime — so they are off by default; a plain build stays fully dynamic.
+
+- `--direct-link` — a call between your own functions binds to its target directly, skipping the var lookup and generic dispatch a dynamic call pays. The cost is that those vars can no longer be redefined at runtime (mark one `^:redef` or `^:dynamic` to keep it dynamic). On a call-heavy workload this is several times faster.
+- `--tree-shake` — ship only the code reachable from `-main`. The build walks the call graph across your app, its libraries, **and** `clojure.core`, and drops every function that nothing on the path to `-main` can reach. An app that never `eval`s also drops the compiler (analyzer + back end) from the binary.
+
+You can set either in `deps.edn` instead of on the command line:
+
+```clojure
+{:jolt/build {:direct-link true :tree-shake true}}
+```
+
+Tree-shaking typically removes 1–2 MB. A small app pulls in a handful of `clojure.core` functions and a few functions per library, but a normal build bakes in all of them; tree-shaking keeps only what runs. For example, `malli-app` goes from ~10.0 MB to ~8.1 MB with identical behavior.
+
+### When tree-shaking can't help: runtime resolution
+
+Tree-shaking is **sound** — it never drops code that could actually run. To stay sound it has to give up on any program whose reachable code looks a function up *by name at runtime*: `eval`, `resolve`, `ns-resolve`, `requiring-resolve`, `find-var`, `load-string`, and friends. A static call graph can't see where those land, so if any reachable code uses one, the build keeps everything and tells you why:
+
+```
+jolt build: tree-shake skipped (reachable code resolves vars at runtime):
+  selmer.filters/generate-json -> clojure.core/resolve
+  clojure.tools.logging/call-str -> clojure.core/ns-resolve
+```
+
+This is almost always a **library**, not your code. Mature Clojure libraries use `resolve` for plugin systems and optional integrations — a logging backend chosen at runtime, a template filter that lazily loads an optional JSON or pretty-printing dependency. On the JVM that flexibility is free; in a closed-world binary it blocks the analysis.
+
+To make an app tree-shakeable, remove runtime resolution from the *reachable* path:
+
+- A library that resolves a backend or factory that is fixed on Jolt can reference it directly. (The Jolt `tools.logging` port does this — it has one native backend, so it dropped the JVM's dynamic factory selection.)
+- An optional integration (a Selmer `|json` filter resolving a JSON library you don't use) keeps the whole binary unshakeable even when the feature is never invoked; dropping or hard-wiring it on Jolt frees the analysis.
+
+Unreached code that uses `resolve` is fine — it's shaken away like anything else and never triggers the bail. Only resolution on the live path matters.
 
 ## REPL and editor integration
 
