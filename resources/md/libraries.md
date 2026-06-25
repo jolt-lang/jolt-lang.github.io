@@ -1,43 +1,44 @@
-These Clojure libraries are confirmed to load and pass their conformance checks on Jolt. Most load unmodified from git; a few rely on host shims Jolt provides. See the [examples repository](https://github.com/jolt-lang/examples) for runnable projects.
+These Clojure libraries are confirmed to load and pass their conformance checks on Jolt. Most load unmodified from git; a few rely on host shims Jolt provides, and some need `JOLT_FEATURES` including `clj` (noted below). See the [examples repository](https://github.com/jolt-lang/examples) for runnable projects.
 
 ## Web and routing
 
-- **[ring-core](https://github.com/ring-clojure/ring)** — via `:deps/root "ring-core"`, on the [ring-app example](https://github.com/jolt-lang/examples/tree/main/ring-app)'s spork/http adapter.
+- **[ring-core](https://github.com/ring-clojure/ring)** — via `:deps/root "ring-core"`, on the [ring-app example](https://github.com/jolt-lang/examples/tree/main/ring-app).
 - **[ring-codec](https://github.com/ring-clojure/ring-codec)** — URL/form encoding.
-- **[reitit-core](https://github.com/metosin/reitit)** — data-driven routing; the `reitit.Trie` Java class is mirrored in Clojure by [jolt-lang/router](https://github.com/jolt-lang/router). Load with `JOLT_FEATURES` including `clj`.
-- **[integrant](https://github.com/weavejester/integrant)** — data-driven system configuration; `ig/init`/`ig/halt!` build and tear down a component graph wired with `#ig/ref`, on the ring-app example. Loads unmodified with its [dependency](https://github.com/weavejester/dependency) and [meta-merge](https://github.com/weavejester/meta-merge) deps.
+- **[reitit-core](https://github.com/metosin/reitit)** — data-driven routing; the `reitit.Trie` Java class is mirrored by [jolt-lang/router](https://github.com/jolt-lang/router). `JOLT_FEATURES` `clj`.
+- **[integrant](https://github.com/weavejester/integrant)** — data-driven system configuration (`#ig/ref`), with its [dependency](https://github.com/weavejester/dependency) and [meta-merge](https://github.com/weavejester/meta-merge) deps.
 
 ## Data and schemas
 
-- **[malli](https://github.com/metosin/malli)** — schema validation, on the [malli-app example](https://github.com/jolt-lang/examples/tree/main/malli-app). `m/validate` and `m/explain` work across the vocabulary (predicates, `:int`/`:string`/`:keyword`, nested/optional `:map`, `:vector`, `:tuple`, `:enum`, `:maybe`, `:and`/`:or`, `:re`, bounded int/string). Load with `JOLT_FEATURES` including `clj`.
-- **[honeysql](https://github.com/seancorfield/honeysql)** — full SQL formatter and helpers (select/insert/update/delete/joins/`:inline`), loaded unmodified from git.
-- **[clojure.data.json](https://github.com/clojure/data.json)** — JSON reading and writing; `read-str`/`write-str` with key/value functions and options. Its own test suite passes 138/139.
-- **[clojure.spec.alpha](https://github.com/clojure/spec.alpha)** — data specs; `s/def`, `s/valid?`, `s/conform`, `s/cat`/`s/keys`, `s/explain-str`, and `s/check-asserts` all work over the registry.
-- **[core.match](https://github.com/clojure/core.match)** — pattern matching. The library builds its own compiler from `deftype`s implementing `clojure.lang` interfaces; its test suite passes 111/115 (literal/vector/map/seq/guard/or/rest/bind patterns, `:only`, `:guard`). Regex-literal and primitive-array patterns aren't supported yet.
+- **[malli](https://github.com/metosin/malli)** — data schema validation, on the [malli-app example](https://github.com/jolt-lang/examples/tree/main/malli-app). `JOLT_FEATURES` `clj`.
+- **[honeysql](https://github.com/seancorfield/honeysql)** — SQL formatter and helpers.
+- **[clojure.data.json](https://github.com/clojure/data.json)** — JSON reading and writing.
+- **[clojure.spec.alpha](https://github.com/clojure/spec.alpha)** — data specs.
+- **[core.match](https://github.com/clojure/core.match)** — pattern matching. `JOLT_FEATURES` `clj`.
+- **[transit-jolt](https://github.com/jolt-lang/transit-jolt)** — Transit (JSON) read/write.
 - **[medley](https://github.com/weavejester/medley)** — collection utilities.
 - **[config](https://github.com/yogthos/config)** — environment configuration.
-- **[aero](https://github.com/juxt/aero)** — EDN configuration with tag literals. `read-config` resolves `#ref`, `#env`, `#or`, `#profile`, `#long`, and friends; map/vector/set configs round-trip.
+- **[aero](https://github.com/juxt/aero)** — EDN configuration with tag literals (`#ref`/`#env`/`#or`/`#profile`/`#long`/…).
 
 ## Databases
 
 - **[clojure.jdbc](https://github.com/yogthos/clojure.jdbc)** — as [jolt-lang/db](https://github.com/jolt-lang/db)'s `jdbc.core`, over built-in SQLite access (libsqlite3 through Chez's FFI).
-- **[next.jdbc](https://github.com/seancorfield/next-jdbc)** — a compatibility layer in [jolt-lang/db](https://github.com/jolt-lang/db) (`next.jdbc`, `next.jdbc.sql`, `next.jdbc.prepare`, `next.jdbc.transaction`) over `jdbc.core`.
-- **[migratus](https://github.com/yogthos/migratus)** — database migrations; loads unmodified and runs filesystem SQL/EDN migrations against SQLite through the next.jdbc layer. `migrate`/`rollback` round-trip end to end.
+- **[next.jdbc](https://github.com/seancorfield/next-jdbc)** — a compatibility layer in [jolt-lang/db](https://github.com/jolt-lang/db) over `jdbc.core`.
+- **[migratus](https://github.com/yogthos/migratus)** — database migrations over the next.jdbc layer.
 
 ## Templating, markup, text
 
 - **[Selmer](https://github.com/yogthos/Selmer)** — Django-style templates.
-- **[hiccup](https://github.com/weavejester/hiccup)** — HTML from Clojure data, on the [hiccup-app example](https://github.com/jolt-lang/examples/tree/main/hiccup-app). Element tags, attribute maps, nested elements, and `for` comprehensions; its `html` macro pre-compiles the markup.
-- **[markdown-clj](https://github.com/yogthos/markdown-clj)** — Markdown to HTML, on the [markdown-app example](https://github.com/jolt-lang/examples/tree/main/markdown-app). Headings, emphasis, inline code, links, lists, tables, strikethrough.
+- **[hiccup](https://github.com/weavejester/hiccup)** — HTML from Clojure data, on the [hiccup-app example](https://github.com/jolt-lang/examples/tree/main/hiccup-app).
+- **[markdown-clj](https://github.com/yogthos/markdown-clj)** — Markdown to HTML, on the [markdown-app example](https://github.com/jolt-lang/examples/tree/main/markdown-app).
 - **[cuerdas](https://github.com/funcool/cuerdas)** — string manipulation.
 
 ## Date and time
 
-- **[tick](https://github.com/juxt/tick)** — date/time over Jolt's `java.time`. The `api` and `alpha.interval` test suites pass in full, including named-zone DST, nanosecond instants, and French locale formatting. Loads with `JOLT_FEATURES` including `clj`; `#time/…` literals work via `time-literals`' data readers.
+- **[tick](https://github.com/juxt/tick)** — date/time over Jolt's `java.time`; `#time/…` literals via `time-literals`. `JOLT_FEATURES` `clj`.
 
 ## Logging
 
-- **[tools.logging](https://github.com/clojure/tools.logging)** — the real `clojure.tools.logging` source runs verbatim. Jolt provides a native `clojure.tools.logging.impl` backend (a stderr `LoggerFactory`, the library's designed extension point) plus the host shims it needs. The level macros, `logf`/`logp`, `spy`, and `enabled?` all work; output goes to stderr.
+- **[tools.logging](https://github.com/clojure/tools.logging)** — runs verbatim over a native `clojure.tools.logging.impl` stderr backend.
 
 ---
 
