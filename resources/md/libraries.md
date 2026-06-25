@@ -4,6 +4,7 @@ These Clojure libraries are confirmed to load and pass their conformance checks 
 
 - **[ring-core](https://github.com/ring-clojure/ring)** — via `:deps/root "ring-core"`, on the [ring-app example](https://github.com/jolt-lang/examples/tree/main/ring-app).
 - **[ring-codec](https://github.com/ring-clojure/ring-codec)** — URL/form encoding.
+- **[ring-defaults](https://github.com/ring-clojure/ring-defaults)** — the standard middleware stack (params, static resources + content-type, session, security headers); session/CSRF crypto via [jolt-lang/jolt-crypto](https://github.com/jolt-lang/jolt-crypto) (OpenSSL).
 - **[reitit-core](https://github.com/metosin/reitit)** — data-driven routing; the `reitit.Trie` Java class is mirrored by [jolt-lang/router](https://github.com/jolt-lang/router). `JOLT_FEATURES` `clj`.
 - **[integrant](https://github.com/weavejester/integrant)** — data-driven system configuration (`#ig/ref`), with its [dependency](https://github.com/weavejester/dependency) and [meta-merge](https://github.com/weavejester/meta-merge) deps.
 
