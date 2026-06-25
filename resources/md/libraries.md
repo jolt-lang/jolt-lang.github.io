@@ -1,21 +1,22 @@
-These Clojure libraries are confirmed to load and pass their conformance checks on Jolt. Most load unmodified from git; a few rely on host shims Jolt provides, and some need `JOLT_FEATURES` including `clj` (noted below). See the [examples repository](https://github.com/jolt-lang/examples) for runnable projects.
+These Clojure libraries are confirmed to load and pass their conformance checks on Jolt. Most load unmodified from git; a few rely on host shims Jolt provides. See the [examples repository](https://github.com/jolt-lang/examples) for runnable projects.
 
 ## Web and routing
 
 - **[ring-core](https://github.com/ring-clojure/ring)** — via `:deps/root "ring-core"`, on the [ring-app example](https://github.com/jolt-lang/examples/tree/main/ring-app).
 - **[ring-codec](https://github.com/ring-clojure/ring-codec)** — URL/form encoding.
 - **[ring-defaults](https://github.com/ring-clojure/ring-defaults)** — the standard middleware stack (params, static resources + content-type, session, security headers); session/CSRF crypto via [jolt-lang/jolt-crypto](https://github.com/jolt-lang/jolt-crypto) (OpenSSL).
-- **[reitit-core](https://github.com/metosin/reitit)** — data-driven routing; the `reitit.Trie` Java class is mirrored by [jolt-lang/router](https://github.com/jolt-lang/router). `JOLT_FEATURES` `clj`.
+- **[reitit-core](https://github.com/metosin/reitit)** — data-driven routing; the `reitit.Trie` Java class is mirrored by [jolt-lang/router](https://github.com/jolt-lang/router).
 - **[integrant](https://github.com/weavejester/integrant)** — data-driven system configuration (`#ig/ref`), with its [dependency](https://github.com/weavejester/dependency) and [meta-merge](https://github.com/weavejester/meta-merge) deps.
 
 ## Data and schemas
 
-- **[malli](https://github.com/metosin/malli)** — data schema validation, on the [malli-app example](https://github.com/jolt-lang/examples/tree/main/malli-app). `JOLT_FEATURES` `clj`.
+- **[malli](https://github.com/metosin/malli)** — data schema validation, on the [malli-app example](https://github.com/jolt-lang/examples/tree/main/malli-app).
 - **[honeysql](https://github.com/seancorfield/honeysql)** — SQL formatter and helpers.
 - **[clojure.data.json](https://github.com/clojure/data.json)** — JSON reading and writing.
 - **[clojure.spec.alpha](https://github.com/clojure/spec.alpha)** — data specs.
-- **[core.match](https://github.com/clojure/core.match)** — pattern matching. `JOLT_FEATURES` `clj`.
-- **[core.cache](https://github.com/clojure/core.cache)** — caching (Basic/FIFO/LRU/LU/TTL/Soft + wrapped), over [data.priority-map](https://github.com/clojure/data.priority-map). `JOLT_FEATURES` `clj`.
+- **[core.match](https://github.com/clojure/core.match)** — pattern matching.
+- **[core.cache](https://github.com/clojure/core.cache)** — caching (Basic/FIFO/LRU/LU/TTL/Soft + wrapped), over [data.priority-map](https://github.com/clojure/data.priority-map).
+- **[core.memoize](https://github.com/clojure/core.memoize)** — function memoization over [core.cache](https://github.com/clojure/core.cache).
 - **[transit-jolt](https://github.com/jolt-lang/transit-jolt)** — Transit (JSON) read/write.
 - **[medley](https://github.com/weavejester/medley)** — collection utilities.
 - **[config](https://github.com/yogthos/config)** — environment configuration.
@@ -36,7 +37,7 @@ These Clojure libraries are confirmed to load and pass their conformance checks 
 
 ## Date and time
 
-- **[tick](https://github.com/juxt/tick)** — date/time over Jolt's `java.time`; `#time/…` literals via `time-literals`. `JOLT_FEATURES` `clj`.
+- **[tick](https://github.com/juxt/tick)** — date/time over Jolt's `java.time`; `#time/…` literals via `time-literals`.
 
 ## Logging
 
