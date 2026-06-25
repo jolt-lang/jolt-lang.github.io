@@ -13,6 +13,7 @@ These Clojure libraries are confirmed to load and pass their conformance checks 
 - **[honeysql](https://github.com/seancorfield/honeysql)** — full SQL formatter and helpers (select/insert/update/delete/joins/`:inline`), loaded unmodified from git.
 - **[clojure.data.json](https://github.com/clojure/data.json)** — JSON reading and writing; `read-str`/`write-str` with key/value functions and options. Its own test suite passes 138/139.
 - **[clojure.spec.alpha](https://github.com/clojure/spec.alpha)** — data specs; `s/def`, `s/valid?`, `s/conform`, `s/cat`/`s/keys`, `s/explain-str`, and `s/check-asserts` all work over the registry.
+- **[core.match](https://github.com/clojure/core.match)** — pattern matching. The library builds its own compiler from `deftype`s implementing `clojure.lang` interfaces; its test suite passes 111/115 (literal/vector/map/seq/guard/or/rest/bind patterns, `:only`, `:guard`). Regex-literal and primitive-array patterns aren't supported yet.
 - **[medley](https://github.com/weavejester/medley)** — collection utilities.
 - **[config](https://github.com/yogthos/config)** — environment configuration.
 - **[aero](https://github.com/juxt/aero)** — EDN configuration with tag literals. `read-config` resolves `#ref`, `#env`, `#or`, `#profile`, `#long`, and friends; map/vector/set configs round-trip.
