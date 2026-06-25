@@ -11,6 +11,8 @@ These Clojure libraries are confirmed to load and pass their conformance checks 
 
 - **[malli](https://github.com/metosin/malli)** — schema validation, on the [malli-app example](https://github.com/jolt-lang/examples/tree/main/malli-app). `m/validate` and `m/explain` work across the vocabulary (predicates, `:int`/`:string`/`:keyword`, nested/optional `:map`, `:vector`, `:tuple`, `:enum`, `:maybe`, `:and`/`:or`, `:re`, bounded int/string). Load with `JOLT_FEATURES` including `clj`.
 - **[honeysql](https://github.com/seancorfield/honeysql)** — full SQL formatter and helpers (select/insert/update/delete/joins/`:inline`), loaded unmodified from git.
+- **[clojure.data.json](https://github.com/clojure/data.json)** — JSON reading and writing; `read-str`/`write-str` with key/value functions and options. Its own test suite passes 138/139.
+- **[clojure.spec.alpha](https://github.com/clojure/spec.alpha)** — data specs; `s/def`, `s/valid?`, `s/conform`, `s/cat`/`s/keys`, `s/explain-str`, and `s/check-asserts` all work over the registry.
 - **[medley](https://github.com/weavejester/medley)** — collection utilities.
 - **[config](https://github.com/yogthos/config)** — environment configuration.
 
@@ -26,6 +28,10 @@ These Clojure libraries are confirmed to load and pass their conformance checks 
 - **[hiccup](https://github.com/weavejester/hiccup)** — HTML from Clojure data, on the [hiccup-app example](https://github.com/jolt-lang/examples/tree/main/hiccup-app). Element tags, attribute maps, nested elements, and `for` comprehensions; its `html` macro pre-compiles the markup.
 - **[markdown-clj](https://github.com/yogthos/markdown-clj)** — Markdown to HTML, on the [markdown-app example](https://github.com/jolt-lang/examples/tree/main/markdown-app). Headings, emphasis, inline code, links, lists, tables, strikethrough.
 - **[cuerdas](https://github.com/funcool/cuerdas)** — string manipulation.
+
+## Date and time
+
+- **[tick](https://github.com/juxt/tick)** — date/time over Jolt's `java.time`. The API test suite passes 353/359; the remaining failures are named-zone DST (full tzdb) and locale-specific formatting.
 
 ## Logging
 
