@@ -15,6 +15,7 @@ These Clojure libraries are confirmed to load and pass their conformance checks 
 - **[clojure.data.json](https://github.com/clojure/data.json)** — JSON reading and writing.
 - **[clojure.spec.alpha](https://github.com/clojure/spec.alpha)** — data specs.
 - **[core.match](https://github.com/clojure/core.match)** — pattern matching. `JOLT_FEATURES` `clj`.
+- **[core.cache](https://github.com/clojure/core.cache)** — caching (Basic/FIFO/LRU/LU/TTL/Soft + wrapped), over [data.priority-map](https://github.com/clojure/data.priority-map). `JOLT_FEATURES` `clj`.
 - **[transit-jolt](https://github.com/jolt-lang/transit-jolt)** — Transit (JSON) read/write.
 - **[medley](https://github.com/weavejester/medley)** — collection utilities.
 - **[config](https://github.com/yogthos/config)** — environment configuration.
