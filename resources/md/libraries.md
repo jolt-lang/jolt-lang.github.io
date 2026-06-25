@@ -15,6 +15,7 @@ These Clojure libraries are confirmed to load and pass their conformance checks 
 - **[clojure.spec.alpha](https://github.com/clojure/spec.alpha)** — data specs; `s/def`, `s/valid?`, `s/conform`, `s/cat`/`s/keys`, `s/explain-str`, and `s/check-asserts` all work over the registry.
 - **[medley](https://github.com/weavejester/medley)** — collection utilities.
 - **[config](https://github.com/yogthos/config)** — environment configuration.
+- **[aero](https://github.com/juxt/aero)** — EDN configuration with tag literals. `read-config` resolves `#ref`, `#env`, `#or`, `#profile`, `#long`, and friends; map/vector/set configs round-trip.
 
 ## Databases
 
@@ -31,7 +32,7 @@ These Clojure libraries are confirmed to load and pass their conformance checks 
 
 ## Date and time
 
-- **[tick](https://github.com/juxt/tick)** — date/time over Jolt's `java.time`. The API test suite passes 353/359; the remaining failures are named-zone DST (full tzdb) and locale-specific formatting.
+- **[tick](https://github.com/juxt/tick)** — date/time over Jolt's `java.time`. The `api` and `alpha.interval` test suites pass in full, including named-zone DST, nanosecond instants, and French locale formatting. Loads with `JOLT_FEATURES` including `clj`; `#time/…` literals work via `time-literals`' data readers.
 
 ## Logging
 
