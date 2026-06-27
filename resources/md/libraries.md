@@ -23,6 +23,8 @@ These Clojure libraries are confirmed to load and pass their conformance checks 
 - **[core.contracts](https://github.com/clojure/core.contracts)** — programming by contract (`contract`/`with-constraints`/`provide`), over [core.unify](https://github.com/clojure/core.unify).
 - **[data.zip](https://github.com/clojure/data.zip)** — zipper navigation, including `clojure.data.zip.xml`; XML via [jolt-lang/xml](https://github.com/jolt-lang/xml) (which ships `clojure.xml/parse`).
 - **[data.csv](https://github.com/clojure/data.csv)** — reading and writing CSV.
+- **[data.codec](https://github.com/clojure/data.codec)** — base64 encode/decode over byte arrays.
+- **[test.check](https://github.com/clojure/test.check)** — property-based testing (generators, `quick-check`, shrinking).
 - **[transit-jolt](https://github.com/jolt-lang/transit-jolt)** — Transit (JSON) read/write.
 - **[medley](https://github.com/weavejester/medley)** — collection utilities.
 - **[config](https://github.com/yogthos/config)** — environment configuration.
