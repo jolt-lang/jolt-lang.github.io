@@ -21,6 +21,7 @@ These Clojure libraries are confirmed to load and pass their conformance checks 
 - **[core.logic](https://github.com/clojure/core.logic)** — relational logic programming (unification, `run`/`fresh`/`conde`, finite domains).
 - **[math.combinatorics](https://github.com/clojure/math.combinatorics)** — permutations, combinations, subsets, selections, cartesian products, partitions.
 - **[core.contracts](https://github.com/clojure/core.contracts)** — programming by contract (`contract`/`with-constraints`/`provide`), over [core.unify](https://github.com/clojure/core.unify).
+- **[data.zip](https://github.com/clojure/data.zip)** — zipper navigation, including `clojure.data.zip.xml`; XML via [jolt-lang/xml](https://github.com/jolt-lang/xml) (which ships `clojure.xml/parse`).
 - **[transit-jolt](https://github.com/jolt-lang/transit-jolt)** — Transit (JSON) read/write.
 - **[medley](https://github.com/weavejester/medley)** — collection utilities.
 - **[config](https://github.com/yogthos/config)** — environment configuration.
