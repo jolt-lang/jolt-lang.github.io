@@ -17,6 +17,8 @@ These Clojure libraries are confirmed to load and pass their conformance checks 
 - **[core.match](https://github.com/clojure/core.match)** — pattern matching.
 - **[core.cache](https://github.com/clojure/core.cache)** — caching (Basic/FIFO/LRU/LU/TTL/Soft + wrapped), over [data.priority-map](https://github.com/clojure/data.priority-map).
 - **[core.memoize](https://github.com/clojure/core.memoize)** — function memoization over [core.cache](https://github.com/clojure/core.cache).
+- **[core.async](https://github.com/clojure/core.async)** — CSP channels and `go` blocks (`<!`/`>!`/`alts!`, `pipeline`, `mult`/`mix`/`pub`/`sub`) on real OS threads.
+- **[core.logic](https://github.com/clojure/core.logic)** — relational logic programming (unification, `run`/`fresh`/`conde`, finite domains).
 - **[transit-jolt](https://github.com/jolt-lang/transit-jolt)** — Transit (JSON) read/write.
 - **[medley](https://github.com/weavejester/medley)** — collection utilities.
 - **[config](https://github.com/yogthos/config)** — environment configuration.
