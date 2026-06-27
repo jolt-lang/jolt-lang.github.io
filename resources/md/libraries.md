@@ -25,6 +25,7 @@ These Clojure libraries are confirmed to load and pass their conformance checks 
 - **[data.csv](https://github.com/clojure/data.csv)** — reading and writing CSV.
 - **[data.codec](https://github.com/clojure/data.codec)** — base64 encode/decode over byte arrays.
 - **[data.priority-map](https://github.com/clojure/data.priority-map)** — priority maps (keyfn / custom comparator), with `subseq`/`rsubseq`.
+- **[tools.macro](https://github.com/clojure/tools.macro)** — local macros (`macrolet`/`symbol-macrolet`), `mexpand`/`mexpand-all`.
 - **[test.check](https://github.com/clojure/test.check)** — property-based testing (generators, `quick-check`, shrinking).
 - **[transit-jolt](https://github.com/jolt-lang/transit-jolt)** — Transit (JSON) read/write.
 - **[medley](https://github.com/weavejester/medley)** — collection utilities.
