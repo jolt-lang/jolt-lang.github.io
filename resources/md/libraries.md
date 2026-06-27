@@ -19,6 +19,7 @@ These Clojure libraries are confirmed to load and pass their conformance checks 
 - **[core.memoize](https://github.com/clojure/core.memoize)** — function memoization over [core.cache](https://github.com/clojure/core.cache).
 - **[core.async](https://github.com/clojure/core.async)** — CSP channels and `go` blocks (`<!`/`>!`/`alts!`, `pipeline`, `mult`/`mix`/`pub`/`sub`) on real OS threads.
 - **[core.logic](https://github.com/clojure/core.logic)** — relational logic programming (unification, `run`/`fresh`/`conde`, finite domains).
+- **[math.combinatorics](https://github.com/clojure/math.combinatorics)** — permutations, combinations, subsets, selections, cartesian products, partitions.
 - **[transit-jolt](https://github.com/jolt-lang/transit-jolt)** — Transit (JSON) read/write.
 - **[medley](https://github.com/weavejester/medley)** — collection utilities.
 - **[config](https://github.com/yogthos/config)** — environment configuration.
