@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>REPL-Driven Development — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li class="selected">
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Supported Libraries</a>
+      </li>
+      
+    </ul>
+  </aside>
+
+  <main class="docs-main">
+    <h1>REPL-Driven Development</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#the_line_repl">The line REPL</a></li><li><a href="#starting_an_nrepl_server">Starting an nREPL server</a><ol><li><a href="#connecting_your_editor">Connecting your editor</a></li></ol></li><li><a href="#the_develop_loop">The develop loop</a></li><li><a href="#running_an_app_from_the_repl">Running an app from the REPL</a></li><li><a href="#reloading_a_whole_file">Reloading a whole file</a></li><li><a href="#middleware">Middleware</a></li><li><a href="#dev_mode_vs_a_compiled_binary">Dev mode vs a compiled binary</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <p>Jolt is built for the Clojure workflow: keep a process running, connect your editor to it, and grow the program by evaluating one form at a time. Because the REPL and the nREPL server run in <strong>dev mode</strong> — every call derefs its var, so a redefinition takes effect on the next call — you can redefine a function or restart a component without bouncing the process.</p><h2 id="the&#95;line&#95;repl">The line REPL</h2><p><code>bin/joltc repl</code> starts a plain REPL in the current directory. It resolves the <code>deps.edn</code> first, so your project's source roots and native libraries are already on the load path:</p><pre><code class="bash">$ bin/joltc repl
+user=&gt; &#40;require '&#91;myapp.core :as app&#93;&#41;
+nil
+user=&gt; &#40;app/greeting &quot;world&quot;&#41;
+&quot;Hello, world&quot;
+</code></pre><p>This is handy for a quick poke at a namespace, but the real workflow is driving the same kind of session from your editor.</p><h2 id="starting&#95;an&#95;nrepl&#95;server">Starting an nREPL server</h2><p><code>bin/joltc --nrepl-server &#91;port&#93;</code> starts an <a href='https://nrepl.org/'>nREPL</a> server your editor connects to. It defaults to port 7888 (override with the argument or <code>JOLT&#95;NREPL&#95;PORT</code>), resolves the project's <code>deps.edn</code>, loads the source roots and native libraries, and writes a <code>.nrepl-port</code> file in the project directory so editors auto-detect the port.</p><pre><code class="bash">$ cd myapp
+$ bin/joltc --nrepl-server
+nREPL server started on port 7888 &#40;127.0.0.1&#41; — .nrepl-port written
+;; connect your editor; &#94;C to stop
+</code></pre><p>Leave it running. Everything you do from here on happens in your editor, against this live process.</p><h3 id="connecting&#95;your&#95;editor">Connecting your editor</h3><p>The server speaks bencode over a loopback TCP socket and writes <code>.nrepl-port</code>, so the usual Clojure tooling connects with no extra configuration:</p><ul><li><strong>CIDER</strong> (Emacs) — <code>cider-connect</code> to <code>localhost:7888</code>, or <code>cider-connect-clj</code> and let it read <code>.nrepl-port</code>.</li><li><strong>Calva</strong> (VS Code) — <em>Connect to a running REPL in your project</em>, pick <em>Generic</em> / <em>deps.edn</em>; it reads <code>.nrepl-port</code> automatically.</li><li><strong>Cursive</strong> (IntelliJ) — a <em>Remote</em> nREPL run configuration pointing at the port.</li></ul><p>The built-in handler implements <code>clone</code>, <code>describe</code>, <code>eval</code>, <code>load-file</code>, and <code>close</code> — enough to connect and evaluate. Heavier features (sessions, interruptible eval, completion, lookup) are added as nREPL middleware; see <a href='#middleware'>Middleware</a> below.</p><h2 id="the&#95;develop&#95;loop">The develop loop</h2><p>Once connected, you edit a namespace and evaluate forms straight from the buffer. Say <code>myapp/core.clj</code> holds:</p><pre><code class="clojure">&#40;ns myapp.core&#41;
+
+&#40;defn greeting &#91;name&#93;
+  &#40;str &quot;Hello, &quot; name&#41;&#41;
+
+&#40;defn -main &#91;&amp; &#95;&#93;
+  &#40;println &#40;greeting &quot;world&quot;&#41;&#41;&#41;
+</code></pre><p>Load the file (CIDER <code>C-c C-k</code>, Calva <em>Load Current File</em>), then evaluate a call in the buffer:</p><pre><code class="clojure">&#40;greeting &quot;Jolt&quot;&#41;   ;; =&gt; &quot;Hello, Jolt&quot;
+</code></pre><p>Now change <code>greeting</code> to <code>&#40;str &quot;Hey, &quot; name &quot;!&quot;&#41;</code> and re-evaluate that one form (CIDER <code>C-c C-c</code>, Calva <em>Evaluate Top Level Form</em>). The var is redefined in place — the next call sees the new definition, with no restart:</p><pre><code class="clojure">&#40;greeting &quot;Jolt&quot;&#41;   ;; =&gt; &quot;Hey, Jolt!&quot;
+</code></pre><p>You never leave the running process. New <code>require</code>s work the same way — evaluate <code>&#40;require '&#91;clojure.string :as str&#93;&#41;</code> and the namespace loads off the source roots on the spot.</p><h2 id="running&#95;an&#95;app&#95;from&#95;the&#95;repl">Running an app from the REPL</h2><p>For a long-running app — a server, a worker, anything with state — keep the live bits in a var you can stop and restart, and drive its lifecycle from the REPL instead of from <code>-main</code>. A small <code>start!</code>/<code>stop!</code> pair over an atom is enough:</p><pre><code class="clojure">&#40;ns myapp.core&#41;
+
+&#40;defonce system &#40;atom nil&#41;&#41;
+
+&#40;defn handler &#91;req&#93;
+  {:status 200 :body &quot;ok&quot;}&#41;
+
+&#40;defn start! &#91;&#93;
+  &#40;reset! system &#40;run-server #'handler {:port 3000}&#41;&#41;   ;; your server of choice
+  :started&#41;
+
+&#40;defn stop! &#91;&#93;
+  &#40;when-let &#91;s @system&#93; &#40;.close s&#41;&#41;
+  &#40;reset! system nil&#41;
+  :stopped&#41;
+</code></pre><p>From the editor's REPL:</p><pre><code class="clojure">&#40;require '&#91;myapp.core :as app&#93;&#41;
+&#40;app/start!&#41;        ;; bring the system up
+;; ... edit handler, re-evaluate the defn ...
+;; because handler is passed as #'handler, the running server
+;; picks up the new definition with no restart
+&#40;app/stop!&#41;         ;; tear it down when you're done
+</code></pre><p><code>defonce</code> keeps the atom from being clobbered when you reload the file, and passing the handler as a var (<code>#'handler</code>) means redefining it is picked up live. When you change something structural — the server config, the lifecycle itself — call <code>&#40;app/stop!&#41;</code> then <code>&#40;app/start!&#41;</code> to cycle it.</p><p><code>-main</code> stays the production entry point: it just calls <code>start!</code> and blocks. In development you skip it and steer the system by hand.</p><h2 id="reloading&#95;a&#95;whole&#95;file">Reloading a whole file</h2><p>To reload a file from disk rather than evaluating form by form, use the nREPL <code>load-file</code> op — <code>C-c C-k</code> in CIDER, <em>Load Current File</em> in Calva. It re-reads the file in its namespace, so every changed definition lands at once. This is the usual move after a batch of edits.</p><h2 id="middleware">Middleware</h2><p>The core server is intentionally small. A library can add the heavier nREPL ops as middleware — a <code>&#40;fn &#91;handler&#93; &#40;fn &#91;request&#93; ...&#41;&#41;</code> — listed in <code>deps.edn</code>:</p><pre><code class="clojure">{:paths &#91;&quot;src&quot;&#93;
+ :nrepl/middleware &#91;my.nrepl/wrap-completion
+                    my.nrepl/wrap-interrupt&#93;}
+</code></pre><p>Jolt composes the listed middleware over the built-in handler when the server starts, so completion, interruptible eval, and lookup are opt-in per project rather than baked into every server.</p><h2 id="dev&#95;mode&#95;vs&#95;a&#95;compiled&#95;binary">Dev mode vs a compiled binary</h2><p>The REPL and nREPL server are dynamic on purpose: calls go through the var, so redefinition works. A <code>bin/joltc build</code> binary is the other end of that trade — a <code>--direct-link</code> build binds calls directly and gives up runtime redefinition for speed. Develop against the REPL; ship the binary. See <a href='/docs/getting-started.html#compiling_a_standalone_binary'>Getting Started</a> for the build modes.</p>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>

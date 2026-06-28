@@ -165,8 +165,10 @@ bin/joltc path                <span class="syn-comment"># print the resolved sou
 <span class="syn-comment"># --opt for the optimized build, --dev for an unoptimized one</span></code></pre>
 
     <h3>nREPL</h3>
-    <pre><code>bin/joltc nrepl-server        <span class="syn-comment"># auto-resolves deps.edn, writes .nrepl-port</span>
-<span class="syn-comment"># connect CIDER / Calva via the .nrepl-port file</span></code></pre>
+    <pre><code>bin/joltc --nrepl-server      <span class="syn-comment"># auto-resolves deps.edn, writes .nrepl-port</span>
+<span class="syn-comment"># connect CIDER / Calva / Cursive via the .nrepl-port file, then</span>
+<span class="syn-comment"># redefine a var and the next call sees it — no restart</span></code></pre>
+    <p style="margin-top:12px;">Develop against a live process: see <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>.</p>
 
     <p class="cta">Read the <a href="/docs/getting-started.html">documentation</a> for installation, writing libraries, and host interop.</p>
   </div>
