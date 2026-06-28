@@ -96,11 +96,11 @@ Unreached code that uses `resolve` is fine — it's shaken away like anything el
 ## REPL and editor integration
 
 ```bash
-bin/joltc repl              # a line REPL with the project deps loaded
-bin/joltc nrepl-server      # an nREPL server (default port 7888)
+bin/joltc repl                  # a line REPL with the project deps loaded
+bin/joltc --nrepl-server [port] # an nREPL server (default port 7888)
 ```
 
-`nrepl-server` writes a `.nrepl-port` file and auto-resolves a `deps.edn` in the directory, so the server starts with your app and its dependencies loaded. Connect CIDER or Calva to the port.
+`--nrepl-server` writes a `.nrepl-port` file and auto-resolves a `deps.edn` in the directory, so the server starts with your app and its dependencies loaded. Connect CIDER, Calva, or Cursive to the port. See [REPL-Driven Development](/docs/repl-driven-development.html) for the full workflow.
 
 ## Dependencies
 
