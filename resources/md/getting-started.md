@@ -74,6 +74,10 @@ You can set either in `deps.edn` instead of on the command line:
 
 Tree-shaking typically removes 1–2 MB. A small app pulls in a handful of `clojure.core` functions and a few functions per library, but a normal build bakes in all of them; tree-shaking keeps only what runs. For example, `malli-app` goes from ~10.0 MB to ~8.1 MB with identical behavior.
 
+### Native libraries
+
+If your app binds a C library through the FFI, a build **statically links** it into the executable by default when the `:jolt/native` spec provides a `:static` archive — so the binary runs with no shared object on the target. Pass `--dynamic` (or set `:jolt/build {:dynamic-natives true}`) to keep the runtime `load-shared-object` behavior instead. Static linking needs a C compiler at build time; the produced binary needs none. See [Native interop](native-interop.html#static_vs_dynamic_linking_in_a_built_binary) for the spec and details.
+
 ### When tree-shaking can't help: runtime resolution
 
 Tree-shaking is **sound** — it never drops code that could actually run. To stay sound it has to give up on any program whose reachable code looks a function up *by name at runtime*: `eval`, `resolve`, `ns-resolve`, `requiring-resolve`, `find-var`, `load-string`, and friends. A static call graph can't see where those land, so if any reachable code uses one, the build keeps everything and tells you why:

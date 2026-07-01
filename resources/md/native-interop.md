@@ -31,6 +31,21 @@ Each entry is a map:
 
 If you're binding outside a `deps.edn` project, call `(jolt.ffi/load-library "libsqlite3.dylib")` (or `(jolt.ffi/load-library)` with no argument for the process's own symbols) before the first call.
 
+### Static vs dynamic linking in a built binary
+
+When you `run`/`repl`, the candidates above are loaded dynamically — the `.so`/`.dylib` has to be present on the machine. When you `joltc build`, you can instead **link the library statically into the binary**, so the executable calls the C code with no shared object present at runtime. Add a `:static` archive to the spec:
+
+```clojure
+:jolt/native [{:name "sqlite3"
+               :static {:archive "/opt/homebrew/lib/libsqlite3.a"}  ; baked into the binary
+               :darwin ["libsqlite3.0.dylib" "libsqlite3.dylib"]     ; still used by run/repl
+               :linux  ["libsqlite3.so.0" "libsqlite3.so"]}]
+```
+
+A spec with `:static` is **statically linked by default** on `joltc build`. `:static {:archive PATH}` force-loads the whole `.a` and is the reliable cross-platform form; `:static {:lib NAME :libdir DIR}` links `-lNAME` (with a `-Bstatic` preference on Linux, where an archive path is safer on macOS). Keep the `:darwin`/`:linux` candidates too — `run`/`repl` have no static binary and still load the shared object, as does a build passed `--dynamic` (or `:jolt/build {:dynamic-natives true}`), which keeps the runtime-load behavior for every lib.
+
+Static linking needs a C compiler (`cc`) on `PATH` at build time — the distributed `joltc` bundles the Chez kernel and re-links its launcher with the archive baked in, so no external Chez is required, just `cc`. The *produced* binary needs nothing: drop it on a machine and it runs, calling the statically-linked C code, with only the standard system libraries present. (Like Go's cgo or Rust, building against a C library needs a C toolchain; running the result does not.)
+
 ## Binding a function
 
 `defcfn` defines a named binding; `foreign-fn` produces an anonymous one. The shape is the same:
@@ -164,7 +179,7 @@ For bytes that aren't text, use the array helpers — they don't touch encoding.
 
 ## Checklist for a binding
 
-- Declare the library in `deps.edn` `:jolt/native` with per-OS candidates; mark optional drivers `:optional`, process symbols `:process`.
+- Declare the library in `deps.edn` `:jolt/native` with per-OS candidates; mark optional drivers `:optional`, process symbols `:process`. Add a `:static` archive to link it into a built binary (keep the dynamic candidates for `run`/`repl`).
 - Bind each C function with `defcfn`, exact argument/return types, and `:blocking` on anything that waits.
 - Free every `ffi/alloc` and `ffi/string->ptr` — wrap allocation in `try`/`finally`. Leaked foreign memory is never reclaimed.
 - Check C return codes and null pointers explicitly, and `throw` an `ex-info` on failure.
