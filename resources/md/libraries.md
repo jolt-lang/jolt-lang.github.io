@@ -35,9 +35,8 @@ These Clojure libraries are confirmed to load and pass their conformance checks 
 
 ## Databases
 
-- **[clojure.jdbc](https://github.com/yogthos/clojure.jdbc)** — as [jolt-lang/db](https://github.com/jolt-lang/db)'s `jdbc.core`, over built-in SQLite access (libsqlite3 through Chez's FFI).
-- **[next.jdbc](https://github.com/seancorfield/next-jdbc)** — a compatibility layer in [jolt-lang/db](https://github.com/jolt-lang/db) over `jdbc.core`.
-- **[migratus](https://github.com/yogthos/migratus)** — database migrations over the next.jdbc layer.
+- **[clojure.jdbc](https://github.com/yogthos/clojure.jdbc)** — via [jolt-lang/db](https://github.com/jolt-lang/db)'s `jdbc.core`, over built-in SQLite access (libsqlite3 through Chez's FFI).
+- **[migratus](https://github.com/yogthos/migratus)** — database migrations over [jolt-lang/db](https://github.com/jolt-lang/db).
 
 ## Templating, markup, text
 
