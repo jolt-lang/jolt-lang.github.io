@@ -102,14 +102,18 @@
 <section id="quickstart" class="surface">
   <div class="inner">
     <h2>Quick Start</h2>
-    <p>There is no build step — the bootstrap seed is checked in, so a fresh clone runs immediately.</p>
-    <pre><code><span class="syn-comment"># clone (submodules pull the vendored regex + sci sources)</span>
-git clone --recurse-submodules https://github.com/jolt-lang/jolt.git
+    <p>Install the self-contained <code>joltc</code> binary — it bundles the runtime, compiler, and standard library, so there's nothing else to install.</p>
+    <pre><code><span class="syn-comment"># Homebrew</span>
+brew install jolt-lang/jolt/jolt
+
+<span class="syn-comment"># or the install script (Linux / macOS)</span>
+curl -sL https://raw.githubusercontent.com/jolt-lang/jolt/main/install | bash
+
+joltc -e <span class="syn-str">'(+ 1 2)'</span>        <span class="syn-comment"># => 3</span></code></pre>
+    <p>Or run from a clone (needs <a href="https://cisco.github.io/ChezScheme/">Chez Scheme</a>) — no build step, the bootstrap seed is checked in:</p>
+    <pre><code>git clone --recurse-submodules https://github.com/jolt-lang/jolt.git
 <span class="syn-kw">cd</span> jolt
-
-bin/joltc -e <span class="syn-str">'(+ 1 2)'</span>        <span class="syn-comment"># => 3</span>
-
-<span class="syn-comment"># requires only Chez Scheme (invoked as `chez`)</span></code></pre>
+bin/joltc -e <span class="syn-str">'(+ 1 2)'</span>        <span class="syn-comment"># => 3</span></code></pre>
   </div>
 </section>
 

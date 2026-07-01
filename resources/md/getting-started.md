@@ -1,12 +1,30 @@
 Jolt is a Clojure implementation that runs on [Chez Scheme](https://cisco.github.io/ChezScheme/). It reads Clojure source, analyzes it to a host-neutral IR, emits Scheme, and runs it on Chez. The compiler is self-hosted — written in Clojure and compiling itself — and ships a Clojure-compatible standard library.
 
-## Requirements
+## Install
 
-The only requirement is Chez Scheme, invoked as `chez`. There is no JVM and no build step. The conformance test suite additionally uses Clojure on the JVM as an oracle, but running Jolt does not.
+The quickest way is the prebuilt `joltc` binary (Linux and macOS). It bundles the runtime, compiler, and standard library, so there is no JVM, no Chez, and nothing else to install.
 
-## Install and run
+With Homebrew:
 
-The bootstrap seed is checked in, so a fresh clone runs immediately:
+```bash
+brew install jolt-lang/jolt/jolt
+```
+
+Or with the install script — it installs to `/usr/local/bin` by default; `--dir <dir>` and `--version <version>` override that:
+
+```bash
+curl -sL https://raw.githubusercontent.com/jolt-lang/jolt/main/install | bash
+```
+
+Then:
+
+```bash
+joltc -e '(+ 1 2)'        # => 3
+```
+
+### From source
+
+Jolt also runs straight from a clone with no build step — the bootstrap seed is checked in. This path needs [Chez Scheme](https://cisco.github.io/ChezScheme/), invoked as `chez`:
 
 ```bash
 git clone --recurse-submodules https://github.com/jolt-lang/jolt.git
@@ -14,7 +32,9 @@ cd jolt
 bin/joltc -e '(+ 1 2)'        # => 3
 ```
 
-The submodules pull the vendored regex and SCI sources used by the tests.
+The submodules pull the vendored regex and SCI sources used by the tests. (The conformance test suite additionally uses Clojure on the JVM as an oracle, but running Jolt does not.)
+
+The examples below use `bin/joltc` from a clone; with the installed binary the command is just `joltc`.
 
 ## Evaluating code
 
