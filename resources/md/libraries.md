@@ -30,6 +30,7 @@ These Clojure libraries are confirmed to load and pass their conformance checks 
 - **[test.check](https://github.com/clojure/test.check)** — property-based testing (generators, `quick-check`, shrinking).
 - **[transit-jolt](https://github.com/jolt-lang/transit-jolt)** — Transit (JSON) read/write.
 - **[yamlstar](https://github.com/yaml/yamlstar)** — YAML load/dump (pure-Clojure parser, JSON-safe integer policy).
+- **[jolt-yaml](https://github.com/jolt-lang/yaml)** — YAML over the system libyaml (`jolt.yaml` load/dump, `clj-yaml.core` compat, SnakeYAML engine surface).
 - **[medley](https://github.com/weavejester/medley)** — collection utilities.
 - **[config](https://github.com/yogthos/config)** — environment configuration.
 - **[aero](https://github.com/juxt/aero)** — EDN configuration with tag literals (`#ref`/`#env`/`#or`/`#profile`/`#long`/…).
