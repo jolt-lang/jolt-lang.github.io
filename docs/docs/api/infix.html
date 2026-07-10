@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>Infix Notation — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Supported Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li class="selected">
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (jolt.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>Infix Notation</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#the_&lt;code&gt;infix&lt;/code&gt;_macro">The </a></li><li><a href="#parsing_strings_at_runtime:_&lt;code&gt;from-string&lt;/code&gt;">Parsing strings at runtime: </a><ol><li><a href="#the_environment">The environment</a></li><li><a href="#errors">Errors</a></li><li><a href="#performance">Performance</a></li></ol></li><li><a href="#aliased_operators_and_functions">Aliased operators and functions</a></li><li><a href="#precedence_and_associativity">Precedence and associativity</a></li><li><a href="#the_default_environment">The default environment</a></li><li><a href="#extending_and_overriding">Extending and overriding</a></li><li><a href="#grammar">Grammar</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <p>Jolt ships an infix-notation layer in <code>jolt.infix</code> for arithmetic, comparison, and boolean expressions. It is a thin reader/rewriter on top of ordinary Clojure — infix forms compile down to the same prefix calls you would write by hand, so there is no separate value type and no runtime cost for the macro form. It is handy for math-heavy code, configuration formulas, and user-supplied expressions you need to evaluate safely.</p><p>There are two entry points. <code>infix</code> (and its alias <code>$=</code>) is a <strong>macro</strong> that rewrites a literal infix form at compile time. <code>from-string</code> <strong>parses a string at runtime</strong>, returning a function you can call with bound variables.</p><pre><code class="clojure">&#40;require '&#91;jolt.infix :refer &#91;infix $= from-string&#93;&#93;&#41;
+
+&#40;infix 3 + 5 &#42; 8&#41;            ; =&gt; 43   &#40;compiles to &#40;+ 3 &#40;&#42; 5 8&#41;&#41;&#41;
+&#40;$= &#40;3 + 5&#41; &#42; 8&#41;             ; =&gt; 64
+
+&#40;let &#91;x 4 y 3&#93;
+  &#40;infix x &#42;&#42; y&#41;&#41;            ; =&gt; 64.0  &#40;&#42;&#42; is right-associative pow&#41;
+
+&#40;&#40;from-string &#91;x&#93; &quot;x + 3 &#42; y&quot; ...&#41;&#41;   ; see from-string below
+</code></pre><h2 id="the&#95;<code>infix</code>&#95;macro">The <code>infix</code> macro</h2><pre><code class="clojure">&#40;infix &amp; expr&#41;
+&#40;$=   &amp; expr&#41;        ; alias, identical behavior
+</code></pre><p><code>infix</code> takes alternating operands and operators and rewrites them to prefix Clojure at macroexpansion time, applying <a href='#precedence-and-associativity'>operator precedence</a> and resolving <a href='#aliased-operators-and-functions'>aliases</a>. Bare names resolve as ordinary Clojure locals or vars; the standard math operators (<code>+ - &#42; /</code> etc.) pass straight through to <code>clojure.core</code>.</p><pre><code class="clojure">&#40;infix 3 + 4&#41;                ; =&gt; &#40;+ 3 4&#41;  =&gt; 7
+&#40;infix 1 - 2 + 3&#41;            ; =&gt; 2  &#40;left-associative: &#40;&#40;1 - 2&#41; + 3&#41;&#41;
+&#40;infix 2 &#42;&#42; 2 &#42;&#42; 2 &#42;&#42; 2&#41;     ; =&gt; 65536.0  &#40;&#42;&#42; is right-associative&#41;
+&#40;infix 16 | 32&#41;              ; =&gt; 48       &#40;bit-or&#41;
+&#40;infix true &amp;&amp; false&#41;        ; =&gt; false    &#40;and&#41;
+&#40;infix 5 == 5.0&#41;             ; =&gt; true     &#40;== is numeric equality&#41;
+&#40;infix 5 = 5.0&#41;              ; =&gt; false    &#40;= is strict value equality&#41;
+</code></pre><p>Function application uses prefix-style calls, and unary functions bind tighter than binary operators:</p><pre><code class="clojure">&#40;infix abs &#40;3 &#42;&#42; 6&#41;&#41;         ; =&gt; 729.0
+&#40;let &#91;t 0.324&#93;
+  &#40;infix sin &#40;2 &#42; t&#41; + 3 &#42; cos &#40;4 &#42; t&#41;&#41;&#41;   ; =&gt; 1.4176457261295824
+&#40;infix √ &#40;5 &#42; 5&#41;&#41;            ; =&gt; 5.0      &#40;√ is an alias for sqrt&#41;
+</code></pre><p>Note the two equality operators: <code>==</code> is Clojure's numeric equality (<code>5 == 5.0</code> is true); <code>=</code> is strict value equality (<code>5 = 5.0</code> is false).</p><h2 id="parsing&#95;strings&#95;at&#95;runtime:&#95;<code>from-string</code>">Parsing strings at runtime: <code>from-string</code></h2><pre><code class="clojure">&#40;from-string expr&#41;                          ; expr :: String
+&#40;from-string &#91;bindings...&#93; expr&#41;
+&#40;from-string &#91;bindings...&#93; env expr&#41;        ; env :: {keyword fn}
+</code></pre><p><code>from-string</code> parses <code>expr</code> according to the <a href='#grammar'>grammar</a> and returns a <strong>function</strong>. Call that function with values for the declared bindings to evaluate the expression:</p><pre><code class="clojure">&#40;&#40;from-string &quot;5 &#42; 2&quot;&#41;&#41;                     ; =&gt; 10
+&#40;&#40;from-string &#91;x&#93; &quot;x + 3&quot;&#41; 4&#41;               ; =&gt; 7
+&#40;&#40;from-string &#91;x y&#93; &quot;x + 3 &#42; y&quot;&#41; 2 4&#41;       ; =&gt; 14
+&#40;&#40;from-string &#91;t&#93; &quot;&#40;t &gt; 100&#41; ? 1 : 0&quot;&#41; 150&#41; ; =&gt; 1   &#40;ternary&#41;
+</code></pre><p>The returned function carries metadata recording its source and parameters, which is useful when expressions come from configuration or user input:</p><pre><code class="clojure">&#40;meta &#40;from-string &#91;x y&#93; &quot;sqrt&#40;x&#42;&#42;2 + y&#42;&#42;2&#41;&quot;&#41;&#41;
+; =&gt; {:params &#91;:x :y&#93; :doc &quot;sqrt&#40;x&#42;&#42;2 + y&#42;&#42;2&#41;&quot;}
+</code></pre><h3 id="the&#95;environment">The environment</h3><p><code>from-string</code> resolves every name against an <strong>environment</strong> — a map from keyword to function/value. The default is <code>jolt.infix.core/base-env</code>, which provides arithmetic, comparison, boolean, bitwise, and math functions (see <a href='#the-default-environment'>The default environment</a>). Declared bindings are merged on top of the base environment, shadowing it:</p><pre><code class="clojure">&#40;require '&#91;jolt.infix.core :refer &#91;base-env&#93;&#93;&#41;
+
+&#40;&#40;from-string &#91;&#93; &quot;sin&#40;pi / 2&#41;&quot;&#41;&#41;            ; =&gt; 1.0   &#40;uses base-env&#41;
+
+;; Override an operator: map :+ to -, so &quot;x + 3&quot; computes &#40;- x 3&#41;
+&#40;&#40;from-string &#91;x&#93; {:+ -} &quot;x + 3&quot;&#41; 4&#41;        ; =&gt; 1
+
+;; Add your own named function alongside the built-ins
+&#40;&#40;from-string &#91;&#93; {:x 6 :+ +} &quot;x + 1&quot;&#41;&#41;      ; =&gt; 7
+</code></pre><h3 id="errors">Errors</h3><ul><li>A malformed expression throws an <code>ex-info</code> carrying the parse location, e.g. <code>Failed to parse text at line: 1, col: 3</code>.</li><li>Calling the returned function with the wrong number of arguments throws an <code>ArityException</code>.</li><li>Referencing a name that is not bound throws <code>IllegalStateException: &lt;name&gt; is not bound in environment</code>.</li></ul><h3 id="performance">Performance</h3><p><code>from-string</code> parses the string <strong>each time the <code>from-string</code> form is evaluated</strong>, not each time the returned function is called. The parsed expression is captured in the closure, so the returned function can be called many times cheaply. Hoist the parser out of hot loops:</p><pre><code class="clojure">;; Good: parse once, call many times
+&#40;def bytebeat &#40;from-string &#91;t&#93; &quot;&#40;t&#42;&#40;t&gt;&gt;5|t&gt;&gt;8&#41;&#41;&gt;&gt;&#40;t&gt;&gt;16&#41;&quot;&#41;&#41;
+&#40;bytebeat 3425&#41;                             ; =&gt; 380175
+
+;; Avoid: re-parses on every iteration
+#&#95;&#40;doseq &#91;t &#40;range 1000&#41;&#93;
+    &#40;&#40;from-string &#91;t&#93; &quot;&#40;t&#42;&#40;t&gt;&gt;5|t&gt;&gt;8&#41;&#41;&gt;&gt;&#40;t&gt;&gt;16&#41;&quot;&#41; t&#41;&#41;
+</code></pre><h2 id="aliased&#95;operators&#95;and&#95;functions">Aliased operators and functions</h2><p>The <code>infix</code> macro resolves a set of symbols and names to their Clojure/<code>Math</code> equivalents before rewriting. These aliases are the friendly surface for math and logic:</p><p><strong>Logical and bitwise</strong></p><ul><li><code>&amp;&amp;</code> → <code>and</code></li><li><code>||</code> → <code>or</code></li><li><code>!</code> → <code>not</code></li><li><code>&amp;</code> → <code>bit-and</code></li><li><code>|</code> → <code>bit-or</code></li><li><code>&lt;&lt;</code> → <code>bit-shift-left</code></li><li><code>&gt;&gt;</code> → <code>bit-shift-right</code></li><li><code>&gt;&gt;&gt;</code> → <code>unsigned-bit-shift-right</code></li></ul><p><strong>Arithmetic</strong></p><ul><li><code>%</code> → <code>mod</code></li><li><code>&#42;&#42;</code> → <code>Math/pow</code> (right-associative)</li><li><code>.</code> → <code>&#42;</code> (implicit multiplication: <code>x . y</code> == <code>&#40;&#42; x y&#41;</code>)</li><li><code>÷</code> → <code>divide</code> (division that returns <code>±Infinity</code> on divide-by-zero instead of throwing)</li></ul><p><strong>Equality and comparison</strong> (usable inline in both forms)</p><ul><li><code>==</code> → numeric equality (<code>clojure.core/==</code>; <code>5 == 5.0</code> is true)</li><li><code>=</code> → strict value equality (<code>clojure.core/=</code>; <code>5 = 5.0</code> is false)</li><li><code>!=</code> → <code>not=</code></li><li><code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code> → as in <code>clojure.core</code></li></ul><p><strong>Math — exponential/log/power</strong></p><ul><li><code>sqrt</code>, <code>√</code> → <code>Math/sqrt</code></li><li><code>exp</code> → <code>Math/exp</code></li><li><code>log</code> → <code>Math/log</code></li><li><code>abs</code> → <code>Math/abs</code></li><li><code>signum</code> → <code>Math/signum</code></li><li><code>pow</code> → <code>Math/pow</code> (also the function form <code>pow&#40;2.53, 3.1&#41;</code>)</li></ul><p><strong>Math — trigonometric</strong> (angles in radians)</p><ul><li><code>sin</code>, <code>cos</code>, <code>tan</code></li><li><code>asin</code>, <code>acos</code>, <code>atan</code>, <code>atan2</code></li><li><code>sinh</code>, <code>cosh</code>, <code>tanh</code></li><li><code>sec</code>, <code>csc</code>, <code>cot</code> (secant, cosecant, cotangent — not in <code>java.lang.Math</code>)</li><li><code>asec</code>, <code>acsc</code>, <code>acot</code> (their inverses)</li></ul><p><strong>Number theory and aggregation</strong></p><ul><li><code>gcd</code> — greatest common divisor</li><li><code>lcm</code> — least common multiple</li><li><code>fact</code> — factorial</li><li><code>root&#40;a, b&#41;</code> — the <code>a</code>-th root of <code>b</code>, i.e. <code>b &#42;&#42; &#40;1 / a&#41;</code></li><li><code>sum</code>, <code>∑</code> — variadic sum, e.g. <code>sum&#40;1, 2, 5.7, 4&#41;</code></li><li><code>product</code>, <code>∏</code> — variadic product</li></ul><p><strong>Constants</strong></p><ul><li><code>e</code> → <code>Math/E</code></li><li><code>π</code>, <code>pi</code> → <code>Math/PI</code></li><li><code>φ</code> → golden ratio <code>&#40;1 + √5&#41; / 2</code></li></ul><p><strong>Random</strong></p><ul><li><code>rand&#40;&#41;</code> → a random double in <code>&#91;0, 1&#41;</code></li><li><code>randInt&#40;n&#41;</code> → a random integer in <code>&#91;0, n&#41;</code></li></ul><p>In <code>from-string</code> these resolve by name from <code>base-env</code>; in the <code>infix</code> macro the symbolic ones (<code>&amp;&amp;</code>, <code>&#42;&#42;</code>, <code>√</code>, <code>π</code>, …) are rewritten to their target symbols at compile time.</p><h2 id="precedence&#95;and&#95;associativity">Precedence and associativity</h2><p>Expressions are built from three precedence classes (tightest first), plus ternary:</p><ul><li><code>&#42;&#42;</code> (exponentiation) — <strong>right</strong>-associative, so <code>2 &#42;&#42; 2 &#42;&#42; 2 &#42;&#42; 2</code> is <code>2 &#42;&#42; &#40;2 &#42;&#42; &#40;2 &#42;&#42; 2&#41;&#41;</code> → <code>65536.0</code>.</li><li>multiplicative: <code>&#42; / ÷ % &lt;&lt; &gt;&gt; &gt;&gt;&gt;</code> — left-associative.</li><li>additive: <code>+ - | &amp; || &amp;&amp;</code> — left-associative, so <code>1 - 2 + 3</code> is <code>&#40;1 - 2&#41; + 3</code> → <code>2</code>.</li><li>unary functions (<code>sqrt</code>, <code>sin</code>, <code>abs</code>, <code>√</code>, …) bind tighter than any binary operator.</li><li>the ternary <code>&#40;cond&#41; ? a : b</code> is a separate form; the condition must be parenthesized.</li></ul><p>Comparison and equality operators (<code>&lt; &gt; &lt;= &gt;= = == !=</code>) may also appear inline within an expression.</p><p>Use parentheses to override any of the above.</p><h2 id="the&#95;default&#95;environment">The default environment</h2><p><code>jolt.infix.core/base-env</code> is the keyword→function map <code>from-string</code> evaluates against by default. It provides everything in the <a href='#aliased-operators-and-functions'>alias table</a> plus the core arithmetic and comparison operators. To see what is available, inspect it directly:</p><pre><code class="clojure">&#40;require '&#91;jolt.infix.core :refer &#91;base-env&#93;&#93;&#41;
+&#40;keys base-env&#41;
+; =&gt; &#40;:== := :!= :+ :- :&#42; :/ :% :&amp;&amp; :|| :&gt; :&lt; :&gt;= :&lt;=
+;     :abs :signum :sqrt :√ :exp :log :pow :&#42;&#42; :divide :÷ :root
+;     :gcd :lcm :fact :sum :∑ :product :∏ :rand :randInt
+;     :sin :cos :tan :asin :acos :atan :atan2
+;     :sinh :cosh :tanh :sec :csc :cot :asec :acsc :acot
+;     :| :&amp; :¬ :&gt;&gt; :&gt;&gt;&gt; :&lt;&lt; ...&#41;
+</code></pre><p>Pass your own env (third argument) to add to or override it; pass a merged map as the second-arity <code>env</code> to swap the operator meanings entirely.</p><h2 id="extending&#95;and&#95;overriding">Extending and overriding</h2><p>The alias table lives in the <code>jolt.infix.core/operator-alias</code> atom. <code>suppress!</code> removes an alias so the symbol falls back to its ordinary Clojure meaning — useful when a name like <code>e</code> clashes with a local:</p><pre><code class="clojure">&#40;require '&#91;jolt.infix.core :refer &#91;suppress!&#93;&#93;&#41;
+
+&#40;suppress! 'e&#41;            ; 'e is no longer rewritten to Math/E
+&#40;let &#91;e 9&#93;
+  &#40;infix e &#42; 3&#41;&#41;          ; =&gt; 27  &#40;e is now your local&#41;
+</code></pre><p>You can also <code>swap!</code> onto <code>operator-alias</code> to add your own aliases for the <code>infix</code> macro, and extend <code>base-env</code> (or pass an explicit env to <code>from-string</code>) to teach the string parser new names.</p><h2 id="grammar">Grammar</h2><p><code>from-string</code> parses according to this EBNF (whitespace between tokens is ignored):</p><pre><code>&lt;expression&gt; ::= term { addop term }.
+&lt;term&gt;       ::= factor { mulop factor }.
+&lt;factor&gt;     ::= base { expop base }.
+&lt;base&gt;       ::= &quot;&#40;&quot; expression &quot;&#41;&quot; | boolean | number | var | function | ternary.
+&lt;addop&gt;      ::= &quot;+&quot; | &quot;-&quot; | &quot;|&quot; | &quot;&amp;&quot; | &quot;||&quot; | &quot;&amp;&amp;&quot;.
+&lt;mulop&gt;      ::= &quot;&#42;&quot; | &quot;/&quot; | &quot;÷&quot; | &quot;%&quot; | &quot;&gt;&gt;&quot; | &quot;&gt;&gt;&gt;&quot; | &quot;&lt;&lt;&quot;.
+&lt;expop&gt;      ::= &quot;&#42;&#42;&quot;.
+&lt;function&gt;   ::= envref expression | envref &quot;&#40;&quot; &lt;empty&gt; | expression { &quot;,&quot; expression } &quot;&#41;&quot;.
+&lt;ternary&gt;    ::= &quot;&#40;&quot; expression &quot;&#41;&quot; &quot;?&quot; expression &quot;:&quot; expression.
+&lt;envref&gt;     ::= letter | &quot;&#95;&quot; { letter | digit | &quot;&#95;&quot; | &quot;.&quot; }.
+&lt;var&gt;        ::= envref.
+&lt;boolean&gt;    ::= &quot;true&quot; | &quot;false&quot;.
+&lt;number&gt;     ::= integer | decimal | rational | binary | hex.
+&lt;binary&gt;     ::= &#91; &quot;-&quot; &#93; &quot;0b&quot; { &quot;0&quot; | &quot;1&quot; }.
+&lt;hex&gt;        ::= &#91; &quot;-&quot; &#93; &#40; &quot;0x&quot; | &quot;#&quot; &#41; { digit | &quot;A&quot;..&quot;F&quot; | &quot;a&quot;..&quot;f&quot; }.
+&lt;integer&gt;    ::= &#91; &quot;-&quot; &#93; digits.
+&lt;decimal&gt;    ::= &#91; &quot;-&quot; &#93; digits &quot;.&quot; digits.
+&lt;rational&gt;   ::= integer &quot;/&quot; digits.
+&lt;letter&gt;     ::= &quot;A&quot;..&quot;Z&quot; | &quot;a&quot;..&quot;z&quot;.
+&lt;digit&gt;      ::= &quot;0&quot;..&quot;9&quot;.
+&lt;digits&gt;     ::= digit { digit }.
+</code></pre><p>Numbers accept decimals (<code>1.7</code>), rationals (<code>1/7</code>), binary (<code>0b011011</code>), and hex (<code>0xCAFEBABE</code> or <code>#DEADBEEF</code>), each with an optional leading <code>-</code>. Names (<code>envref</code>) may contain letters, digits, <code>&#95;</code>, and <code>.</code>, and resolve to a keyword key in the evaluation environment.</p>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>File System (jolt.fs) — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Supported Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li class="selected">
+        <a href="/docs/api/fs.html">File System (jolt.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>File System (jolt.fs)</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#coercion_and_nesting">Coercion and nesting</a></li><li><a href="#predicates">Predicates</a></li><li><a href="#path_pieces">Path pieces</a></li><li><a href="#reading_the_tree">Reading the tree</a></li><li><a href="#creation_and_deletion">Creation and deletion</a></li><li><a href="#copy_and_move">Copy and move</a></li><li><a href="#times">Times</a></li><li><a href="#lookup">Lookup</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <p><code>jolt.fs</code> is a file-system utility library over <code>java.io.File</code>. Its API mirrors <a href='https://github.com/babashka/fs'>babashka.fs</a> where the two overlap, so the mental model transfers directly if you know babashka. Functions accept a <code>String</code> or a <code>File</code>; path-valued results are <code>File</code>s (Jolt's path value — there is no <code>java.nio.file.Path</code>). A handful of operations that need <code>Path</code>-level access — symbolic links and creation time — are not available on this host and throw a clean <code>ex-info</code>.</p><pre><code class="clojure">&#40;require '&#91;jolt.fs :as fs&#93;&#41;
+
+&#40;fs/exists? &quot;deps.edn&quot;&#41;                       ; =&gt; true
+&#40;fs/create-dirs &quot;target/classes/jolt&quot;&#41;        ; =&gt; #object&#91;File ...&#93;
+&#40;fs/glob &quot;src&quot; &quot;&#42;&#42;.clj&quot;&#41;                      ; =&gt; seq of File under src ending .clj
+&#40;fs/which &quot;sh&quot;&#41;                               ; =&gt; #object&#91;File /bin/sh&#93;
+</code></pre><h2 id="coercion&#95;and&#95;nesting">Coercion and nesting</h2><ul><li><code>file</code> <code>f</code> — coerce a <code>String</code>/<code>File</code> to a <code>File</code>. With several args, nests: <code>&#40;file a b c&#41;</code> is <code>a/b/c</code>.</li></ul><h2 id="predicates">Predicates</h2><p>Each takes a path and returns a boolean.</p><ul><li><code>exists?</code>, <code>directory?</code>, <code>regular-file?</code>, <code>absolute?</code>, <code>relative?</code></li><li><code>readable?</code>, <code>writable?</code>, <code>executable?</code>, <code>hidden?</code></li><li><code>sym-link?</code> — <strong>not supported</strong> on this host; throws <code>ex-info</code>.</li></ul><h2 id="path&#95;pieces">Path pieces</h2><ul><li><code>file-name</code> <code>f</code> — final path segment as a string.</li><li><code>parent</code> <code>f</code> — parent as a <code>File</code>; <code>nil</code> at a root or a bare name.</li><li><code>extension</code> <code>f</code> — extension without the dot; <code>nil</code> when there is none.</li><li><code>strip-ext</code> <code>f</code> — file name without its extension.</li><li><code>absolutize</code> <code>f</code> — absolute <code>File</code> (resolves against CWD, no symlink walk).</li><li><code>canonicalize</code> <code>f</code> — canonical <code>File</code> (resolves <code>.</code>/<code>..</code> and symlinks).</li><li><code>cwd</code> <code>&#91;&#93;</code> — current working directory as a <code>File</code>.</li><li><code>relativize</code> <code>root other</code> — path of <code>other</code> relative to <code>root</code>, as a <code>File</code>. Throws when <code>other</code> is not nested under <code>root</code>.<pre><code class="clojure">&#40;fs/extension &quot;src/jolt/core.clj&quot;&#41;            ; =&gt; &quot;clj&quot;
+&#40;fs/extension &quot;Makefile&quot;&#41;                     ; =&gt; nil
+&#40;fs/relativize &quot;/a&quot; &quot;/a/b/c&quot;&#41;                 ; =&gt; #object&#91;File &quot;b/c&quot;&#93;
+</code></pre></li></ul><h2 id="reading&#95;the&#95;tree">Reading the tree</h2><ul><li><code>list-dir</code> <code>dir</code> — immediate children as a (possibly empty) seq of <code>File</code>s.</li><li><code>walk</code> <code>root</code> — depth-first seq of every file and directory under <code>root</code>, <code>root</code> first.</li><li><code>glob</code> <code>root pattern</code> — files under <code>root</code> whose path relative to <code>root</code> matches a glob. <code>&#42;&#42;</code> crosses directory separators, <code>&#42;</code> and <code>?</code> stay within a segment, <code>{a,b}</code> alternates. Matches against the <code>/</code>-separated relative path; returns <code>File</code>s.<pre><code class="clojure">&#40;fs/glob &quot;src&quot; &quot;&#42;&#42;.clj&quot;&#41;                      ; every .clj under src, recursively
+&#40;fs/glob &quot;test&quot; &quot;&#42;.{clj,ss}&quot;&#41;                 ; top-level clj/ss files in test/
+</code></pre></li></ul><h2 id="creation&#95;and&#95;deletion">Creation and deletion</h2><ul><li><code>create-dir</code> <code>dir</code> — one directory level; the parent must exist. Returns the <code>File</code>, throws if it can't be created.</li><li><code>create-dirs</code> <code>dir</code> — a directory and any missing parents. Returns the <code>File</code>.</li><li><code>create-file</code> <code>f</code> — an empty file. Returns the <code>File</code>.</li><li><code>create-temp-dir</code> <code>&#91;{:keys &#91;prefix&#93; :or {prefix &quot;jolt-&quot;}}&#93;</code> — fresh directory under the system temp dir.</li><li><code>create-temp-file</code> <code>&#91;{:keys &#91;prefix suffix&#93; :or {prefix &quot;jolt-&quot; suffix &quot;.tmp&quot;}}&#93;</code> — fresh file under the system temp dir.</li><li><code>delete</code> <code>f</code> — a file or empty directory; throws when it doesn't exist.</li><li><code>delete-if-exists</code> <code>f</code> — delete when present; <code>true</code> when something was deleted.</li><li><code>delete-tree</code> <code>root</code> — a file or directory recursively. A missing path is a no-op.</li></ul><h2 id="copy&#95;and&#95;move">Copy and move</h2><ul><li><code>size</code> <code>f</code> — file size in bytes.</li><li><code>copy</code> <code>src dst &#91;{:keys &#91;replace-existing&#93;}&#93;</code> — copy a regular file to <code>dst</code>. Throws if <code>src</code> is a directory (use <code>copy-tree</code>) or if <code>dst</code> exists without <code>:replace-existing</code>. Returns <code>dst</code>.</li><li><code>copy-tree</code> <code>src dst &#91;opts&#93;</code> — copy a directory tree recursively. Returns <code>dst</code>.</li><li><code>move</code> <code>src dst &#91;{:keys &#91;replace-existing&#93;}&#93;</code> — move (rename) <code>src</code> to <code>dst</code>. Falls back to copy-then-delete for a regular file when rename fails (cross-device). Returns <code>dst</code>.</li></ul><h2 id="times">Times</h2><ul><li><code>last-modified-time</code> <code>f</code> — last-modified time as a <code>java.time.Instant</code>.</li><li><code>set-last-modified-time</code> <code>f inst</code> — set the last-modified time from an <code>Instant</code>.</li><li><code>creation-time</code> <code>f</code> — <strong>not supported</strong> on this host; throws <code>ex-info</code>.</li></ul><h2 id="lookup">Lookup</h2><ul><li><code>which</code> <code>nm</code> — the first executable named <code>nm</code> on <code>PATH</code>, as a <code>File</code>, else <code>nil</code>.</li><li><code>read-link</code> <code>f</code> — <strong>not supported</strong> on this host; throws <code>ex-info</code>.</li></ul>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>

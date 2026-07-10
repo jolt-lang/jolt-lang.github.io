@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>Parser Combinators (jolt.parser) — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Supported Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (jolt.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li class="selected">
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>Parser Combinators (jolt.parser)</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#the_model">The model</a></li><li><a href="#running_a_parser">Running a parser</a></li><li><a href="#primitive_character_parsers_—_&lt;code&gt;jolt.parser.basic&lt;/code&gt;">Primitive character parsers — </a></li><li><a href="#combinators_—_&lt;code&gt;jolt.parser.combinators&lt;/code&gt;">Combinators — </a></li><li><a href="#the_monadic_core_—_&lt;code&gt;jolt.parser.monad&lt;/code&gt;">The monadic core — </a></li><li><a href="#source_locations_and_errors_—_&lt;code&gt;jolt.parser.position&lt;/code&gt;">Source locations and errors — </a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <p><code>jolt.parser</code> is a monadic parser-combinator library — the same machinery <code>jolt.infix</code> uses to parse expression strings. A <strong>parser</strong> is an ordinary function from input to a seq of <code>&#91;value remaining&#93;</code> results; combinators build bigger parsers out of smaller ones; <code>do&#42;</code> threads them together monadically. It is adapted from <a href='https://github.com/rm-hull/jasentaa'>rm-hull/jasentaa</a> (MIT).</p><p>The library is split across four namespaces:</p><ul><li><code>jolt.parser</code> — the top-level driver: <code>parse-all</code> runs a parser and throws on leftover input.</li><li><code>jolt.parser.monad</code> — the monadic core (<code>do&#42;</code>, <code>&gt;&gt;=</code>, <code>return</code>, <code>failure</code>).</li><li><code>jolt.parser.basic</code> — primitive single-character parsers.</li><li><code>jolt.parser.combinators</code> — sequencing, repetition, and choice combinators.</li><li><code>jolt.parser.position</code> — source-location tracking and parse-error reporting.<pre><code class="clojure">&#40;require '&#91;jolt.parser :refer &#91;parse-all&#93;&#93;
+         '&#91;jolt.parser.basic :as b&#93;
+         '&#91;jolt.parser.combinators :as c&#93;&#41;
+
+;; a comma-separated list of digits, parsed to completion
+&#40;parse-all &#40;c/sep-by &#40;c/plus c/digit&#41; &#40;b/match &quot;,&quot;&#41;&#41; &quot;1,22,333&quot;&#41;
+; =&gt; &#91;&#91;\1&#93; &#91;\2 \2&#93; &#91;\3 \3 \3&#93;&#93;
+</code></pre></li></ul><h2 id="the&#95;model">The model</h2><p>A parser <code>p</code> is a function <code>&#40;p input&#41; -&gt; seq of &#91;value remaining&#93;</code>. A success produces at least one <code>&#91;value remaining&#93;</code> pair; a failure produces an empty seq (<code>'&#40;&#41;</code>). Combinators are higher-order functions that take parsers and return parsers. <code>do&#42;</code> is the monadic bind that sequences them, binding each step's result to a name:</p><pre><code class="clojure">&#40;m/do&#42;
+ &#40;a &lt;- &#40;b/match &quot;a&quot;&#41;&#41;
+ &#40;b &lt;- &#40;b/match &quot;b&quot;&#41;&#41;
+ &#40;m/return &#91;a b&#93;&#41;&#41;              ; parses &quot;ab&quot;, yields &#91;\a \b&#93;
+</code></pre><p>A bare form with no <code>&lt;-</code> (like <code>spaces</code>) is sequenced for its effect and its result discarded. <code>m/return</code> lifts a plain value into a parser that always succeeds and consumes nothing.</p><h2 id="running&#95;a&#95;parser">Running a parser</h2><p><code>jolt.parser</code> exposes the driver that turns a parser into a result or an error:</p><ul><li><code>parse-all</code> <code>parser input</code> — run <code>parser</code> over <code>input</code>, requiring the whole input to be consumed. Returns the parsed value on success; throws an <code>ex-info</code> (carrying <code>:offset</code>/<code>:line</code>/<code>:col</code>) on a parse failure or leftover input.</li><li><code>apply</code> <code>parser input</code> — lower-level; runs <code>parser</code> after skipping leading space and returns the raw seq of <code>&#91;value remaining&#93;</code> results (does not throw).</li></ul><p><code>parse-all</code> is what you want at the boundary of a parser; <code>apply</code> is for building combinators.</p><h2 id="primitive&#95;character&#95;parsers&#95;—&#95;<code>jolt.parser.basic</code>">Primitive character parsers — <code>jolt.parser.basic</code></h2><ul><li><code>any</code> — consume one character; fails at end of input.</li><li><code>eof</code> — succeed (consuming nothing) only at end of input; the dual of <code>any</code>.</li><li><code>match</code> — recognize a specific single character (a parser, not a function: <code>&#40;match \a&#41;</code>). Give it a one-char string.</li><li><code>none-of</code> — recognize any single character <em>except</em> the given one.</li><li><code>sat</code> <code>pred</code> — satisfy a predicate over the next character.</li><li><code>from-re</code> <code>re</code> — match a single character against a regex.</li><li><code>fwd</code> <code>p</code> — delay a forward-declared parser (for mutually recursive grammars).</li></ul><h2 id="combinators&#95;—&#95;<code>jolt.parser.combinators</code>">Combinators — <code>jolt.parser.combinators</code></h2><p><strong>Sequencing and choice</strong></p><ul><li><code>and-then</code> <code>p1 p2</code> — <code>p1</code> then <code>p2</code>, joining the results.</li><li><code>or-else</code> <code>p1 p2</code> — non-deterministic choice: apply both, concatenate results.</li><li><code>choice</code> <code>p1 p2</code> — deterministic choice: at most one result (the <code>+++</code> operator).</li><li><code>any-of</code> <code>&amp; ps</code> — reduce a list of parsers with <code>or-else</code>.</li></ul><p><strong>Repetition</strong></p><ul><li><code>many</code> <code>p</code> — zero or more <code>p</code>.</li><li><code>plus</code> <code>p</code> — one or more <code>p</code>.</li><li><code>optional</code> <code>&#40;&#91;p&#93; &#91;p default&#93;&#41;</code> — zero or one <code>p</code>; <code>default</code> (else <code>nil</code>) is the result when <code>p</code> does not match.</li></ul><p><strong>Tokens</strong></p><ul><li><code>string</code> <code>s</code> — match the literal string <code>s</code>.</li><li><code>token</code> <code>p</code> — parse <code>p</code>, then consume any trailing space.</li><li><code>symb</code> — match a symbolic token (a string), then trailing space (comp of <code>token</code> and <code>string</code>).</li><li><code>space</code> — one space, tab, newline, or carriage-return.</li><li><code>spaces</code> — zero or more whitespace characters.</li></ul><p><strong>Repetition with separators / wrappers</strong></p><ul><li><code>separated-by</code> <code>p sep</code> — one or more <code>p</code> separated by <code>sep</code> (sep's results discarded).</li><li><code>sep-by</code> <code>p sep</code> — zero or more <code>p</code> separated by <code>sep</code>; <code>nil</code> when none match.</li><li><code>between</code> <code>open close p</code> — <code>p</code> wrapped by <code>open</code> and <code>close</code> (both discarded).</li></ul><p><strong>Left/right associative folding</strong></p><ul><li><code>chain-left</code> <code>&#40;&#91;p op&#93; &#91;p op a&#93;&#41;</code> — fold repeated <code>p</code>/<code>op</code> left-associatively.</li><li><code>chain-right</code> <code>&#40;&#91;p op&#93; &#91;p op a&#93;&#41;</code> — fold right-associatively.</li></ul><p><strong>Character classes</strong> (single-character parsers)</p><ul><li><code>digit</code> — one decimal digit <code>0-9</code>.</li><li><code>letter</code> — one ASCII letter <code>a-z</code>/<code>A-Z</code>.</li><li><code>alpha-num</code> — one letter or digit.</li></ul><h2 id="the&#95;monadic&#95;core&#95;—&#95;<code>jolt.parser.monad</code>">The monadic core — <code>jolt.parser.monad</code></h2><ul><li><code>do&#42;</code> <code>&amp; forms</code> — the monadic sequencing macro. Use <code>name &lt;- parser</code> to bind a step's result; a bare <code>parser</code> is run for its effect. The last form is the result.</li><li><code>return</code> <code>v</code> — a parser that always succeeds, yielding <code>v</code>, consuming nothing.</li><li><code>&gt;&gt;=</code> <code>m f</code> — the bind operator <code>do&#42;</code> desugars to.</li><li><code>failure</code> — the always-failing parser (yields <code>'&#40;&#41;</code>); a parser that fails is one that returns an empty result seq.</li></ul><h2 id="source&#95;locations&#95;and&#95;errors&#95;—&#95;<code>jolt.parser.position</code>">Source locations and errors — <code>jolt.parser.position</code></h2><p>When you want line/column tracking, feed the parser <em>augmented</em> input rather than a raw string. The position machinery is what <code>jolt.parser</code>'s driver uses internally to produce line/column errors.</p><ul><li><code>augment-location</code> <code>&#40;&#91;text&#93; &#91;text line col offset full-text&#93;&#41;</code> — lazily annotate each character with a <code>Location</code> (char, line, col, offset, full-text). A parser built from <code>basic</code>/<code>combinators</code> threads these <code>Location</code>s through transparently.</li><li><code>strip-location</code> <code>input</code> — turn augmented input back into plain chars / strings (collapse a seq of <code>Location</code>s, or pull <code>:char</code> off one).</li><li><code>parse-exception</code> <code>location</code> — build a jolt <code>ex-info</code> for a parse failure, with a message like <code>Failed to parse text at line: 1, col: 3</code> plus a <code>&#94;</code> caret pointer, and data <code>{:type :parse-error :offset :line :col}</code>. Pass <code>nil</code> for an unknown location (<code>Unable to parse text</code>).</li><li><code>show-error</code> <code>location</code> — the string snippet + caret pointer for a location (or <code>nil</code>).</li><li><code>Location</code> record — fields <code>char</code>, <code>line</code>, <code>col</code>, <code>offset</code>, <code>full-text</code>; <code>-&gt;Location</code> constructor.</li></ul>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>

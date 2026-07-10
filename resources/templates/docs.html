@@ -13,6 +13,16 @@
       </li>
       {% endfor %}
     </ul>
+    {% if apis %}
+    <h3>API Reference</h3>
+    <ul>
+      {% for api in apis %}
+      <li {% ifequal api.1 title %}class="selected"{% endifequal %}>
+        <a href="/docs/{{api.0}}">{{api.1}}</a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
   </aside>
 
   <main class="docs-main">

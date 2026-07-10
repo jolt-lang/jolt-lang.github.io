@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>Foreign Functions (jolt.ffi) — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Supported Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (jolt.fs)</a>
+      </li>
+      
+      <li class="selected">
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>Foreign Functions (jolt.ffi)</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#binding_functions">Binding functions</a></li><li><a href="#calling_back_into_jolt">Calling back into Jolt</a></li><li><a href="#types">Types</a></li><li><a href="#memory_and_libraries">Memory and libraries</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <p><code>jolt.ffi</code> is Jolt's foreign-function interface: it loads C shared libraries and declares typed bindings over their functions, then marshals memory by hand. There is no automatic struct introspection and no garbage collection of foreign memory — you manage it, the way you would in C.</p><p>For the end-to-end guide to writing a binding — declaring the library in <code>deps.edn</code>, static vs dynamic linking, out-parameters, structs by offset, and binary data — see <a href='/docs/native-interop.html'>Native Interop (FFI)</a>. This page is the compact API reference for <code>jolt.ffi</code> itself.</p><pre><code class="clojure">&#40;require '&#91;jolt.ffi :as ffi&#93;&#41;
+
+&#40;ffi/load-library {:darwin &quot;libsqlite3.0.dylib&quot; :linux &quot;libsqlite3.so.0&quot;}&#41;
+&#40;ffi/defcfn sqlite3-open &quot;sqlite3&#95;open&quot; &#91;:string :pointer&#93; :int&#41;
+
+&#40;let &#91;pp &#40;ffi/alloc &#40;ffi/sizeof :pointer&#41;&#41;&#93;
+  &#40;sqlite3-open &quot;x.db&quot; pp&#41;
+  &#40;let &#91;db &#40;ffi/read pp :pointer&#41;&#93;
+    &#40;ffi/free pp&#41;
+    db&#41;&#41;
+</code></pre><h2 id="binding&#95;functions">Binding functions</h2><ul><li><code>defcfn</code> <code>name csym argtypes rettype &#91;:blocking&#93;</code> — define a foreign function <code>name</code> bound to the C symbol <code>csym</code>. <code>&#40;sqlite3-open &quot;x.db&quot; pp&#41;</code> becomes an ordinary Clojure fn you call with Jolt values.</li><li><code>foreign-fn</code> <code>csym argtypes rettype &#91;:blocking&#93;</code> — the anonymous form; returns a callable instead of <code>def</code>ing a name.</li><li>A trailing <code>:blocking</code> marks a call that may wait — network I/O, a lock, a sleep. The call is emitted collect-safe so a thread parked inside it does not pin the garbage collector. Mark anything that can block; leave pure, fast calls unmarked.<pre><code class="clojure">&#40;ffi/defcfn c-connect &quot;connect&quot; &#91;:int :pointer :int&#93; :int :blocking&#41;
+&#40;ffi/defcfn c-strlen  &quot;strlen&quot;  &#91;:string&#93; :size&#95;t&#41;
+</code></pre></li></ul><h2 id="calling&#95;back&#95;into&#95;jolt">Calling back into Jolt</h2><ul><li><code>foreign-callable</code> <code>f argtypes rettype &#91;:collect-safe&#93;</code> — wrap a Jolt fn <code>f</code> as a C-callable function pointer: the inverse of <code>defcfn</code>, so C can call back <em>into</em> Jolt (a <code>qsort</code> comparator, a GTK signal handler, any C API that takes a callback). The args C passes arrive as Jolt values; the Jolt return is marshaled back per <code>rettype</code>. The callback stays live until <code>free-callable</code> releases it. Pass a trailing <code>:collect-safe</code> when C invokes the callback from a thread parked in a <code>:blocking</code> foreign call (e.g. a GUI main loop).</li><li><code>free-callable</code> <code>ptr</code> — release a callable built by <code>foreign-callable</code>; returns <code>nil</code>.</li><li><code>export!</code> <code>name f argtypes rettype &#91;:collect-safe&#93;</code> — publish <code>f</code> as a C-callable entry point under <code>name</code>, for <code>joltc build --library</code>. An embedder resolves it via <code>jolt&#95;lookup&#40;&quot;name&quot;&#41;</code> after <code>jolt&#95;library&#95;init</code>. The argtypes/rettype keywords are the same as <code>defcfn</code>.<pre><code class="clojure">;; qsort comparator callable into libc
+&#40;def cmp &#40;ffi/foreign-callable
+           &#40;fn &#91;pa pb&#93;
+             &#40;let &#91;a &#40;ffi/read pa :int&#41; b &#40;ffi/read pb :int&#41;&#93;
+               &#40;cond &#40;&lt; a b&#41; -1 &#40;&gt; a b&#41; 1 :else 0&#41;&#41;&#41;
+           &#91;:pointer :pointer&#93; :int&#41;&#41;
+&#40;c-qsort arr n &#40;ffi/sizeof :int&#41; cmp&#41;
+&#40;ffi/free-callable cmp&#41;
+</code></pre></li></ul><h2 id="types">Types</h2><p>Argument and return types are keywords:</p><ul><li><code>:int</code> <code>:uint</code> — <code>int</code> / <code>unsigned</code></li><li><code>:long</code> <code>:ulong</code> — <code>long</code> / <code>unsigned long</code></li><li><code>:int64</code> <code>:uint64</code> — 64-bit integer</li><li><code>:size&#95;t</code> <code>:ssize&#95;t</code> — <code>size&#95;t</code> / <code>ssize&#95;t</code></li><li><code>:iptr</code> <code>:uptr</code> — pointer-sized integer (handy for <code>NULL</code> sentinels)</li><li><code>:double</code> <code>:float</code> — <code>double</code> / <code>float</code></li><li><code>:char</code> — <code>char</code> (a code point)</li><li><code>:uint8</code> (alias <code>:u8</code>, <code>:byte</code>) — <code>unsigned char</code>, number 0–255</li><li><code>:pointer</code> (alias <code>:void&#42;</code>) — any pointer (a machine address)</li><li><code>:string</code> — <code>char &#42;</code>, marshaled both ways (UTF-8 both directions)</li><li><code>:void</code> — return ignored (<code>nil</code>)</li></ul><h2 id="memory&#95;and&#95;libraries">Memory and libraries</h2><p>Foreign memory is manual — allocate, use, free. There is no finalizer.</p><ul><li><code>load-library</code> <code>&#91;spec&#93;</code> — load a shared object. With no spec, binds symbols already in the running process (libc, POSIX). With a spec, a per-OS map (<code>{:darwin &quot;libsqlite3.0.dylib&quot; :linux &quot;libsqlite3.so.0&quot;}</code>) or a bare path. Inside a <code>deps.edn</code> project you usually declare natives under <code>:jolt/native</code> instead (see the guide).</li><li><code>loaded?</code> <code>name</code> — was a library loaded?</li><li><code>alloc</code> <code>nbytes</code> — allocate <code>nbytes</code>; returns a pointer (address). You must <code>free</code> it.</li><li><code>free</code> <code>ptr</code> — release memory from <code>alloc</code> / <code>string-&gt;ptr</code>.</li><li><code>sizeof</code> <code>type</code> — byte size of a type, for laying out structs and out-parameters.</li><li><code>read</code> <code>ptr type &#91;offset&#93;</code> — read a typed value at <code>ptr</code> (+ optional byte offset).</li><li><code>write</code> <code>ptr type offset value</code> — write a typed value at <code>ptr + offset</code>.</li><li><code>read-array</code> <code>ptr n</code> — <code>n</code> bytes → <code>byte-array</code> (binary-faithful, no encoding).</li><li><code>write-array</code> <code>ptr arr</code> — <code>byte-array</code> → memory.</li><li><code>read-bytes</code> <code>ptr n</code> — <code>n</code> bytes → string (UTF-8).</li><li><code>write-bytes</code> <code>ptr s</code> — a string's UTF-8 bytes → memory.</li><li><code>string-&gt;ptr</code> <code>s</code> — allocate a NUL-terminated C string from <code>s</code> (free it yourself).</li><li><code>ptr-&gt;string</code> <code>ptr</code> — read a NUL-terminated C string back.</li><li><code>null</code> — the null pointer; <code>null?</code> <code>p</code> — the test.</li></ul>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>
