@@ -22,6 +22,12 @@ Then:
 joltc -e '(+ 1 2)'        # => 3
 ```
 
+The prebuilt binaries need only the base system libraries: **Linux x86_64**
+requires glibc 2.35 or newer (Ubuntu 22.04+, Debian 12+, RHEL 9+ — the
+installer verifies the binary runs and reports the exact glibc mismatch if
+not); **macOS arm64** requires macOS 14+. Anything else (Intel Mac,
+musl/Alpine, older glibc) builds from source.
+
 ### From source
 
 Jolt also runs straight from a clone with no build step — the bootstrap seed is checked in. This path needs [Chez Scheme](https://cisco.github.io/ChezScheme/), invoked as `chez`:
@@ -120,11 +126,12 @@ Unreached code that uses `resolve` is fine — it's shaken away like anything el
 ## REPL and editor integration
 
 ```bash
-bin/joltc repl                  # a line REPL with the project deps loaded
-bin/joltc --nrepl-server [port] # an nREPL server (default port 7888)
+bin/joltc                       # no arguments starts a REPL, like bb or clj
+bin/joltc repl                  # the same, explicitly
+bin/joltc nrepl-server [port]   # an nREPL server (default port 7888)
 ```
 
-`--nrepl-server` writes a `.nrepl-port` file and auto-resolves a `deps.edn` in the directory, so the server starts with your app and its dependencies loaded. Connect CIDER, Calva, or Cursive to the port. See [REPL-Driven Development](/docs/repl-driven-development.html) for the full workflow.
+`nrepl-server` writes a `.nrepl-port` file and auto-resolves a `deps.edn` in the directory, so the server starts with your app and its dependencies loaded. Connect CIDER, Calva, or Cursive to the port. See [REPL-Driven Development](/docs/repl-driven-development.html) for the full workflow.
 
 ## Dependencies
 

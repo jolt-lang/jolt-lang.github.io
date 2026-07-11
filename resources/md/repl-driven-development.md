@@ -16,11 +16,11 @@ This is handy for a quick poke at a namespace, but the real workflow is driving 
 
 ## Starting an nREPL server
 
-`bin/joltc --nrepl-server [port]` starts an [nREPL](https://nrepl.org/) server your editor connects to. It defaults to port 7888 (override with the argument or `JOLT_NREPL_PORT`), resolves the project's `deps.edn`, loads the source roots and native libraries, and writes a `.nrepl-port` file in the project directory so editors auto-detect the port.
+`bin/joltc nrepl-server [port]` starts an [nREPL](https://nrepl.org/) server your editor connects to. It defaults to port 7888 (override with the argument or `JOLT_NREPL_PORT`), resolves the project's `deps.edn`, loads the source roots and native libraries, and writes a `.nrepl-port` file in the project directory so editors auto-detect the port.
 
 ```bash
 $ cd myapp
-$ bin/joltc --nrepl-server
+$ bin/joltc nrepl-server
 nREPL server started on port 7888 (127.0.0.1) — .nrepl-port written
 ;; connect your editor; ^C to stop
 ```
