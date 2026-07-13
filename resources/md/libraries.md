@@ -28,6 +28,7 @@ These Clojure libraries are confirmed to load and pass their conformance checks 
 - **[tools.macro](https://github.com/clojure/tools.macro)** — local macros (`macrolet`/`symbol-macrolet`), `mexpand`/`mexpand-all`.
 - **[algo.monads](https://github.com/clojure/algo.monads)** — monad macros and monads (maybe/seq/state/writer/reader/…), over [tools.macro](https://github.com/clojure/tools.macro).
 - **[test.check](https://github.com/clojure/test.check)** — property-based testing (generators, `quick-check`, shrinking).
+- **[tools.cli](https://github.com/clojure/tools.cli)** — command-line argument parsing.
 - **[tools.reader](https://github.com/clojure/tools.reader)** — a Clojure reader in Clojure (edn + full reader, indexing/pushback reader types).
 - **[rewrite-clj](https://github.com/clj-commons/rewrite-clj)** — parse/rewrite Clojure source while preserving whitespace and comments (nodes + zipper), over [tools.reader](https://github.com/clojure/tools.reader).
 - **[transit-jolt](https://github.com/jolt-lang/transit-jolt)** — Transit (JSON) read/write.
