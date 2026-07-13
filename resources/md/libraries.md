@@ -1,14 +1,41 @@
-These Clojure libraries are confirmed to load and pass their conformance checks on Jolt. Most load unmodified from git; a few rely on host shims Jolt provides. See the [examples repository](https://github.com/jolt-lang/examples) for runnable projects.
+Two kinds of libraries run on Jolt. **Jolt libraries** are first-party packages
+from the [jolt-lang](https://github.com/orgs/jolt-lang/repositories) org — many
+bind native code through Jolt's FFI to cover ground the JVM would get from
+`java.*`. **JVM libraries** are ordinary Clojure/JVM libraries that load and pass
+their conformance checks on Jolt unchanged (a few lean on host shims Jolt
+provides). See the [examples repository](https://github.com/jolt-lang/examples)
+for runnable projects.
 
-## Web and routing
+## Jolt libraries
+
+First-party libraries from the jolt-lang org.
+
+- **[db](https://github.com/jolt-lang/db)** — Postgres and SQLite access (`jdbc.core`), binding libpq and libsqlite3 through the FFI.
+- **[http-client](https://github.com/jolt-lang/http-client)** — HTTP client over POSIX sockets, OpenSSL (TLS), and zlib.
+- **[xml](https://github.com/jolt-lang/xml)** — XML: `clojure.xml/parse` (libxml2) plus a `clojure.data.xml` emit API.
+- **[yaml](https://github.com/jolt-lang/yaml)** — YAML load/dump over the system libyaml (`jolt.yaml`, `clj-yaml.core` compat).
+- **[jolt-crypto](https://github.com/jolt-lang/jolt-crypto)** — OpenSSL FFI (hashing, HMAC, ciphers); backs ring-defaults' session/CSRF crypto.
+- **[transit-jolt](https://github.com/jolt-lang/transit-jolt)** — Transit (JSON) read/write.
+- **[router](https://github.com/jolt-lang/router)** — routing trie that mirrors `reitit.Trie`, so reitit runs on Jolt.
+- **[logging](https://github.com/jolt-lang/logging)** — logging API with a native backend (drives `clojure.tools.logging`).
+- **[nrepl](https://github.com/jolt-lang/nrepl)** — nREPL server and client for editor connections.
+- **[glimmer](https://github.com/jolt-lang/glimmer)** — GTK-based reactive UI toolkit.
+- **[glimmer-gl](https://github.com/jolt-lang/glimmer-gl)** — OpenGL primitives for Glimmer.
+- **[ring-chez-adapter](https://github.com/jolt-lang/ring-chez-adapter)** — Ring adapter for serving HTTP.
+
+## JVM libraries
+
+Third-party Clojure/JVM libraries confirmed to run on Jolt.
+
+### Web and routing
 
 - **[ring-core](https://github.com/ring-clojure/ring)** — via `:deps/root "ring-core"`, on the [ring-app example](https://github.com/jolt-lang/examples/tree/main/ring-app).
 - **[ring-codec](https://github.com/ring-clojure/ring-codec)** — URL/form encoding.
-- **[ring-defaults](https://github.com/ring-clojure/ring-defaults)** — the standard middleware stack (params, static resources + content-type, session, security headers); session/CSRF crypto via [jolt-lang/jolt-crypto](https://github.com/jolt-lang/jolt-crypto) (OpenSSL).
-- **[reitit-core](https://github.com/metosin/reitit)** — data-driven routing; the `reitit.Trie` Java class is mirrored by [jolt-lang/router](https://github.com/jolt-lang/router).
+- **[ring-defaults](https://github.com/ring-clojure/ring-defaults)** — the standard middleware stack (params, static resources + content-type, session, security headers); session/CSRF crypto via [jolt-crypto](https://github.com/jolt-lang/jolt-crypto).
+- **[reitit-core](https://github.com/metosin/reitit)** — data-driven routing; the `reitit.Trie` Java class is mirrored by [router](https://github.com/jolt-lang/router).
 - **[integrant](https://github.com/weavejester/integrant)** — data-driven system configuration (`#ig/ref`), with its [dependency](https://github.com/weavejester/dependency) and [meta-merge](https://github.com/weavejester/meta-merge) deps.
 
-## Data and schemas
+### Data and schemas
 
 - **[malli](https://github.com/metosin/malli)** — data schema validation, on the [malli-app example](https://github.com/jolt-lang/examples/tree/main/malli-app).
 - **[honeysql](https://github.com/seancorfield/honeysql)** — SQL formatter and helpers.
@@ -21,7 +48,7 @@ These Clojure libraries are confirmed to load and pass their conformance checks 
 - **[core.logic](https://github.com/clojure/core.logic)** — relational logic programming (unification, `run`/`fresh`/`conde`, finite domains).
 - **[math.combinatorics](https://github.com/clojure/math.combinatorics)** — permutations, combinations, subsets, selections, cartesian products, partitions.
 - **[core.contracts](https://github.com/clojure/core.contracts)** — programming by contract (`contract`/`with-constraints`/`provide`), over [core.unify](https://github.com/clojure/core.unify).
-- **[data.zip](https://github.com/clojure/data.zip)** — zipper navigation, including `clojure.data.zip.xml`; XML via [jolt-lang/xml](https://github.com/jolt-lang/xml) (which ships `clojure.xml/parse`).
+- **[data.zip](https://github.com/clojure/data.zip)** — zipper navigation, including `clojure.data.zip.xml`; XML via [xml](https://github.com/jolt-lang/xml).
 - **[data.csv](https://github.com/clojure/data.csv)** — reading and writing CSV.
 - **[data.codec](https://github.com/clojure/data.codec)** — base64 encode/decode over byte arrays.
 - **[data.priority-map](https://github.com/clojure/data.priority-map)** — priority maps (keyfn / custom comparator), with `subseq`/`rsubseq`.
@@ -31,35 +58,33 @@ These Clojure libraries are confirmed to load and pass their conformance checks 
 - **[tools.cli](https://github.com/clojure/tools.cli)** — command-line argument parsing.
 - **[tools.reader](https://github.com/clojure/tools.reader)** — a Clojure reader in Clojure (edn + full reader, indexing/pushback reader types).
 - **[rewrite-clj](https://github.com/clj-commons/rewrite-clj)** — parse/rewrite Clojure source while preserving whitespace and comments (nodes + zipper), over [tools.reader](https://github.com/clojure/tools.reader).
-- **[transit-jolt](https://github.com/jolt-lang/transit-jolt)** — Transit (JSON) read/write.
 - **[yamlstar](https://github.com/yaml/yamlstar)** — YAML load/dump (pure-Clojure parser, JSON-safe integer policy).
-- **[jolt-yaml](https://github.com/jolt-lang/yaml)** — YAML over the system libyaml (`jolt.yaml` load/dump, `clj-yaml.core` compat, SnakeYAML engine surface).
 - **[medley](https://github.com/weavejester/medley)** — collection utilities.
 - **[config](https://github.com/yogthos/config)** — environment configuration.
 - **[aero](https://github.com/juxt/aero)** — EDN configuration with tag literals (`#ref`/`#env`/`#or`/`#profile`/`#long`/…).
 
-## Databases
+### Databases
 
-- **[clojure.jdbc](https://github.com/yogthos/clojure.jdbc)** — via [jolt-lang/db](https://github.com/jolt-lang/db)'s `jdbc.core`, over built-in SQLite access (libsqlite3 through Chez's FFI).
-- **[migratus](https://github.com/yogthos/migratus)** — database migrations over [jolt-lang/db](https://github.com/jolt-lang/db).
+- **[clojure.jdbc](https://github.com/yogthos/clojure.jdbc)** — via [db](https://github.com/jolt-lang/db)'s `jdbc.core`, over built-in SQLite access (libsqlite3 through Chez's FFI).
+- **[migratus](https://github.com/yogthos/migratus)** — database migrations over [db](https://github.com/jolt-lang/db).
 
-## Templating, markup, text
+### Templating, markup, text
 
 - **[Selmer](https://github.com/yogthos/Selmer)** — Django-style templates.
 - **[hiccup](https://github.com/weavejester/hiccup)** — HTML from Clojure data, on the [hiccup-app example](https://github.com/jolt-lang/examples/tree/main/hiccup-app).
 - **[markdown-clj](https://github.com/yogthos/markdown-clj)** — Markdown to HTML, on the [markdown-app example](https://github.com/jolt-lang/examples/tree/main/markdown-app).
 - **[cuerdas](https://github.com/funcool/cuerdas)** — string manipulation.
 - **[camel-snake-kebab](https://github.com/clj-commons/camel-snake-kebab)** — word-case conversions.
-- **[clj-rss](https://github.com/yogthos/clj-rss)** — RSS feed generation, over [jolt-lang/xml](https://github.com/jolt-lang/xml)'s `clojure.data.xml` emit.
+- **[clj-rss](https://github.com/yogthos/clj-rss)** — RSS feed generation, over [xml](https://github.com/jolt-lang/xml)'s `clojure.data.xml` emit.
 
-## Date and time
+### Date and time
 
 - **[tick](https://github.com/juxt/tick)** — date/time over Jolt's `java.time`; `#time/…` literals via `time-literals`.
 
-## Logging
+### Logging
 
 - **[tools.logging](https://github.com/clojure/tools.logging)** — runs verbatim over a native `clojure.tools.logging.impl` stderr backend.
 
 ---
 
-Loading a library is per-function: a namespace can load with most functions working and a few not. If something is missing, it's usually a `clojure.core` function Jolt doesn't implement yet or a Java class to shim — see [Host Interop](/docs/host-interop.html).
+Loading a JVM library is per-function: a namespace can load with most functions working and a few not. If something is missing, it's usually a `clojure.core` function Jolt doesn't implement yet or a Java class to shim — see [Host Interop](/docs/host-interop.html).

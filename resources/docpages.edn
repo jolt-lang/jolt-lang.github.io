@@ -9,7 +9,7 @@
   ["writing-libraries.md"          "Writing Libraries"                 "topic"]
   ["host-interop.md"               "Host Interop"                      "topic"]
   ["native-interop.md"             "Native Interop (FFI)"              "topic"]
-  ["libraries.md"                  "Supported Libraries"               "topic"]
+  ["libraries.md"                  "Libraries"                          "topic"]
 
   ["api/infix.md"                  "Infix Notation"                    "api"]
   ["api/fs.md"                     "File System (jolt.fs)"             "api"]
