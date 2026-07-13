@@ -44,44 +44,129 @@ This is the surface today, not the whole JVM. Methods not listed generally aren'
 
 What's deliberately absent: STM, reflection, `gen-class`/`proxy` of Java classes, and `BigDecimal`.
 
-## Adding your own shim from a library
+## Using a JVM library that needs a class Jolt doesn't ship
 
-The built-in shims above are baked into the runtime. A library or project can register its **own** host classes at load time — no rebuild, no host edits. Put the registration calls at the top level of a namespace your code requires. Four functions (in `clojure.core`) plus the tagged-table seam (in `jolt.host`) cover it.
+Most Clojure libraries run on Jolt unchanged. When one reaches for a `java.*`
+class outside the built-in set above, you don't have to wait for a Jolt release —
+you can **register the shim yourself, at load time**, from ordinary Jolt code. No
+rebuild, no host edits. Put the registration calls at the top level of a
+namespace your app requires before the library is used (a small `myapp.shims`
+namespace is a good home).
 
-`__register-class-ctor!` makes `(Name. …)` work; `__register-class-statics!` makes `Name/field` and `(Name/method …)` work; `__register-class-methods!` attaches instance methods to a tagged value; `__register-instance-check!` teaches `instance?` about your class. **Method and static names are strings** — they match the literal name in the interop form.
+The built-in shims are written the same way, just in the runtime instead of your
+project — so anything Jolt does for `AtomicReference`, `ByteBuffer`, or `URI`,
+you can do for a class it's missing.
 
-A stateful object is a *tagged table*: `jolt.host/tagged-table` creates one, and `ref-put!`/`ref-get` set and read its fields. Read the tag back with `jolt.host/ref-get` (or test it with `jolt.host/table?`); a plain `get` or keyword lookup deliberately can't see a wrapper's own `:jolt/type`.
+### The workflow: let the error tell you what to add
+
+Run the library and read the exception. Each shape of "missing host" error maps
+to one registration function:
+
+| The error you hit | What to register |
+| --- | --- |
+| `Unknown class java.util.StringJoiner` (a static/field ref, or the class is wholly unknown) | `__register-class-statics!` / `__register-class-ctor!` |
+| `No constructor for class java.util.StringJoiner` | `__register-class-ctor!` |
+| `No method add on host …` (a `(.method obj …)` call) | `__register-class-methods!` |
+| `(instance? SomeClass x)` returns `false` when it shouldn't | `__register-instance-check!` |
+| `isa?` / `ancestors` / `instance?`-through-a-parent is wrong | `jolt.host/register-class-supers!` |
+
+Add the one it names, re-run, repeat until the library is happy. **Method,
+static, and class names are strings that match the literal name in the interop
+form** — `"add"` shims `(.add x …)`, `"java.util.StringJoiner"` shims
+`(java.util.StringJoiner. …)`.
+
+### A worked example: `java.util.StringJoiner`
+
+Say a library builds strings with `java.util.StringJoiner`, which Jolt doesn't
+ship. A stateful object is a **tagged table**: `jolt.host/tagged-table` creates
+one carrying a `:jolt/type` tag, and `ref-put!` / `ref-get` set and read its
+fields. Instance methods are keyed by that tag.
 
 ```clojure
-(ns mylib.greeter
-  (:require [jolt.host :as host]))
+(ns myapp.shims
+  (:require [jolt.host :as host]
+            [clojure.string :as str]))
 
-;; (Greeter. name) -> a tagged value carrying its name
-(__register-class-ctor! "Greeter"
-  (fn [name] (-> (host/tagged-table :greeter)
-                 (host/ref-put! :name name))))
+(defn- joined [self]
+  (str/join (host/ref-get self :delim) (host/ref-get self :parts)))
 
-;; (.hello g) -> instance method, keyed by the literal method name
-(__register-class-methods! :greeter
-  {"hello" (fn [self] (str "hi " (host/ref-get self :name)))})
+;; (StringJoiner. delim) -> a tagged value holding the delimiter and the parts
+(__register-class-ctor! "java.util.StringJoiner"
+  (fn [delim] (-> (host/tagged-table :string-joiner)
+                  (host/ref-put! :delim delim)
+                  (host/ref-put! :parts []))))
 
-;; Greeter/VERSION (field) and (Greeter/make x) (static method)
-(__register-class-statics! "Greeter"
-  {"VERSION" "1.0"
-   "make"    (fn [name] (Greeter. name))})
+;; instance methods: (.add sj s), (.toString sj), (.length sj)
+(__register-class-methods! :string-joiner
+  {"add"      (fn [self s] (host/ref-put! self :parts
+                             (conj (host/ref-get self :parts) (str s)))
+                           self)                       ; .add returns the joiner
+   "toString" (fn [self] (joined self))
+   "length"   (fn [self] (count (joined self)))})
 
-;; (instance? Greeter x)
+;; (instance? StringJoiner x)
 (__register-instance-check!
   (fn [class-name v]
-    (when (= class-name "Greeter")
-      (and (host/table? v) (= :greeter (host/ref-get v :jolt/type))))))
+    (when (= class-name "java.util.StringJoiner")
+      (and (host/table? v) (= :string-joiner (host/ref-get v :jolt/type))))))
 ```
 
 ```clojure
-(.hello (Greeter. "ada"))            ;=> "hi ada"
-Greeter/VERSION                      ;=> "1.0"
-(.hello (Greeter/make "bob"))        ;=> "hi bob"
-(instance? Greeter (Greeter. "x"))   ;=> true
+(let [sj (-> (java.util.StringJoiner. ", ") (.add "a") (.add "b") (.add "c"))]
+  (.toString sj))                                   ;=> "a, b, c"
+(.length (-> (java.util.StringJoiner. ", ") (.add "a") (.add "b")))  ;=> 4
+(instance? java.util.StringJoiner (java.util.StringJoiner. ","))     ;=> true
 ```
 
-An instance-check predicate returns `true`/`false` to decide, or `nil` to defer to the next registered check and the built-ins — so several libraries can register checks without clobbering each other. This is the mechanism Jolt's HTTP client library uses to emulate `java.net.URL` and `HttpURLConnection` so `clj-http-lite` runs unchanged.
+One subtlety: `(str a-tagged-value)` and `pr-str` show its raw wrapper form, not
+your `toString` shim — so compute a length or a display string from the fields
+(as `joined` does above), rather than `(count (str self))`.
+
+### Static-only classes
+
+A utility class with no instances (`java.lang.Math`, `java.util.Base64`) needs
+only statics — fields and static methods, again keyed by string name:
+
+```clojure
+(__register-class-statics! "java.util.Base64"
+  {"getEncoder" (fn [] my-encoder)})         ; Base64/getEncoder
+;; then Name/FIELD reads a field, (Name/method …) calls a static method
+```
+
+### Fitting a class into the hierarchy
+
+`instance?` on an exact class works from the instance-check above. To make
+`isa?`, `ancestors`, and `instance?`-through-a-supertype hold, declare the
+class's supers (its superclass and interfaces) with the `jolt.host` seam:
+
+```clojure
+(host/register-class-supers! "java.util.StringJoiner" ["java.lang.CharSequence"
+                                                       "java.lang.Object"])
+;; now (isa? java.util.StringJoiner java.lang.CharSequence) => true, and a
+;; protocol/multimethod that dispatches on CharSequence sees a StringJoiner.
+```
+
+### Instance checks compose
+
+An instance-check predicate returns `true`/`false` to decide, or `nil` to **defer**
+to the next registered check and the built-ins — so several libraries can
+register checks without clobbering each other. This is the mechanism Jolt's HTTP
+client library uses to emulate `java.net.URL` and `HttpURLConnection` so
+`clj-http-lite` runs unchanged.
+
+### The registration API at a glance
+
+All four `__register-*` functions live in `clojure.core` (no require); the
+tagged-table and hierarchy seams live in `jolt.host`:
+
+- `(__register-class-ctor! "pkg.Name" (fn [args…] …))` — `(pkg.Name. args…)`
+- `(__register-class-statics! "pkg.Name" {"FIELD" v, "method" (fn […] …)})` — `pkg.Name/FIELD`, `(pkg.Name/method …)`
+- `(__register-class-methods! :your-tag {"method" (fn [self args…] …)})` — `(.method obj args…)` on a value tagged `:your-tag`
+- `(__register-instance-check! (fn [class-name-str v] true|false|nil))` — `(instance? pkg.Name v)`
+- `(jolt.host/register-class-supers! "pkg.Name" ["pkg.Super" "pkg.Iface" …])` — hierarchy for `isa?`/`ancestors`
+- `jolt.host/tagged-table`, `jolt.host/ref-put!`, `jolt.host/ref-get`, `jolt.host/table?` — build and read a stateful wrapper
+
+If a shim would be useful to everyone, it's also a great contribution to the
+runtime itself — the built-in shims use exactly these registries; see
+[Writing Libraries](/docs/writing-libraries.html) and Jolt's `host/chez/java`
+sources.
