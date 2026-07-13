@@ -15,6 +15,7 @@
   ["api/fs.md"                     "File System (babashka.fs)"             "api"]
   ["api/ffi.md"                    "Foreign Functions (jolt.ffi)"      "api"]
   ["api/parser.md"                 "Parser Combinators (jolt.parser)"  "api"]
+  ["api/util.md"                   "Utilities (jolt.util)"             "api"]
 
   ["spec/README.md"               "Language Specification"             "reference"]
   ["tools-deps.md"                "deps.edn Internals"                 "reference"]
