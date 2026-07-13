@@ -146,6 +146,28 @@ class's supers (its superclass and interfaces) with the `jolt.host` seam:
 ;; protocol/multimethod that dispatches on CharSequence sees a StringJoiner.
 ```
 
+Your own `deftype`/`defrecord` classes join the same graph **automatically** at
+definition — you only need `register-class-supers!` for a shim of an outside
+class. A record's ancestry carries the record interfaces (`clojure.lang.IRecord`,
+`IPersistentMap`, `Associative`, …), a bare deftype carries `clojure.lang.IType`,
+and every protocol the type implements inline appears as an implemented
+interface — so `(ancestors MyRecord)`, `(isa? MyRecord clojure.lang.IPersistentMap)`,
+and hierarchy relationships `derive`d on a class's supers all answer like the JVM.
+
+A deftype *implementing* a `clojure.lang` collection interface drives the core
+functions through its methods, like the JVM: `Indexed` → `nth`, `Counted` →
+`count`, `ILookup` → `get`/keyword lookup, `Associative` → `assoc`,
+`ISeq`/`Seqable` → `seq`/`first`/`rest`, `IPersistentCollection` → `conj`,
+`Reversible` → `rseq`, `Sorted` → `subseq`/`rsubseq`, `IDeref` → `deref`/`@`,
+`IFn` → the value is callable, `IReduceInit` → `reduce`. Methods can be
+arity-overloaded across interfaces (`seq [this]` and `seq [this ascending]`), and
+a marker protocol with no methods still answers `satisfies?`/`instance?`.
+
+Extending a *built-in* class instead — adding a method to core's `String` shim,
+say — means editing the runtime's `host/chez/*.ss` and rebuilding; that's a
+contribution to Jolt itself rather than a project-level shim (see
+[Building &amp; Running](/docs/building-and-deps.html)).
+
 ### Instance checks compose
 
 An instance-check predicate returns `true`/`false` to decide, or `nil` to **defer**

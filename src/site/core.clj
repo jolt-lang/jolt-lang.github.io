@@ -33,9 +33,10 @@
   (let [translated-topics (translated-topics docs)]
   (merge
       {:title  (get-in docs [:docs-by-topic doc-id])
-        :topics (filter #(= "topic" (nth % 2)) translated-topics)
-        :apis   (filter #(= "api" (nth % 2)) translated-topics)
-        :libs   (filter #(= "lib" (nth % 2)) translated-topics)}
+        :topics    (filter #(= "topic" (nth % 2)) translated-topics)
+        :apis      (filter #(= "api" (nth % 2)) translated-topics)
+        :reference (filter #(= "reference" (nth % 2)) translated-topics)
+        :libs      (filter #(= "lib" (nth % 2)) translated-topics)}
       (get docs doc-id))))
 
 (defn doc-page [docs doc-id]

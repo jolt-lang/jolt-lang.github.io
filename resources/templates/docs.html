@@ -23,6 +23,16 @@
       {% endfor %}
     </ul>
     {% endif %}
+    {% if reference %}
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      {% for ref in reference %}
+      <li {% ifequal ref.1 title %}class="selected"{% endifequal %}>
+        <a href="/docs/{{ref.0}}">{{ref.1}}</a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% endif %}
   </aside>
 
   <main class="docs-main">
