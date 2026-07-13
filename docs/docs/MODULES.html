@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>Module Map (Contributors) — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Supported Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (jolt.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li class="selected">
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>Module Map (Contributors)</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#module_map">Module map</a></li><li><a href="#areas">Areas</a></li><li><a href="#&lt;code&gt;host/chez/*.ss&lt;/code&gt;_by_family">{:tag :code, :attrs nil, :content ["host/chez/*.ss"]}</a></li><li><a href="#where_is_a_&lt;code&gt;clojure.core&lt;/code&gt;_fn_implemented?">Where is a </a></li><li><a href="#cross-cutting_features_—_touch_points">Cross-cutting features — touch points</a></li><li><a href="#conventions_you_must_preserve">Conventions you must preserve</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <h1 id="module&#95;map">Module map</h1><p>Where things live and what to read before changing them. Start here to answer "where does feature X live?" and "what else do I need to touch?"</p><h2 id="areas">Areas</h2><table><thead><tr><th>Area</th><th>Directory</th><th>Responsibility</th><th>Re-mint?</th></tr></thead><tbody><tr><td>Chez runtime</td><td><code>host/chez/&#42;.ss</code></td><td>The substrate: value model, persistent collections, seqs, vars/namespaces, host interop, native <code>clojure.core</code> shims, regex, FFI, IO, the <strong>reader</strong>. Composed by <code>rt.ss</code>.</td><td>only <code>reader.ss</code></td></tr><tr><td>Compiler</td><td><code>jolt-core/jolt/&#42;.clj</code></td><td>analyzer → IR → backend, the optimization passes, the CLI, the deps resolver, nREPL. Baked into the seed.</td><td><strong>yes</strong></td></tr><tr><td><code>clojure.core</code> overlay</td><td><code>jolt-core/clojure/core/NN-&#42;.clj</code></td><td>Portable <code>clojure.core</code> in dependency-ordered tiers (<code>00-syntax</code> … <code>50-io</code>); the <code>NN</code> prefix <em>is</em> the load order.</td><td><strong>yes</strong></td></tr><tr><td>Stdlib</td><td><code>stdlib/clojure/&#42;.clj</code>, <code>stdlib/jolt/&#42;.clj</code></td><td>Lazily-loaded portable namespaces (string/set/walk/edn/pprint/zip/test/data) and Jolt's own (<code>jolt.ffi</code>, <code>jolt.fs</code> — file-system utilities, babashka.fs-shaped).</td><td>no</td></tr><tr><td>Build & tooling</td><td><code>host/chez/build.ss</code>, <code>emit-image.ss</code>, <code>compile-eval.ss</code>, <code>loader.ss</code>, <code>cli.ss</code>, <code>bootstrap.ss</code></td><td>AOT binary build, cross-compile, runtime eval/load, CLI spine, seed mint.</td><td>no (except via <code>reader.ss</code>)</td></tr><tr><td>Tests & gate</td><td><code>test/chez/</code>, <code>test/conformance/</code>, <code>host/chez/run-&#42;.ss</code>, <code>Makefile</code></td><td>Corpus (JVM oracle), unit, per-feature tests. Every <code>make</code> target has a comment.</td><td>no</td></tr></tbody></table><p><strong>The reader is in <code>host/chez/reader.ss</code></strong> (Scheme, a seed source) — <em>not</em> in <code>jolt-core/jolt/</code> with the rest of the compiler. Re-mint applies to it.</p><p><code>rt.ss</code> is the runtime's load-order manifest: it <code>&#40;load …&#41;</code>s every shim in dependency order with a per-file comment. Read it to see how the runtime is composed and where a given <code>.ss</code> fits.</p><h2 id="<code>host/chez/&#42;.ss</code>&#95;by&#95;family"><code>host/chez/&#42;.ss</code> by family</h2><ul><li><strong>Value model</strong>: <code>values.ss</code> (nil/numbers/keywords/symbols), <code>collections.ss</code>  (persistent vec + HAMT map/set), <code>seq.ss</code> + <code>lazy-bridge.ss</code> (seqs, lazy-seqs),  <code>transients.ss</code>, <code>records.ss</code> + <code>records-interop.ss</code>.</li><li><strong>Native <code>clojure.core</code> shims</strong>: <code>natives-&#42;.ss</code> (array/coll/format/meta/misc/num/  queue/reader/seq/str/transduce), plus <code>predicates.ss</code>, <code>converters.ss</code>, <code>printing.ss</code>.</li><li><strong>Vars / namespaces / dynamics</strong>: <code>vars.ss</code>, <code>ns.ss</code>, <code>dyn-binding.ss</code> (the  thread-local binding stack), <code>dynamic-var-defaults.ss</code> (a few <code>&#42;…&#42;</code> constant defaults),  <code>atoms.ss</code>, <code>multimethods.ss</code>.</li><li><strong>Host interop</strong>: <code>host-class.ss</code> (class tokens + method dispatch),  <code>host-static.ss</code> (interop registry core) + <code>host-static-methods.ss</code> (<code>Class/member</code>  statics) + <code>host-static-classes.ss</code> (instantiable object classes), <code>host-table.ss</code>,  <code>host-contract.ss</code> (the <code>jolt.host</code> seam the compiler resolves against),  <code>dot-forms.ss</code>, <code>records-interop.ss</code>.</li><li><strong>Scalars / misc</strong>: <code>regex.ss</code> (vendored irregex), <code>math.ss</code>, <code>inst-time.ss</code>,  <code>bigdec.ss</code>, <code>syntax-quote.ss</code>.</li><li><strong>IO / system / concurrency / FFI</strong>: <code>io.ss</code>, <code>png.ss</code>, <code>concurrency.ss</code>,  <code>async.ss</code>, <code>ffi.ss</code>.</li><li><strong>Compiler entry on Chez</strong>: <code>reader.ss</code>, <code>compile-eval.ss</code>, <code>emit-image.ss</code>,  <code>loader.ss</code>, <code>cli.ss</code>, <code>build.ss</code>, <code>bootstrap.ss</code>.</li></ul><h2 id="where&#95;is&#95;a&#95;<code>clojure.core</code>&#95;fn&#95;implemented?">Where is a <code>clojure.core</code> fn implemented?</h2><p>Two homes, with a defined precedence:</p><ol><li><strong>Native shim</strong> — a <code>&#40;def-var! &quot;clojure.core&quot; &quot;name&quot; …&#41;</code> in a <code>host/chez/&#42;.ss</code>   (hot/representation-coupled fns: <code>first</code>, <code>get</code>, <code>=</code>, the predicates).</li><li><strong>Overlay</strong> — a <code>defn</code> in a <code>jolt-core/clojure/core/NN-&#42;.clj</code> tier (most of   <code>clojure.core</code>, in portable Clojure).</li><li><strong><code>post-prelude.ss</code></strong> re-asserts a handful of natives <em>after</em> the overlay loads,   so the native version wins (the overlay's value-reading versions are wrong for   Chez-native chars/atoms/etc.). Each entry there says why.</li></ol><p><code>grep 'def-var! &quot;clojure.core&quot; &quot;frequencies&quot;' host/chez</code> and <code>grep -rn 'defn frequencies' jolt-core/clojure/core</code> to find a given fn. See <a href='/docs/seed-overlay-registry.html'>seed-overlay-registry.md</a> for the shadowing mechanism.</p><h2 id="cross-cutting&#95;features&#95;—&#95;touch&#95;points">Cross-cutting features — touch points</h2><p>A feature's <em>core</em> lives in one file; these are the other files you must keep in sync when changing it.</p><ul><li><strong>Tree-shaking / DCE</strong> (<code>--tree-shake</code>): <code>emit-image.ss</code> (the <code>dce-&#42;</code> helpers +  record producers) and <code>build.ss</code> (<code>bld-shake-all</code> reachability + the manifest  splice in <code>bld-emit-runtime</code>); the flag in <code>main.clj</code>; validated by  <code>host/chez/tree-shake-smoke.sh</code> (<code>make shakesmoke</code>) and <code>build-smoke.sh</code>. See  <a href='/docs/tools-deps.html#tree-shaking'>tools-deps.md</a>.</li><li><strong>Direct-linking</strong> (<code>--direct-link</code>): <code>backend&#95;scheme.clj</code> (<code>direct-link?</code>,  <code>emit-top-form</code>, the <code>jv$&lt;fqn&gt;</code> bindings); <code>build.ss</code> turns it on; <code>main.clj</code> the  flag; <code>test/chez/directlink-test.ss</code>.</li><li><strong>Numeric fl*/fx&#42;</strong> (<code>&#94;double</code>/<code>&#94;long</code> hints): <code>jolt-core/jolt/passes/numeric.clj</code>  (the hint-directed pass + loop-counter + <code>:coerce</code>); <code>backend&#95;scheme.clj</code>  (<code>dbl-ops</code>/<code>lng-ops</code> op strings, <code>emit-numeric</code>, entry/return coercion);  <code>analyzer.clj</code> (<code>nhint-of</code>, <code>:nhints</code>, <code>with-ret-nhint</code>); <code>host-contract.ss</code>  (<code>:num-ret</code> on resolve); <code>rt.ss</code> (<code>jolt-&gt;fx</code>); <code>test/chez/numeric-test.ss</code>.</li><li><strong>IR inlining</strong> (under <code>--opt</code>): <code>passes/inline.clj</code> (splice) + <code>passes.clj</code>  (stash) + <code>host-contract.ss</code> (<code>inline-ir</code>/<code>stash-inline!</code>); <code>test/chez/inline-test.ss</code>.</li><li><strong>Multimethods</strong>: <code>host/chez/multimethods.ss</code> (dispatch) + the overlay  <code>defmulti</code>/<code>defmethod</code> macros + <code>host-contract.ss</code> late-bind.</li><li><strong>AOT namespace context</strong> (<code>jolt build</code>): <code>build.ss</code> (<code>bld-ns-prelude</code>) emits  <code>&#40;set-chez-ns! ns&#41;</code> + <code>chez-register-alias!</code> per app namespace (both the normal  and tree-shake emit paths), matching the loader's per-file ns context;  <code>test/chez/build-app</code> (<code>make buildsmoke</code>).</li><li><strong>Deps resolution</strong>: <code>jolt-core/jolt/deps.clj</code> (the only file) + <code>main.clj</code>  (applies the roots) + <code>loader.ss</code> (the <code>require</code> path).</li></ul><h2 id="conventions&#95;you&#95;must&#95;preserve">Conventions you must preserve</h2><p>See <strong>CLAUDE.md → "Conventions & Patterns"</strong> for the load-bearing rules: the re-mint trigger, the tier macro-ordering rule, the <code>get</code>-on-your-own-wrapper trap, <code>:jolt/type</code>-as-a-key parsing, the <code>var-deref</code> calling convention (the compiler is reached from the <code>.ss</code> runtime by string lookup, so a public <code>defn</code> with no in-Clojure callers can still be live), and the writing style.</p>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>

@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>RFC 0005: Structural Type Inference — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Supported Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (jolt.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>RFC 0005: Structural Type Inference</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#rfc_0005_—_structural_collection-type_inference">RFC 0005 — Structural collection-type inference</a></li><li><a href="#summary">Summary</a></li><li><a href="#motivation">Motivation</a></li><li><a href="#the_type_lattice">The type lattice</a><ol><li><a href="#join_(least_upper_bound)">Join (least upper bound)</a></li><li><a href="#termination:_depth_cap">Termination: depth cap</a></li></ol></li><li><a href="#inference_rules">Inference rules</a></li><li><a href="#core_function_signatures">Core function signatures</a></li><li><a href="#hints_as_seeds">Hints as seeds</a></li><li><a href="#soundness">Soundness</a></li><li><a href="#compilation_modes_and_defaults">Compilation modes and defaults</a><ol><li><a href="#cross-namespace_inference">Cross-namespace inference</a></li></ol></li><li><a href="#relationship_to_hindley-milner_and_soft_typing">Relationship to Hindley-Milner and soft typing</a></li><li><a href="#implementation_and_migration">Implementation and migration</a></li><li><a href="#design_problems_and_open_questions">Design problems and open questions</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <h1 id="rfc&#95;0005&#95;—&#95;structural&#95;collection-type&#95;inference">RFC 0005 — Structural collection-type inference</h1><ul><li><strong>Status</strong>: Implemented. Ray tracer 12.8s to 11.0s hint-free,  matching the explicit <code>&#94;:struct</code> version; render checksum unchanged.</li><li><strong>Champions</strong>: jolt maintainers</li><li><strong>Created</strong>: 2026-06-13</li></ul><h2 id="summary">Summary</h2><p>Replace jolt's ad-hoc inference lattice with a single recursive **structural type**, so that the type of a value mirrors the tree shape of the data it describes. A struct-map carries its field types, a vector its element type, a function its parameter and return types, recursively. A keyword lookup returns the looked-up field's type, so nested access like <code>&#40;:r &#40;:direction ray&#41;&#41;</code> is typed end to end. This unifies the two facts the current inference tracks inconsistently (a vector's element type, but not a map's field types), subsumes the existing inference passes as special cases, and closes the remaining ray-tracer gap without a hint. The system is a soft-typing-style inference: it never rejects a program, it assigns a concrete type only when it can prove one, and it falls back to <code>:any</code> (and the existing runtime guard) everywhere else.</p><h2 id="motivation">Motivation</h2><p>The existing inference specializes a collection access (drops the <code>:jolt/type</code> guard, emits <code>pv-count</code>, and so on) when it can prove the collection's type. It works, it is sound, and it is fully dynamic-fallback safe. But its type lattice grew ad hoc:</p><ul><li><code>:struct-map</code> means "a raw-get-safe map" but carries <strong>no field types</strong>.</li><li><code>{:vec ELEM}</code> carries its <strong>element type</strong>.</li></ul><p>These are the same idea applied to two kinds of child in the data tree, but only one is tracked. The cost is concrete: in the ray tracer a lookup result like <code>&#40;:direction ray&#41;</code> is typed <code>:any</code>, so <code>&#40;:r &#40;:direction ray&#41;&#41;</code> keeps its guard, and the <code>vec3</code> functions (called all day with such values) cannot be typed, so the inference reaches only about 3% where the explicit <code>&#94;:struct</code> hint reaches 22%. The hint wins precisely because it asserts the field/param shape the inference fails to derive.</p><p>The fix is to make the type a structural tree, tagged as precisely as provable. Then <code>:struct</code> tracking and field tracking are one mechanism, the special cases collapse into one signature table, and nested access is typed by construction.</p><h2 id="the&#95;type&#95;lattice">The type lattice</h2><p>A type <code>T</code> is one of:</p><ul><li>A scalar tag: <code>:num</code>, <code>:str</code>, <code>:kw</code>, <code>:bool</code>, <code>:char</code>. (Optionally a coarser  <code>:nonnil</code> for "provably not nil and not false", which is what the struct-vs-phm  decision needs; see below.)</li><li><code>:nil</code>.</li><li><code>{:struct {field -&gt; T}}</code> — a raw-get-safe map (a record) whose  field <code>k</code> has type <code>&#40;fields k&#41;</code> or <code>:any</code> if absent. The degenerate  <code>{:struct {}}</code> is "a struct, fields unknown" and replaces today's  <code>:struct-map</code>.</li><li><code>{:vec T}</code> — a vector whose elements have type <code>T</code>.</li><li><code>{:set T}</code> — a set of <code>T</code>.</li><li><code>:phm</code> — a persistent hash map (NOT raw-get-safe; distinct from <code>:struct</code>).</li><li><code>{:fn {:params &#91;T...&#93; :ret T}}</code> — a function (optional precision; the current  flat param/return inference is the zero-arity-detail version of this).</li><li><code>:any</code> — the top. Anything not provably more specific.</li><li><code>:bottom</code> (represented as the absence of a type / <code>nil</code> internally) — the  identity for join, used to seed the fixpoint.</li></ul><p>Types are immutable values comparable by structural equality, exactly like the current <code>{:vec ELEM}</code> representation, so they flow across the portable inference and the host unchanged.</p><h3 id="join&#95;(least&#95;upper&#95;bound)">Join (least upper bound)</h3><pre><code>join&#40;T, T&#41;                         = T
+join&#40;bottom, T&#41;                    = T
+join&#40;{:struct a}, {:struct b}&#41;     = {:struct {k -&gt; join&#40;a&#91;k&#93;?:any, b&#91;k&#93;?:any&#41; for k in keys&#40;a&#41; ∪ keys&#40;b&#41;}}
+join&#40;{:vec a}, {:vec b}&#41;           = {:vec join&#40;a, b&#41;}
+join&#40;{:set a}, {:set b}&#41;           = {:set join&#40;a, b&#41;}
+join&#40;&#95;, &#95;&#41;                         = :any        ; different constructors
+</code></pre><p>Two struct types join field-wise; a field present in only one side becomes <code>:any</code> in the result (it might be absent, so a lookup of it is not provably typed). This is the standard record lattice.</p><h3 id="termination:&#95;depth&#95;cap">Termination: depth cap</h3><p>Structural types of recursive data (a tree node that contains a tree node, a cons cell) would be infinite. To keep types finite and the inter-procedural fixpoint terminating, structural types are <strong>depth-capped</strong>: beyond a small depth <code>D</code> (proposed <code>D = 4</code>) a child type is <code>:any</code>. Construction and join both truncate at <code>D</code>. With the cap the lattice has finite height, so the monotone fixpoint converges. The ray tracer's shapes (vec3 inside ray inside hit-info) are depth 2 to 3, well inside the cap.</p><h2 id="inference&#95;rules">Inference rules</h2><p>Inference is a forward pass producing <code>&#91;type node'&#93;</code> for each IR node (the existing shape), threaded with a local type environment and the inter-procedural state. The rules are uniform over the structural type:</p><ul><li><strong>Literals.</strong> <code>{:k v ...}</code> with constant scalar keys and struct-safe values  builds <code>{:struct {:k type&#40;v&#41; ...}}</code>; otherwise <code>:phm</code>. <code>&#91;a b ...&#93;</code> builds  <code>{:vec &#40;join type&#40;a&#41; type&#40;b&#41; ...&#41;}</code>. <code>#{...}</code> builds <code>{:set ...}</code>. Scalars  build their scalar tag. (The struct-vs-phm condition is the same as the back  end's: scalar keys, and every value provably non-nil and non-false.)</li><li><strong>Lookup returns the field type.</strong> <code>&#40;:k m&#41;</code> / <code>&#40;get m :k&#41;</code> where  <code>m : {:struct fs}</code> returns <code>&#40;fs :k&#41;</code> or <code>:any</code>. This is the single rule that  makes nesting work and that unifies field tracking with <code>:struct</code> tracking.</li><li><strong>Indexing returns the element type.</strong> <code>&#40;nth v i&#41;</code> / <code>&#40;v i&#41;</code> where  <code>v : {:vec T}</code> returns <code>T</code>. <code>&#40;first v&#41;</code> / <code>&#40;peek v&#41;</code> likewise.</li><li><strong>Flow.</strong> <code>let</code>/<code>loop</code> bind init types; <code>if</code> joins the branch types; <code>do</code>  takes the tail type. (As today.)</li><li><strong>Calls use signatures.</strong> Every call result type comes from the callee's  signature: core fns from a fixed signature table (below), user fns from the  inter-procedural fixpoint's inferred signature.</li></ul><p>The inter-procedural fixpoint, recompile, escape gate, and closed-world assumption are unchanged. They now propagate structural types instead of flat tags.</p><h2 id="core&#95;function&#95;signatures">Core function signatures</h2><p>The current special cases (<code>truthy-ret-fns</code>, <code>vector-ret-fns</code>, <code>elem-fns</code>, <code>hof-table</code>, and the <code>conj</code>/<code>range</code>/<code>reduce</code>/<code>mapv</code> branches) collapse into one table of <strong>type schemes</strong>, possibly parametric:</p><pre><code>inc, dec, +, -, &#42;, /, mod, ...   : &#40;... :num&#41; -&gt; :num
+count                            : &#40;Coll&#41; -&gt; :num
+nth        : ∀T. &#40;{:vec T}, :num&#41; -&gt; T          &#40;3-arg adds a default: -&gt; join&#40;T, default&#41;&#41;
+get        : ∀T. &#40;{:struct fs}, :k&#41; -&gt; &#40;fs :k&#41;  ; const key
+first,peek : ∀T. &#40;{:vec T}&#41; -&gt; T
+conj       : ∀T. &#40;{:vec T}, x&#41; -&gt; {:vec join&#40;T, type&#40;x&#41;&#41;}
+assoc      : &#40;{:struct fs}, :k, v&#41; -&gt; {:struct &#40;assoc fs :k type&#40;v&#41;&#41;}   ; const key
+vec, mapv  : ... -&gt; {:vec ...}
+range      : &#40;...&#41; -&gt; {:vec :num}
+rand-nth   : ∀T. &#40;{:vec T}&#41; -&gt; T
+map, filter, mapv, filterv, reduce, ...        ; see HOFs
+</code></pre><p>Parametric schemes (the <code>∀T</code>) are where polymorphism actually matters, and they give the element/field propagation for free. **Higher-order functions are just schemes whose parameter is itself a function type**: <code>reduce</code>'s scheme says its function argument is <code>&#40;Acc, Elem&#41; -&gt; Acc</code> applied to the collection's element type, so the closure's element parameter is typed by applying the scheme, replacing the hand-written <code>hof-table</code>.</p><h2 id="hints&#95;as&#95;seeds">Hints as seeds</h2><p><code>&#94;:struct x</code> seeds <code>x : {:struct {}}</code> (a struct, fields unknown) at a unit boundary the inference cannot see across. A future extension could allow a shape hint <code>&#94;{:r :num :g :num :b :num}</code> to seed field types, but once inference is structural this is rarely needed; the hint stays the escape hatch for genuinely dynamic boundaries, exactly as today.</p><h2 id="soundness">Soundness</h2><p>Unchanged in spirit from the current system: a concrete type is assigned only when proven (a literal genuinely has those fields; a fn provably returns that shape), and everything unprovable is <code>:any</code>, which keeps the dynamic guard. A wrong specialization is therefore impossible. The inter-procedural part keeps the closed-world (optimization-mode) assumption already adopted, which is sound under whole-program / source-distribution compilation.</p><h2 id="compilation&#95;modes&#95;and&#95;defaults">Compilation modes and defaults</h2><p>Direct-linking — and the inference and specialization it enables — is the <strong>default for running a program</strong> and stays <strong>off for interactive work</strong>, chosen by the CLI run mode rather than a global opt-in flag:</p><table><thead><tr><th>mode</th><th>linking</th><th>whole-program</th></tr></thead><tbody><tr><td><code>-m</code> / <code>-M NS</code> (program entry)</td><td>direct (default)</td><td><strong>auto</strong> (closed world)</td></tr><tr><td><code>FILE</code> / <code>-f</code> / stdin (<code>-</code>)</td><td>direct (default)</td><td>no (per-namespace)</td></tr><tr><td><code>repl</code>, <code>-e</code>, <code>nrepl-server</code></td><td>indirect / open</td><td>no</td></tr></tbody></table><p>A program run is a closed world — every namespace is required, then the code runs to completion — so it direct-links: user code gets inlining, record shapes, and the inference's specialization. A <code>-m</code> / <code>-M</code> entry is the exact point where all requires are done and <code>-main</code> is about to run, so the whole-program cross-namespace pass (below) runs there automatically. Interactive modes stay open: a REPL, <code>-e</code>, and the nREPL server must let you redefine vars — which direct-linking seals against — so they keep the indirect, live-deref path.</p><p>Env overrides, all winning over the mode default:</p><ul><li><code>JOLT&#95;NO&#95;DIRECT&#95;LINK=1</code> — force the open/indirect path even for a program run  (runtime redefinition, hot-reload, self-modifying code).</li><li><code>JOLT&#95;NO&#95;WHOLE&#95;PROGRAM=1</code> — keep direct-linking but skip the whole-program  pass (per-namespace inference only).</li><li><code>JOLT&#95;DIRECT&#95;LINK=1</code> — force direct-linking on even in an interactive mode.</li><li><code>JOLT&#95;WHOLE&#95;PROGRAM=1</code> — force the whole-program pass on in any direct-linked  mode.</li><li><code>JOLT&#95;NO&#95;SHAPE=1</code> — disable the record/shape representation under direct-linking.</li></ul><p>What direct-linking gives up is what Clojure's <code>:direct-linking</code> and jank's <code>-Odirect-call</code> give up: a direct call embeds its callee, so redefining the callee is not seen by already-compiled callers. Whole-program additionally const-links stable vars (data defs, record types, <code>&#94;:redef</code>), extending the same trade. That is why the interactive modes stay open and the opt-outs exist.</p><h3 id="cross-namespace&#95;inference">Cross-namespace inference</h3><p>Per-namespace inference (a <code>FILE</code> run, or any namespace under <code>JOLT&#95;NO&#95;WHOLE&#95;PROGRAM</code>) types a function's parameters from the call sites it can see <strong>within that namespace</strong>. A function whose record parameter is supplied by a caller in <em>another</em> namespace is left <code>:any</code>, its field reads keep the guard, and the values derived from it widen — so a decomposed program is markedly slower than the same code in one namespace (measured at ~3.7× on the ray tracer split across five namespaces). The information exists in the program; per-namespace compilation just can't see a caller in a not-yet-loaded namespace. Two ways to supply it:</p><ol><li><strong>Whole-program</strong> (auto for <code>-m</code> / <code>-M</code>) runs one closed-world inference   fixpoint over every loaded namespace before <code>-main</code>, typing each parameter   from its call sites wherever they live. Namespaces required later (inside   <code>-main</code>) fall back to per-namespace inference.</li><li><strong>Parameter type hints</strong> (<code>&#94;RecordType</code>, RFC 0004) declare the type directly,   so it also works in the open world — REPL, library code that must be fast for   any caller, and hot-reloading servers — where the world cannot be closed.</li></ol><h2 id="relationship&#95;to&#95;hindley-milner&#95;and&#95;soft&#95;typing">Relationship to Hindley-Milner and soft typing</h2><p>This is HM-shaped with two deliberate departures, which is the textbook definition of <strong>soft typing</strong> (Wright and Cartwright, "A Practical Soft Type System for Scheme", 1997 — HM extended with union types and a dynamic type).</p><p>Taken from HM:</p><ul><li>The <strong>structural type language</strong> (records, vectors, functions as type  constructors). This is the "tree of types".</li><li><strong>Constraint propagation</strong> and <strong>type schemes</strong> for the core library (the  <code>∀T</code> signatures). That parametric polymorphism is exactly what HM provides,  and it is where it matters (generic collection functions like <code>nth</code>,  <code>reduce</code>, <code>map</code>).</li></ul><p>Changed, on purpose:</p><ul><li>Replace "unify or <strong>fail</strong>" with "<strong>join over a lattice whose top is <code>:any</code></strong>".  The inference never rejects a program; an unprovable spot becomes <code>:any</code> and  keeps the runtime guard. This is the "fall back to dynamic when in doubt"  policy made principled.</li><li><strong>Monovariant</strong> for user functions (the inter-procedural fixpoint plus  inlining cover the practical polymorphism); parametric schemes are kept only  for core functions.</li></ul><p>So: HM structural types and constraint propagation and core-fn schemes, solved by lattice join with a dynamic top instead of unification-or-fail. Other AOT inferencers for dynamic languages do the whole-program version of the same thing (RPython's annotator, Crystal's global inference, Shed Skin), all with a union/dynamic fallback.</p><h2 id="implementation&#95;and&#95;migration">Implementation and migration</h2><p>This is a refactor that <strong>simplifies</strong> the current code: it deletes the ad-hoc tag soup and the per-op special cases and replaces them with one recursive type plus a signature table.</p><ol><li>Define the structural type, <code>join</code>, the depth cap, and the predicates   (<code>struct-safe?</code>, <code>field-type</code>, <code>elem-type</code>) in <code>jolt.passes</code>.</li><li>Rewrite <code>infer</code> so each op produces/consumes structural types: literals   build shapes; <code>&#40;:k m&#41;</code> returns the field type; calls consult the signature   table.</li><li>Move the core-fn knowledge into a signature table (subsumes the existing   tables and HOF handling).</li><li>The back end keeps reading the use-site type to specialize (guard drop for   <code>{:struct}</code>, <code>pv-count</code>/<code>pv-nth</code> for <code>{:vec}</code>), now uniformly.</li><li>Keep the inter-procedural fixpoint, recompile, escape gate, and triggering as   is; they propagate structural types.</li></ol><p>The phases land incrementally behind the same optimization-mode gate, each verified against conformance (three modes), the full test gate, and the ray-tracer benchmark, exactly as the current phases were.</p><h2 id="design&#95;problems&#95;and&#95;open&#95;questions">Design problems and open questions</h2><ul><li><strong>Recursion / termination.</strong> Handled by the depth cap (<code>D = 4</code>). Open  question: is a fixed cap better than proper recursive (mu) types? A cap is  simpler and sound; mu-types are more precise but add complexity. Proposed:  start with the cap.</li><li><strong>Compile-time cost.</strong> Structural types are larger and the fixpoint does more  work. Mitigations: the depth cap bounds type size; inference runs only in  optimization mode; the fixpoint iteration count stays bounded. Needs  measurement on a large namespace (clojure.core itself) to confirm acceptable.</li><li><strong>Heterogeneous data.</strong> <code>&#91;1 &quot;a&quot;&#93;</code> joins to <code>{:vec :any}</code>; a map whose field  varies across branches joins that field to <code>:any</code>. Correct degradation, not a  problem, but worth stating.</li><li><strong>Non-constant keys.</strong> <code>&#40;assoc m k v&#41;</code> / <code>&#40;:k m&#41;</code> with a non-constant <code>k</code>  cannot track a specific field; the result degrades to <code>{:struct {}}</code> or  <code>:phm</code> as appropriate. Field tracking only applies to constant scalar keys.</li><li><strong><code>false</code>/<code>nil</code> field values.</strong> A map literal is <code>{:struct ...}</code> only when  every value is provably non-nil and non-false (the back end stores such maps  as a phm). The <code>:nonnil</code> tag (or a per-type "provably truthy" predicate) is  what the literal rule needs; this must be carried correctly or struct  inference is unsound.</li><li><strong>Function-type precision.</strong> <code>{:fn ...}</code> is optional. The current flat  param/return inference is enough for the collection-specialization goal;  full function types matter more for the type-checker (RFC 0006) and could be  deferred.</li><li><strong>Closed-world boundary.</strong> Inherited from the inter-procedural pass:  param/return inference assumes the compiled unit is the whole program.  Documented there; unchanged.</li></ul>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>

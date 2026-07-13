@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>RFC 0007: Compilation Modes &amp; Binary Output — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Supported Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (jolt.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>RFC 0007: Compilation Modes &amp; Binary Output</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#rfc_0007_—_compilation_modes_and_binary_output">RFC 0007 — Compilation modes and binary output</a></li><li><a href="#summary">Summary</a></li><li><a href="#motivation">Motivation</a></li><li><a href="#the_three_modes">The three modes</a></li><li><a href="#cli_surface">CLI surface</a></li><li><a href="#emission_pipeline">Emission pipeline</a></li><li><a href="#turning_the_passes_on">Turning the passes on</a></li><li><a href="#staging">Staging</a></li><li><a href="#open_questions">Open questions</a></li><li><a href="#prior_art_in_this_repo">Prior art in this repo</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <h1 id="rfc&#95;0007&#95;—&#95;compilation&#95;modes&#95;and&#95;binary&#95;output">RFC 0007 — Compilation modes and binary output</h1><ul><li><strong>Status</strong>: Draft. No code yet; this fixes the design before Phase 4 work  (beads <code>jolt-cf1q.5</code>) starts.</li><li><strong>Champions</strong>: jolt maintainers</li><li><strong>Created</strong>: 2026-06-22</li></ul><h2 id="summary">Summary</h2><p>Give jolt a <code>jolt build</code> command that emits a standalone executable, and a three-mode model that trades dynamism for speed:</p><ul><li><strong>dev</strong> — open/indirect linking, redefinition works, no perf focus. What  <code>repl</code>/<code>-e</code>/<code>nrepl</code> already are.</li><li><strong>release</strong> (default for a built program) — direct-linked, closed-world,  per-namespace inference. Fast, still a recognizable Clojure runtime.</li><li><strong>optimized</strong> — whole-program inference, <code>fl&#42;</code>/<code>fx&#42;</code> typed emission, Chez  whole-program optimization. Fastest, sacrifices dynamic redefinition.</li></ul><p>All three already have their machinery in the tree — the inference and inline passes were ported into <code>jolt-core/jolt/passes/</code>. What is missing is (a) a code path that writes emitted Scheme to disk and AOT-compiles it instead of eval'ing it in process, and (b) a switch that turns the dormant passes on. This RFC specifies both.</p><h2 id="motivation">Motivation</h2><p>The Janet host could produce binaries (<code>jolt uberscript</code> with dead-code elimination, <code>jolt cgen-build</code> for a single native binary). The Chez rehost dropped that machinery with the Janet host — it was Janet-specific (IR→C made sense when the host was Janet). On Chez the natural target is Chez's own native compiler, so the old emitters were deleted rather than re-pointed.</p><p>The result today: <code>bin/joltc</code> only ever loads the checked-in seed and compile-evals in process. <code>jolt.main/-main</code> dispatches `run / -M / -A / repl / nrepl / task` and nothing else. There is no way to ship an app as a binary, and the optimization passes are inert — <code>jolt.host/inline-enabled?</code> is a stub returning <code>#f</code> (<code>host/chez/host-contract.ss:283</code>), so every call links indirectly and nothing inlines. Jolt on Chez runs only in what this RFC calls dev mode.</p><p>The passes themselves survived intact:</p><ul><li><code>jolt/passes/types.clj</code> — structural collection-type inference (RFC 0005) +  success-type checking (RFC 0006).</li><li><code>jolt/passes/inline.clj</code> — inline + flatten-lets + scalar-replace, already  gated "direct-link only".</li><li><code>jolt/passes/fold.clj</code> — const-fold, including predicate folding.</li></ul><p>So this is not a port of lost code. It is wiring: a build front-end, a file-emitting back-end path, and a mode switch over passes that already exist.</p><h2 id="the&#95;three&#95;modes">The three modes</h2><table><thead><tr><th>Mode</th><th>Linking</th><th>Inference</th><th>Redefinition</th><th>Driver</th></tr></thead><tbody><tr><td><strong>dev</strong></td><td>indirect (var-deref per call)</td><td>off</td><td>yes</td><td><code>repl</code>, <code>-e</code>, <code>nrepl</code>, <code>run</code> of a file by default</td></tr><tr><td><strong>release</strong></td><td>direct, closed-world</td><td>per-namespace</td><td>no (closed world)</td><td><code>jolt build</code> default</td></tr><tr><td><strong>optimized</strong></td><td>direct + whole-program</td><td>whole-program fixpoint, <code>fl&#42;</code>/<code>fx&#42;</code></td><td>no</td><td><code>jolt build --opt</code> / <code>-M</code>-style entry</td></tr></tbody></table><p>The modes are points on one axis (how much the back end may assume is fixed), not three code paths. Each mode is a setting of two independent knobs the passes already understand:</p><ul><li><strong>direct-link?</strong> — may a call to a var compile to a direct procedure  reference instead of a <code>var-deref</code>? Enables inlining and call-site folding.  Opt-out is per-target: a <code>&#94;:redef</code> or <code>&#94;:dynamic</code> var always links indirect.</li><li><strong>whole-program?</strong> — does inference see the whole reachable program at once  (closed world), so a record param's callers in other namespaces are visible  and its field reads specialize? Without it, inference is per-namespace and a  cross-ns param de-specializes to <code>:any</code> (the cross-ns penalty documented in  the <code>cross-ns-param-penalty</code> memory; declared <code>&#94;RecordType</code> hints are the  open-world escape hatch).<pre><code>dev:        direct-link? = false   whole-program? = false
+release:    direct-link? = true    whole-program? = false
+optimized:  direct-link? = true    whole-program? = true
+</code></pre></li></ul><p><code>fl&#42;</code>/<code>fx&#42;</code> typed emission (unchecked flonum/fixnum Scheme ops) rides on optimized: only whole-program inference proves the types that make dropping the numeric-tower dispatch sound. Release keeps the tower.</p><h2 id="cli&#95;surface">CLI surface</h2><pre><code>jolt build &#91;-m NS | FILE&#93; &#91;-o OUT&#93; &#91;--opt&#93; &#91;--dev&#93;
+</code></pre><ul><li>Resolves <code>deps.edn</code> exactly as <code>run</code> does (reuse <code>jolt.deps</code>).</li><li>Default mode is <strong>release</strong>. <code>--opt</code> selects optimized; <code>--dev</code> builds an  unoptimized binary (useful to ship a debuggable build, not for the REPL).</li><li><code>-o</code> names the output (default the entry ns / file stem).</li><li>Output is a single executable: a Chez boot file plus the compiled program,  launched by a thin wrapper, or a fully linked image where the platform allows.  App libraries are baked in — no source roots needed at runtime.</li></ul><p>Env opt-outs for the build (mirrors the Janet knobs, now keyed off the mode rather than the run): <code>JOLT&#95;NO&#95;DIRECT&#95;LINK</code> forces open linking even in a build, <code>JOLT&#95;NO&#95;WHOLE&#95;PROGRAM</code> keeps direct-link but per-namespace, <code>JOLT&#95;WHOLE&#95;PROGRAM=1</code> forces whole-program. These already name the two knobs above.</p><h2 id="emission&#95;pipeline">Emission pipeline</h2><p>The in-process spine today (<code>host/chez/compile-eval.ss</code>) is, per form:</p><pre><code>source → read → analyze &#40;→ IR&#41; → emit &#40;→ Scheme string&#41; → &#40;eval &#40;read …&#41;&#41;
+</code></pre><p><code>jolt build</code> keeps everything up to <code>emit</code> and replaces the per-form <code>eval</code> with accumulate-then-compile:</p><ol><li><strong>Assemble the program.</strong> Starting from the entry ns's <code>-main</code>, load the   transitive <code>require</code> graph (the loader already does this) and collect every   reachable top-level form, in dependency order, with its compile namespace.</li><li><strong>Dead-code elimination.</strong> Re-target the uberscript DCE idea: compute   reachability from <code>-main</code> plus non-prunable forms, drop dead <code>defn</code>/<code>defn-</code>.   Bail to keep-all on <code>resolve</code>/<code>ns-resolve</code>/<code>requiring-resolve</code>/<code>find-var</code>/   <code>intern</code>/<code>eval</code>/<code>load-string</code> (anything that defeats static reachability);   keep and scan <code>defmethod</code>/<code>defrecord</code>/<code>extend</code> bodies so dispatch targets   stay live.</li><li><strong>Emit to a file.</strong> Run <code>analyze → emit</code> for each surviving form under the   mode's knobs, concatenating the Scheme strings into one program source (the   core overlay prelude first, exactly as the seed image is built today).</li><li><strong>Compile.</strong> Feed that source to Chez <code>compile-program</code> (release) or   <code>compile-whole-program</code> (optimized, which also lets Chez cross-module   inline), producing a compiled object, then link a boot file / wrapper into   the final executable.</li></ol><p>Steps 3–4 are the only genuinely new back-end code. Step 2 is a re-port of a deleted pass. Steps before them already run on every <code>joltc</code> invocation.</p><h2 id="turning&#95;the&#95;passes&#95;on">Turning the passes on</h2><p><code>inline-enabled?</code> is the existing gate. Today <code>host-contract.ss</code> hardwires it to <code>#f</code>. Under this RFC the build sets it (and a parallel <code>whole-program?</code> flag) from the chosen mode before compiling, so:</p><ul><li>release: <code>inline-enabled?</code> → true, whole-program off. Per-ns inference and  inlining light up; <code>fl&#42;</code>/<code>fx&#42;</code> stays off.</li><li>optimized: both on; the types pass runs its whole-program fixpoint and the  back end may emit unchecked numeric ops where a flonum/fixnum is proven.</li></ul><p>No new pass is required to reach release — it is the ported passes, ungated.</p><h2 id="staging">Staging</h2><ol><li><strong>Spike (de-risk Chez AOT).</strong> Emit a trivial whole program to disk and prove   <code>compile-program</code> + boot/static link yields a standalone binary that runs.   This is the only real unknown.</li><li><strong><code>jolt build</code> release.</strong> Front-end + file-emitting back-end path + flip   <code>inline-enabled?</code> from the mode. Gate against the bench/corpus suites; binary   output must pass the corpus a <code>run</code> passes.</li><li><strong>DCE.</strong> Re-port the reachability pass; gate with a test like the old   <code>uberscript-dce</code> case.</li><li><strong>Optimized.</strong> Whole-program flag, <code>compile-whole-program</code>, <code>fl&#42;</code>/<code>fx&#42;</code>   emission. Gate on the bench suite (ray tracer, binary-trees) for size and   speed vs the spike baseline.</li></ol><p>Each stage is TDD against the existing gates (<code>make test</code>, <code>make corpus</code>, the <code>bench/</code> programs). Modes land behind the build command, so dev — the only mode today — is unaffected until a stage proves out.</p><h2 id="open&#95;questions">Open questions</h2><ul><li><strong>Static vs. boot-file linking.</strong> A fully static Chez image is the smallest,  most portable artifact but the most work to link; a boot file plus a stub  launcher is the easy first cut. Spike decides which step 1 targets.</li><li><strong>FFI in a built binary.</strong> <code>jolt.ffi</code> loads native libraries at runtime; a  closed-world build still needs that to work. The build must bake the FFI  Clojure side and keep dynamic <code>dlopen</code> at run time.</li><li><strong>Macro and <code>eval</code> at runtime.</strong> Release/optimized are closed-world, but an  app that calls <code>eval</code>/<code>load-string</code> needs the compiler present. Either ship  the compiler image in the binary (larger) or reject those builds (the DCE  bail-out already detects the calls).</li></ul><h2 id="prior&#95;art&#95;in&#95;this&#95;repo">Prior art in this repo</h2><p>The optimization design these modes turn on is RFC 0004 (type hints), RFC 0005 (structural inference), RFC 0006 (success checking). The linking model — direct linking as a per-unit property, <code>&#94;:redef</code>/<code>&#94;:dynamic</code> as the only opt-out — and the cross-ns specialization penalty are recorded in beads memories (<code>jolt-linking-model</code>, <code>cross-ns-param-penalty</code>). Phase 4 (<code>jolt-cf1q.5</code>) is the tracking issue.</p>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>

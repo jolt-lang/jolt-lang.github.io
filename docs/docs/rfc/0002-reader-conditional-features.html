@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>RFC 0002: Reader Conditional Features — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Supported Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (jolt.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>RFC 0002: Reader Conditional Features</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#rfc_0002_—_reader-conditional_feature_set">RFC 0002 — Reader-Conditional Feature Set</a></li><li><a href="#summary">Summary</a></li><li><a href="#background">Background</a></li><li><a href="#decision_and_evidence">Decision and evidence</a></li><li><a href="#specification_(normative,_mirrored_in_spec_§2.3_s18)">Specification (normative, mirrored in spec §2.3 S18)</a></li><li><a href="#consequences">Consequences</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <h1 id="rfc&#95;0002&#95;—&#95;reader-conditional&#95;feature&#95;set">RFC 0002 — Reader-Conditional Feature Set</h1><ul><li><strong>Status</strong>: Superseded (2026-06-25) — jolt now includes <code>:clj</code> in the default  set; see the note below.</li><li><strong>Created</strong>: 2026-06-10</li><li><strong>Spec</strong>: <code>docs/spec/02-reader.md</code> §2.3 S18<blockquote><p></li></ul> <strong>Update (2026-06-25).</strong> The default set is now <strong><code>#{:jolt :clj :default}</code></strong> —<br /> <code>:clj</code> is satisfied by default. The clj ecosystem's <code>.cljc</code> libraries gate  their host code behind <code>#?&#40;:clj …&#41;</code> with no <code>:jolt</code>/<code>:default</code> fallback, so  the conformance libraries (core.cache, core.match, tick, malli, …) only load  with <code>:clj</code> present; requiring an opt-in for each was friction with no payoff  once jolt's <code>clojure.lang.&#42;</code>/<code>java.&#42;</code> emulation was broad enough to run those  <code>:clj</code> branches. Matching is still by <strong>clause order</strong>, so a library can place  a <code>:jolt</code> branch first to override. There is no <code>JOLT&#95;FEATURES</code> environment  variable; a loading context overrides the set at runtime with  <code>reader-features-set!</code>. The rest of this RFC is the original (reverted)  design. </p></blockquote><h2 id="summary">Summary</h2><p>jolt's reader-conditional feature set is <strong><code>#{:jolt :default}</code></strong>, matched in <strong>clause order</strong> (the first clause whose key the platform satisfies wins). A loading context may opt a foreign, clj-targeted library into <code>:clj</code> compatibility via <code>reader-features-set!</code> (or process-wide via the <code>JOLT&#95;FEATURES</code> environment variable). jolt does <strong>not</strong> satisfy <code>:clj</code> by default.</p><h2 id="background">Background</h2><p><code>#?&#40;:clj … :cljs … :default …&#41;</code> selects a branch by platform feature at read time. Until now jolt satisfied <code>:clj</code> — a compatibility shortcut inheriting the JVM branches of <code>.cljc</code> files, on the theory that the <code>:clj</code> branch is usually the "main" implementation. Each dialect chooses its own policy: ClojureScript satisfies only <code>:cljs</code>; jank uses <code>:jank</code>; babashka includes <code>:clj</code> because it genuinely is JVM-Clojure-compatible to a deep degree.</p><p>Two defects forced the decision:</p><ol><li>jolt is <em>not</em> JVM-compatible where it matters for <code>:clj</code> branches: they   contain interop (<code>java.util.&#42;</code>, <code>deftype</code> over JVM classes) and encode   JVM-specific <em>expectations</em> in tests (e.g. <code>parse-uuid</code>'s reference   permissiveness), both of which jolt fails.</li><li>The old implementation also matched by <strong>key priority</strong> (<code>:clj</code> first,   then <code>:default</code>) rather than clause order — <code>#?&#40;:default 5 :clj 6&#41;</code> read   as <code>6</code>, diverging from Clojure on all platforms.</li></ol><h2 id="decision&#95;and&#95;evidence">Decision and evidence</h2><p>Measured A/B over the cross-dialect clojure-test-suite (identical tree, 2026-06-10):</p><table><thead><tr><th>Feature set</th><th>Assertions reached</th><th>Pass</th><th>Fail</th><th>Error</th><th>Clean files</th></tr></thead><tbody><tr><td><code>clj, default</code> (old)</td><td>4967</td><td>4324</td><td>524</td><td>119</td><td>78</td></tr><tr><td><code>jolt, default</code> (new)</td><td><strong>5069</strong></td><td><strong>4470</strong></td><td><strong>518</strong></td><td><strong>81</strong></td><td><strong>86</strong></td></tr></tbody></table><p>The portable convention reads <em>more</em> of the suite (<code>:default</code> branches were being shadowed by <code>:clj</code> ones jolt can't satisfy) and improves every metric: +146 passes, −38 errors, +8 clean files. The <code>:clj</code> shortcut was a net liability, not a compatibility win.</p><p>The opposing case — loading real-world clj-targeted libraries — is real: SCI's <code>.cljc</code> sources select their implementation via <code>#?&#40;:clj …&#41;</code>/<code>:cljs</code> with no <code>:jolt</code> branches, and fail to load under the portable set. That is a property of the <strong>loading context</strong>, not of the platform: the resolution is per-context opt-in, exactly how the SCI bootstrap now loads (<code>&#40;reader-features-set! &#91;&quot;jolt&quot; &quot;clj&quot; &quot;default&quot;&#93;&#41;</code>).</p><h2 id="specification&#95;(normative,&#95;mirrored&#95;in&#95;spec&#95;§2.3&#95;s18)">Specification (normative, mirrored in spec §2.3 S18)</h2><ol><li>The platform feature set is implementation-defined and MUST be   documented. jolt's is <code>#{:jolt :default}</code>.</li><li>Matching MUST be by clause order: the first clause whose key is in the   feature set wins. <code>:default</code> matches on every platform.   <code>#?&#40;:default 5 :clj 6&#41;</code> is <code>5</code> everywhere.</li><li>An unmatched conditional reads as nothing (no form); an unmatched   <code>#?@&#40;…&#41;</code> splices nothing.</li><li>Implementations SHOULD provide a per-loading-context override so foreign   libraries written for other dialects can be read under a compatibility   set; using it is a deliberate, scoped decision (jolt:   <code>reader-features-set!</code> / <code>JOLT&#95;FEATURES</code>).</li></ol><h2 id="consequences">Consequences</h2><ul><li>Suite baselines re-measured and raised: <code>baseline-pass</code> 4324 → 4470,  <code>baseline-clean-files</code> 78 → 86.</li><li>Reader tests assert the portable set + clause-order semantics, plus one  opt-in round-trip through <code>reader-features-set!</code>.</li><li>Loading clj-ecosystem libraries via deps requires deciding their feature  set; the deps loader currently inherits the process default — a future  refinement is per-dependency feature configuration (filed with the deps  work).</li><li><code>.cljc</code> authors targeting jolt can write <code>:jolt</code> branches and rely on  <code>:default</code> fallbacks.</li></ul>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>

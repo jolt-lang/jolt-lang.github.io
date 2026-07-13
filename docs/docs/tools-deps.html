@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>deps.edn Internals — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Supported Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (jolt.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li class="selected">
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>deps.edn Internals</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#deps.edn_support_—_design_notes">deps.edn support — design notes</a></li><li><a href="#how_resolution_works">How resolution works</a></li><li><a href="#how_the_cli_ties_it_together">How the CLI ties it together</a></li><li><a href="#native_libraries">Native libraries</a><ol><li><a href="#static_vs_dynamic_linking">Static vs dynamic linking</a></li></ol></li><li><a href="#standalone_binaries">Standalone binaries</a></li><li><a href="#tree-shaking">Tree-shaking</a></li><li><a href="#limitations">Limitations</a></li><li><a href="#stack_traces">Stack traces</a></li><li><a href="#conformance">Conformance</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <h1 id="deps.edn&#95;support&#95;—&#95;design&#95;notes">deps.edn support — design notes</h1><p>How Jolt loads pure-Clojure libraries from a <code>deps.edn</code>, and why it's built the way it is. For how to <em>use</em> it, see <a href='/docs/building-and-deps.html'>building-and-deps.md</a>.</p><p>Scope, decided up front:</p><ul><li><strong>git + local deps only</strong> — no Maven/<code>&#126;/.m2</code> resolution.</li><li><strong>pure <code>clj</code>/<code>cljc</code></strong> — anything needing the JVM won't load or run; expected.</li><li><strong>no classpath abstraction</strong> — <code>require</code> just needs to find a dep's namespaces;  "the classpath" is an ordered list of source directories.</li><li><strong>own resolver, own reader</strong> — <code>deps.edn</code> is read by jolt's own reader, and git  fetch/cache is a thin shell-out to <code>git</code>; no external package manager.</li><li><strong>deps-agnostic runtime core</strong> — resolution is a CLI front-end concern, not a  runtime one. The runtime knows nothing about <code>deps.edn</code>; it only consumes a  list of source roots. The CLI resolves a <code>deps.edn</code> into those roots before  running.</li></ul><h2 id="how&#95;resolution&#95;works">How resolution works</h2><p><code>jolt.deps</code> (<code>jolt-core/jolt/deps.clj</code>) reads <code>deps.edn</code> (jolt's own reader parses the EDN), then walks <code>:deps</code>:</p><ul><li><code>:git/url</code> + <code>:git/sha</code> (+ optional <code>:deps/root</code>) → clone the sha into the git  cache and contribute the checkout (or its <code>:deps/root</code> subdir);</li><li><code>:local/root</code> → the path as-is;</li><li><code>:mvn/&#42;</code> → skipped with a warning;</li><li>anything else → ignored.</li></ul><p>git resolution shells out to <code>git</code> through <code>jolt.host/sh</code> — <code>git init</code> + remote add + fetch + reset at the requested sha. Clones land in a global, sha-immutable cache (<code>$JOLT&#95;GITLIBS</code>, else <code>&#126;/.jolt/gitlibs</code>) shared across projects, the <code>tools.gitlibs</code> <code>&#126;/.gitlibs</code> model.</p><p>Each resolved dependency contributes its own <code>:paths</code> (default <code>&#91;&quot;src&quot;&#93;</code>) as source roots; the walk is <strong>breadth-first</strong> so every top-level coordinate registers before any transitive one — a top-level pin always wins, matching tools.deps. The result is a de-duplicated, ordered list of directories.</p><p>Two tools.deps features are mirrored in reduced form. <strong>Aliases</strong>: <code>:aliases</code> entries supply <code>:extra-paths</code>/<code>:extra-deps</code> (accumulate across the aliases selected with <code>-A:a:b</code>) and <code>:main-opts</code> (last-wins, run with <code>-M:alias</code>). <strong>Tasks</strong>: the honest subset of babashka's — a string task is a shell command, a map task is <code>{:main-opts &#91;…&#93;}</code>; bare Clojure expressions aren't a separate task form.</p><h2 id="how&#95;the&#95;cli&#95;ties&#95;it&#95;together">How the CLI ties it together</h2><p><code>jolt.main</code> (<code>jolt-core/jolt/main.clj</code>) is the CLI dispatch. Driven by <code>cli.ss</code>, it resolves the project (<code>jolt.deps/resolve-project</code>), prepends the resolved roots, and de-sugars the argv into a run:</p><ul><li><code>run -m NS args</code> → load <code>NS</code>, call its <code>-main</code>;</li><li><code>run FILE</code> → load the file;</li><li><code>-M:alias</code> → run the alias's <code>:main-opts</code>;</li><li><code>-A:alias</code> → add the alias's paths/deps, then run the rest;</li><li><code>repl</code> → a line REPL;</li><li><code>path</code> → print the resolved roots;</li><li><code>build -m NS &#91;-o OUT&#93; &#91;--opt|--dev&#93;</code> → AOT-compile the app into a standalone binary;</li><li><code>&lt;task&gt;</code> → run a <code>deps.edn</code> <code>:tasks</code> entry.</li></ul><p>The resolver lives in the overlay alongside the runtime, but the runtime's only dependency interface is the list of source roots it's handed.</p><h2 id="native&#95;libraries">Native libraries</h2><p>A library that binds C declares the shared objects it needs under <code>:jolt/native</code>, so <code>jolt.main</code> loads them before the namespace is required and its <code>foreign-fn</code> bindings resolve. Each entry is a map — `{:name "sqlite3" :darwin ["libsqlite3.0.dylib" …] :linux ["libsqlite3.so.0" …]}` — with optional <code>:optional true</code> (absence is fine, a feature-gated dep) and <code>:process true</code> (use the running process's own symbols, e.g. libc sockets, no external file). A project inherits its dependencies' <code>:jolt/native</code>.</p><h3 id="static&#95;vs&#95;dynamic&#95;linking">Static vs dynamic linking</h3><p>When you <code>joltc build</code>, a native lib is <strong>statically linked</strong> into the binary by default if the spec carries a <code>:static</code> archive — so the executable calls the C code with no shared object present at runtime. Add <code>:static</code> alongside the runtime candidates:</p><pre><code class="clojure">{:name &quot;sqlite3&quot;
+ :static {:archive &quot;/opt/homebrew/lib/libsqlite3.a&quot;}  ; or {:lib &quot;sqlite3&quot; :libdir &quot;/usr/lib&quot;}
+ :darwin &#91;&quot;libsqlite3.0.dylib&quot;&#93;   ; still used by `run`/`repl` and by --dynamic
+ :linux  &#91;&quot;libsqlite3.so.0&quot;&#93;}
+</code></pre><p><code>:static {:archive PATH}</code> force-loads the whole <code>.a</code> and is the reliable cross-platform form. <code>:static {:lib NAME :libdir DIR}</code> links <code>-lNAME</code> (with a <code>-Bstatic</code> preference on Linux); on macOS, which has no <code>-Bstatic</code>, prefer the archive form. A spec with no <code>:static</code> (or a build passed <code>--dynamic</code>, or <code>:jolt/build {:dynamic-natives true}</code>) keeps the old behavior — the shared object is loaded at startup via <code>load-shared-object</code>.</p><p>Static linking needs a C compiler (<code>cc</code>) on <code>PATH</code> at build time (plus the C libs the Chez kernel links — lz4, zlib, ncurses). The distributed <code>joltc</code> bundles the Chez kernel, so it re-links the launcher stub with the archive baked in — no external Chez, just <code>cc</code>. Without a <code>cc</code>, a <code>:static</code> lib fails with a message pointing you to install one or pass <code>--dynamic</code>. Keep a <code>:darwin</code>/<code>:linux</code> candidate on any <code>:static</code> spec so <code>run</code>/<code>repl</code> (which have no static binary) can still load it.</p><h2 id="standalone&#95;binaries">Standalone binaries</h2><p><code>joltc build -m NS</code> compiles the app and every library into one executable (the runtime + compiler are baked in). Resolved <code>:jolt/native</code> libs are statically linked in (or loaded at startup — see <a href='#native-libraries'>Native libraries</a>), so an FFI app — sockets, SQLite — runs with no jolt or Chez on the path.</p><p>Output goes under the project's <code>target/</code>, cargo-style: <code>target/release/&lt;project&gt;</code> by default and with <code>--opt</code>, <code>target/debug/&lt;project&gt;</code> with <code>--dev</code> (the <code>&lt;name&gt;.build</code> scratch dir sits beside it). <code>-o PATH</code> overrides — absolute as-is, relative against the project dir. Paths resolve against the project (<code>JOLT&#95;PWD</code>), not the CLI's cwd, since <code>bin/joltc</code> runs from the jolt repo.</p><p><code>:jolt/build {:embed &#91;&quot;resources&quot; …&#93;}</code> bakes those directories' files into the binary; <code>io/resource</code> serves them from the image with no files on disk. Resources not embedded resolve at runtime against <code>JOLT&#95;PWD</code> (or the cwd), so the ship-the-binary-with-its-<code>resources/</code>-dir model also works. Files read through <code>io/file</code> (e.g. a <code>config.edn</code> a config library loads) stay external by design — edit them without rebuilding.</p><p>A standalone build needs Chez's kernel dev files (<code>libkernel.a</code>, <code>scheme.h</code>) and a C compiler; <code>JOLT&#95;CHEZ&#95;CSV</code> overrides the auto-detected <code>csv&lt;ver&gt;/&lt;machine&gt;</code> dir. <code>--opt</code> turns on the inference/flatten/scalar-replace passes; the default <code>release</code> mode is const-fold only.</p><p><code>--direct-link</code> (or <code>:jolt/build {:direct-link true}</code>) opts into a closed world: a call between the app's own functions binds to its target directly, skipping the var lookup and generic dispatch a runtime call pays — at the cost of runtime redefinition of those vars and <code>eval</code>/<code>load-string</code>. It's off by default, so ordinary builds (including <code>release</code> and <code>--opt</code>) stay dynamically linked. A var marked <code>&#94;:redef</code> or <code>&#94;:dynamic</code> stays indirect even under <code>--direct-link</code>, and calls into <code>clojure.core</code> stay indirect in every mode.</p><h2 id="tree-shaking">Tree-shaking</h2><p><code>--tree-shake</code> (or <code>:jolt/build {:tree-shake true}</code>) ships only the code reachable from <code>-main</code>. The build constructs one call graph spanning the app, every resolved library, and the <code>clojure.core</code>/stdlib prelude, then keeps <code>-main</code>, every side-effecting top-level form (so a <code>defmethod</code>/<code>defrecord</code>/protocol registration keeps its targets live), and everything reachable from those — dropping the rest. A reference counts whether it's a call or a value (<code>#'x</code>, a fn passed to <code>map</code>, a fn stored in a map): any reference keeps its target live, so nothing reachable is ever dropped. An app that never compiles at runtime (no reachable <code>eval</code>/<code>load-string</code>) also drops the analyzer and back end from the binary. Typical savings are 1–2 MB; behaviour is unchanged.</p><p>**It bails — keeps everything — when reachable code resolves a var by name at runtime** (<code>eval</code>, <code>resolve</code>, <code>ns-resolve</code>, <code>requiring-resolve</code>, <code>find-var</code>, <code>intern</code>, <code>load-string</code>, <code>load-file</code>). A static call graph can't follow a runtime <code>resolve</code>, so dropping anything would be unsound. The build prints which definitions forced the bail:</p><pre><code>jolt build: tree-shake skipped &#40;reachable code resolves vars at runtime&#41;:
+  selmer.filters/generate-json -&gt; clojure.core/resolve
+  clojure.tools.logging/call-str -&gt; clojure.core/ns-resolve
+</code></pre><p>These are almost always libraries, not your code — <code>resolve</code> is how mature Clojure libraries implement plugin systems and optional integrations (a logging backend chosen at runtime, a template filter that lazily loads an optional dependency). On the JVM that costs nothing; in a closed-world binary it defeats reachability. To make an app tree-shakeable, keep runtime resolution off the <em>reachable</em> path: a backend that's fixed on jolt can be referenced directly rather than resolved (the jolt <code>tools.logging</code> port dropped the JVM's dynamic factory selection for exactly this), and an optional integration you don't use can be dropped or hard-wired. Unreached <code>resolve</code>-using code is shaken away like anything else — only resolution on the live path triggers the bail.</p><p>The closed-world soundness model follows Stalin's dead-code analysis: in a program with no <code>eval</code>, a definition is live iff it is referenced (called or as a value) from a root, transitively.</p><h2 id="limitations">Limitations</h2><ul><li>Pure <code>clj</code>/<code>cljc</code> only — JVM interop, host classes, and unimplemented  <code>clojure.core</code> corners fail. Coverage is per-function: a namespace can load with  most functions working and a few not.</li><li>Source only; compiled <code>.class</code> files in a git dep are ignored.</li><li>git <code>:git/sha</code> must be a full SHA (<code>git fetch</code> can't resolve a short one).</li></ul><h2 id="stack&#95;traces">Stack traces</h2><p>An uncaught error prints the message, the top-level source location, and — when frames are available — a <code>trace:</code> backtrace. In an AOT <code>jolt build --direct-link</code> binary the frames map to <code>ns/name &#40;file:line&#41;</code>; on the runtime eval path they are the surviving fn names. Tail-call optimization erases tail-called frames, so the default trace shows only the non-tail spine.</p><p>A fuller <strong>tail-frame history</strong> recovers the frames TCO erases: each compiled fn records itself on entry into a bounded ring-of-rings buffer, so the trace shows TCO-elided frames (including the immediate error site) while a tight tail loop stays bounded and its non-tail caller context is preserved.</p><p>It is <strong>on by default in REPL-driven development</strong> — a <code>repl</code> or nREPL session turns it on, so an error in code you evaluate or reload shows a tail-frame trace with no setup. Because the recording is baked in at compile time, only code compiled while a session is live is traced; reload a namespace to trace code that was already loaded (e.g. an app's initial <code>-M:run</code> load before its nREPL started).</p><p>Elsewhere it is off (a small per-call cost, and never emitted into a <code>jolt build</code> binary). Override with the environment: <code>JOLT&#95;TRACE=1</code> forces it on for a whole run — including a plain <code>-M:run</code>, so the app's own load is traced — and <code>JOLT&#95;TRACE=0</code> forces it off, even in a REPL/nREPL session.</p><h2 id="conformance">Conformance</h2><p>The known-working libraries (see <a href='/docs/libraries.html'>libraries.md</a>) and the <a href='https://github.com/jolt-lang/examples'>examples</a> exercise real pure-<code>cljc</code> git libraries end to end — resolving them from git, loading their namespaces, and running sample calls. A library fails when it relies on something Jolt doesn't provide — JVM interop, or a regex feature like Unicode property classes (<code>\p{…}</code>).</p>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>

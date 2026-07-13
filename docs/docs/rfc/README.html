@@ -6,7 +6,7 @@
     <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
     <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
     <meta name="canonical" content="https://jolt-lang.github.io">
-    <title>Differences from Clojure — Jolt</title>
+    <title>RFCs (Design Notes) — Jolt</title>
     <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
     <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
     <link href="/css/screen.css" rel="stylesheet" type="text/css" />
@@ -42,7 +42,7 @@
         <a href="/docs/getting-started.html">Getting Started</a>
       </li>
       
-      <li class="selected">
+      <li >
         <a href="/docs/differences.html">Differences from Clojure</a>
       </li>
       
@@ -113,7 +113,7 @@
         <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
       </li>
       
-      <li >
+      <li class="selected">
         <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
       </li>
       
@@ -122,15 +122,15 @@
   </aside>
 
   <main class="docs-main">
-    <h1>Differences from Clojure</h1>
+    <h1>RFCs (Design Notes)</h1>
     
     <nav class="toc">
       <h2>Contents</h2>
-      <ol class="contents"><li><a href="#no_jvm,_no_java_interop">No JVM, no Java interop</a></li><li><a href="#no_bigdecimal">No BigDecimal</a></li><li><a href="#no_software_transactional_memory">No software transactional memory</a></li><li><a href="#regex_engine">Regex engine</a></li><li><a href="#coverage">Coverage</a></li></ol>
+      <ol class="contents"><li><a href="#rfcs">RFCs</a></li></ol>
     </nav>
     
     <div id="content">
-      <p>Jolt targets Clojure semantics but runs on Chez Scheme, not the JVM. Most portable Clojure runs unchanged: persistent collections (32-way-trie vectors, HAMT maps/sets), the numeric tower (exact integers, bignums, ratios, doubles), lazy and infinite sequences, transducers, destructuring, multimethods with hierarchies, protocols and records, metadata, namespaces, atoms, <code>future</code>/<code>promise</code>/<code>agent</code>/<code>pmap</code>, <code>clojure.core.async</code>, runtime <code>eval</code>/<code>load-string</code>/<code>defmacro</code>, and the full reader all behave as on the JVM. <code>=</code> is category-aware (<code>&#40;= 3 3.0&#41;</code> ⇒ <code>false</code>) and <code>==</code> is value-equality, exactly as in Clojure.</p><p>The sections below are the genuine divergences — where the absence of the JVM actually shows through.</p><h2 id="no&#95;jvm,&#95;no&#95;java&#95;interop">No JVM, no Java interop</h2><p>This is the difference that matters. There is no JVM underneath, so there is no general Java interop, no reflection, and no <code>gen-class</code>/<code>proxy</code>. Interop syntax (<code>Class.</code>, <code>Class/staticMethod</code>, <code>.method</code>) resolves only against a shimmed subset of the <code>java.&#42;</code> standard library; a class token is a name, not a loaded class. See <a href='/docs/host-interop.html'>Host Interop</a> for what's covered and how to register your own host classes.</p><p>To call C libraries directly — the way the SQLite/Postgres and HTTP-client libraries work — Jolt has a foreign-function interface. See <a href='/docs/native-interop.html'>Native Interop</a>.</p><h2 id="no&#95;bigdecimal">No BigDecimal</h2><p>The numeric tower otherwise matches the JVM, but there is no <code>BigDecimal</code>: <code>decimal?</code> is always false, and there is no <code>M</code>-suffixed literal. Exact integers, bignums, ratios (<code>&#40;/ 1 2&#41;</code> ⇒ <code>1/2</code>), and doubles all work as expected.</p><h2 id="no&#95;software&#95;transactional&#95;memory">No software transactional memory</h2><p>There are no refs — <code>ref</code>, <code>dosync</code>, <code>alter</code>, <code>commute</code>, and <code>ensure</code> are absent. Coordinated shared state that would use the STM on the JVM uses atoms instead (a per-atom mutex with compare-and-set). Everything else concurrent is present and matches: <code>future</code>/<code>promise</code>/<code>agent</code>/<code>pmap</code> and <code>clojure.core.async</code> run on real OS threads over a shared heap.</p><h2 id="regex&#95;engine">Regex engine</h2><p>Patterns compile through <a href='https://github.com/ashinn/irregex'>irregex</a> (vendored), not <code>java.util.regex</code>. <code>re-find</code>, <code>re-matches</code>, <code>re-seq</code>, the <code>clojure.string</code> regex functions, and <code>#&quot;…&quot;</code> literals all work for common patterns, but Java-specific regex features can differ at the edges.</p><h2 id="coverage">Coverage</h2><p><code>clojure.core</code> is implemented function by function against a conformance corpus whose expected values come from reference JVM Clojure. Coverage is broad but not total: a namespace can load with most functions working and a few not yet implemented. The per-function coverage lives in the <a href='https://github.com/jolt-lang/jolt/tree/main/docs/spec'>project's spec</a>.</p>
+      <h1 id="rfcs">RFCs</h1><p>Design notes for non-obvious language and compiler decisions. An RFC records <em>why</em> a thing is built the way it is; the code is the source of truth for <em>how</em>.</p><table><thead><tr><th>#</th><th>Title</th><th>Status</th><th>Governs</th></tr></thead><tbody><tr><td><a href='/docs/rfc/0001-language-specification.html'>0001</a></td><td>A Specification for the Clojure Language</td><td>Draft</td><td>The conformance target — what "is Clojure" means for jolt.</td></tr><tr><td><a href='/docs/rfc/0002-reader-conditional-features.html'>0002</a></td><td>Reader-Conditional Feature Set</td><td>Accepted</td><td><code>#?&#40;...&#41;</code> feature keys (<code>:jolt</code>, <code>:clj</code>, <code>:default</code>).</td></tr><tr><td><a href='/docs/rfc/0003-transients.html'>0003</a></td><td>Transients</td><td>Accepted</td><td><code>transient</code>/<code>persistent!</code> semantics + the Chez mutable backing.</td></tr><tr><td><a href='/docs/rfc/0004-type-hints.html'>0004</a></td><td>Type hints + keyword-lookup specialization</td><td>Accepted</td><td><code>&#94;Type</code>/<code>&#94;:struct</code> hints → the bare-<code>get</code> fast path.</td></tr><tr><td><a href='/docs/rfc/0005-structural-type-inference.html'>0005</a></td><td>Structural collection-type inference</td><td>Implemented</td><td>The <code>:struct</code>/<code>:vec</code>/<code>:set</code> lattice in <code>passes/types</code>.</td></tr><tr><td><a href='/docs/rfc/0006-success-type-checking.html'>0006</a></td><td>Success typing (provably-wrong-code detection)</td><td>Implemented</td><td>The error-domain checker in <code>passes/types</code>.</td></tr><tr><td><a href='/docs/rfc/0007-compilation-modes-and-binary-output.html'>0007</a></td><td>Compilation modes + binary output</td><td>Implemented (doc lags)</td><td><code>release</code>/<code>--opt</code>/<code>--dev</code>, <code>--direct-link</code>, <code>--tree-shake</code>.</td></tr></tbody></table><p>RFC 0007's own status line still says "Draft, no code yet" — that is stale: direct-linking and tree-shaking shipped (see <a href='/docs/tools-deps.html'>tools-deps.md</a> and <code>backend&#95;scheme.clj</code> / <code>build.ss</code>). Two compiler features that grew alongside it — <strong>IR inlining</strong> (<code>passes/inline.clj</code>, under <code>--opt</code>) and **numeric <code>fl&#42;</code>/<code>fx&#42;</code> lowering** from <code>&#94;double</code>/<code>&#94;long</code> hints (<code>passes/numeric.clj</code>) — are not yet written up as RFCs; their touch points are in <a href='/docs/MODULES.html'>MODULES.md</a>.</p>
     </div>
   </main>
 </div>

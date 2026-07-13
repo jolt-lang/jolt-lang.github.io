@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>Spec: Special Forms — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Supported Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (jolt.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>Spec: Special Forms</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#§3_special_forms">§3 Special Forms</a><ol><li><a href="#if_—_since_1.0">if — since 1.0</a></li><li><a href="#let*_—_since_1.0">let* — since 1.0</a></li></ol></li><li><a href="#remaining_entries_(format_above;_status_in_coverage.md)">Remaining entries (format above; status in coverage.md)</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <h1 id="§3&#95;special&#95;forms">§3 Special Forms</h1><p><strong>Status</strong>: catalog complete; normative exemplars for <code>if</code> and <code>let&#42;</code>; the remaining entries follow the same format (tracked in <code>coverage.md</code>).</p><p>A <em>special form</em> is a form whose head symbol is evaluated by rule rather than by function application or macroexpansion. The special forms of Clojure are:</p><blockquote><p> <code>def</code> · <code>if</code> · <code>do</code> · <code>let&#42;</code> · <code>fn&#42;</code> · <code>loop&#42;</code> · <code>recur</code> · <code>quote</code> · <code>var</code>  · <code>throw</code> · <code>try</code>/<code>catch</code>/<code>finally</code> · <code>set!</code> · <code>monitor-enter</code> ·  <code>monitor-exit</code> (host) · the interop forms <code>.</code> and <code>new</code> (host) </p></blockquote><p><code>let</code>, <code>fn</code>, <code>loop</code>, <code>and</code>, <code>or</code>, <code>when</code>, … are <strong>macros</strong> over these (§8); implementations MUST treat them as redefinable macros, not additional special forms. <code>monitor-enter</code>/<code>monitor-exit</code>, <code>.</code> and <code>new</code> are host forms: their syntax is specified here, their behavior is host-defined.</p><p>Special-form head symbols are not shadowable: a binding named <code>if</code> does not change the meaning of <code>&#40;if ...&#41;</code> in operator position. ⚠ This matches the reference; it differs from Scheme. A local <em>may</em> legally be named like a special form and used in value position (<code>&#40;let &#91;if 5&#93; if&#41;</code> ⇒ <code>5</code>); only operator position is reserved. <strong>Macros, unlike special forms, ARE shadowable</strong> by a local (<code>&#40;let &#91;when &#40;fn ...&#41;&#93; &#40;when 1 2&#41;&#41;</code> calls the local).</p><p>A list form in operator position is resolved in this order (the canonical read → <strong>macroexpand</strong> → analyze pipeline): a local binding shadows everything; otherwise a macro head is expanded and the result re-analyzed; otherwise a special-form head is parsed by rule; otherwise the form is a function application. Macroexpansion therefore happens <em>before</em> special-form dispatch, so a macro is never mistaken for a special form (and vice versa).<h2></h2></p><h3 id="if&#95;—&#95;since&#95;1.0">if — since 1.0</h3><pre><code>&#40;if test then&#41;
+&#40;if test then else&#41;
+</code></pre><p><strong>Semantics</strong></p><ul><li>S1. <code>test</code> MUST be evaluated first, exactly once.</li><li>S2. Every value other than <code>nil</code> and <code>false</code> is <em>logically true</em>. If the  value of <code>test</code> is logically true, <code>then</code> MUST be evaluated and its value  returned; otherwise <code>else</code> (or <code>nil</code> when absent) MUST be evaluated and its  value returned.</li><li>S3. The branch not taken MUST NOT be evaluated.</li><li>S4. <code>if</code> MUST be usable in tail position with respect to <code>recur</code> (§3  <code>recur</code>): an <code>if</code> whose branch is a <code>recur</code> form is a valid recur target  path.</li></ul><p><strong>Edge cases</strong></p><ul><li>E1. <code>&#40;if test then&#41;</code> with a logically false <code>test</code> evaluates to <code>nil</code>.</li><li>E2. The empty collections (<code>&#40;&#41;</code>, <code>&#91;&#93;</code>, <code>{}</code>, <code>#{}</code>), the number <code>0</code>, and  the empty string <code>&quot;&quot;</code> are logically <strong>true</strong> (only <code>nil</code>/<code>false</code> are  false). ⚠ This differs from several Lisps and is a frequent divergence  source in alternative implementations.</li></ul><p><strong>Errors</strong></p><ul><li>X1. <code>&#40;if&#41;</code> and <code>&#40;if test&#41;</code> with fewer than two argument forms, or more  than three, MUST be a compile-time error.</li></ul><p><strong>Examples</strong></p><pre><code class="clojure">&#40;if 0 :t :f&#41;        ;=&gt; :t
+&#40;if &quot;&quot; :t :f&#41;       ;=&gt; :t
+&#40;if nil :t :f&#41;      ;=&gt; :f
+&#40;if false :t&#41;       ;=&gt; nil
+</code></pre><p><strong>Conformance</strong></p><p>S1–S3, E1–E2 → jolt <code>forms-spec</code> "if/do/def" group; truthiness group in <code>truthiness-spec</code>; clojure-test-suite <code>core&#95;test/if.cljc</code>. S4 → <code>forms-spec</code> fn/loop recur cases. X1 → <code>forms-spec</code> "if arity (X1)" (0/1/4-arg forms throw in both the analyzer and the interpreter).<h2></h2></p><h3 id="let*&#95;—&#95;since&#95;1.0">let* — since 1.0</h3><pre><code>&#40;let&#42; &#91;sym₁ init₁ … symₙ initₙ&#93; body…&#41;
+</code></pre><p><code>let&#42;</code> is the primitive sequential-binding form. The user-facing <code>let</code> macro adds destructuring and expands to <code>let&#42;</code> (§8); <code>let&#42;</code> itself accepts **only simple symbols** in binding positions.</p><p><strong>Semantics</strong></p><ul><li>S1. Each <code>initᵢ</code> MUST be evaluated in order, exactly once, in an  environment where <code>sym₁…symᵢ₋₁</code> are bound to their values (sequential  scope, as Scheme <code>let&#42;</code>).</li><li>S2. The body forms MUST be evaluated in order with all bindings in scope;  the value of the last body form is the value of the <code>let&#42;</code> form. An empty  body evaluates to <code>nil</code>.</li><li>S3. A later binding MAY rebind the same symbol; each binding creates a new  lexical binding visible from the next init onward (no mutation of the  earlier binding is implied).</li><li>S4. Bindings are lexical and immutable: there is no form that assigns to a  <code>let&#42;</code>-bound local. (Closures capture bindings by value; see §3 <code>fn&#42;</code>.)</li><li>S5. The binding vector MUST be a vector literal with an even number of  forms.</li></ul><p><strong>Edge cases</strong></p><ul><li>E1. <code>&#40;let&#42; &#91;&#93; body&#41;</code> is valid and equivalent to <code>&#40;do body…&#41;</code>.</li><li>E2. Binding a symbol that names a var shadows the var for the lexical  extent of the body; <code>&#40;var sym&#41;</code> within that extent still denotes the var.</li></ul><p><strong>Errors</strong></p><ul><li>X1. An odd number of binding forms MUST be a compile-time error.</li><li>X2. A non-symbol in a binding position (e.g. a destructuring pattern) MUST  be a compile-time error for <code>let&#42;</code> — destructuring belongs to the <code>let</code>  macro. ("Bad binding form, expected symbol" in the reference.)</li></ul><p><strong>Examples</strong></p><pre><code class="clojure">&#40;let&#42; &#91;a 1 b &#40;+ a 1&#41;&#93; &#40;&#42; a b&#41;&#41;   ;=&gt; 2
+&#40;let&#42; &#91;x 1 x &#40;inc x&#41;&#93; x&#41;         ;=&gt; 2
+&#40;let&#42; &#91;&#93; 42&#41;                     ;=&gt; 42
+</code></pre><p><strong>Conformance</strong></p><p>S1–S3, E1 → jolt <code>forms-spec</code> let group; clojure-test-suite <code>core&#95;test/let.cljc</code>; jank corpus <code>form/let/&#42;</code>. X2 → jolt <code>destructuring-spec</code> "primitives reject patterns". S4, X1 → UNVERIFIED (cases to add).<h2></h2></p><h2 id="remaining&#95;entries&#95;(format&#95;above;&#95;status&#95;in&#95;coverage.md)">Remaining entries (format above; status in coverage.md)</h2><table><thead><tr><th>Form</th><th>Notes for the entry author</th></tr></thead><tbody><tr><td><code>def</code></td><td>var creation vs re-binding; metadata on the name; <code>&#40;def x&#41;</code> unbound; return value is the var</td></tr><tr><td><code>do</code></td><td>empty <code>&#40;do&#41;</code> → nil; top-level <code>do</code> splices for compilation units (important and under-documented)</td></tr><tr><td><code>fn&#42;</code></td><td>arities, variadic <code>&amp;</code>, closure capture, self-name, simple-symbol params only, recur target</td></tr><tr><td><code>loop&#42;</code></td><td>recur arity must match bindings; recur rebinds in place</td></tr><tr><td><code>letfn</code></td><td>mutually-recursive local fns (<code>letrec&#42;</code> semantics — a fn body sees every binding, not only earlier ones). jolt treats <code>letfn</code> as a primitive special, not the reference's <code>letfn</code> macro → <code>letfn&#42;</code> indirection; behavior is identical</td></tr><tr><td><code>recur</code></td><td>tail-position rule (normative definition of tail position needed), across <code>if</code>/<code>do</code>/<code>let&#42;</code>/<code>try</code> interactions</td></tr><tr><td><code>quote</code></td><td>self-evaluation table: which literals are self-evaluating unquoted</td></tr><tr><td><code>var</code></td><td><code>#'</code> reader sugar; resolution at compile time</td></tr><tr><td><code>throw</code></td><td>any value vs Throwable — host question; jolt/cljs allow data, reference requires Throwable → classification needed</td></tr><tr><td><code>try/catch/finally</code></td><td>catch dispatch order, <code>:default</code>-style catch-all is a dialect extension (⚠ divergence note), finally evaluation guarantees, value of try</td></tr><tr><td><code>set!</code></td><td>three targets, all implemented: <code>&#40;set! &#42;var&#42; val&#41;</code> sets the var's innermost thread binding (else root); <code>&#40;set! field val&#41;</code> inside a <code>deftype</code> method mutates a <code>&#94;:unsynchronized-mutable</code>/<code>&#94;:volatile-mutable</code> field in place; <code>&#40;set! &#40;.-field obj&#41; val&#41;</code> does the same via interop syntax. Returns val</td></tr><tr><td><code>.</code> / <code>new</code></td><td>syntax only; behavior host-defined</td></tr></tbody></table>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>

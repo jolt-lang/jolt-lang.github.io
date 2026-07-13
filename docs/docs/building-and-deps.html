@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>Building &amp; Running — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li class="selected">
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Supported Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (jolt.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>Building &amp; Running</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#building_and_dependencies">Building and dependencies</a></li><li><a href="#running">Running</a></li><li><a href="#how_namespaces_are_found">How namespaces are found</a></li><li><a href="#dependencies_via_deps.edn">Dependencies via deps.edn</a><ol><li><a href="#what&apos;s_supported">What's supported</a></li><li><a href="#what&apos;s_not">What's not</a></li></ol></li><li><a href="#building_binaries">Building binaries</a><ol><li><a href="#build_modes">Build modes</a></li><li><a href="#typed_arithmetic_and_inference">Typed arithmetic and inference</a></li><li><a href="#deps.edn_build_options">deps.edn build options</a></li></ol></li></ol>
+    </nav>
+    
+    <div id="content">
+      <h1 id="building&#95;and&#95;dependencies">Building and dependencies</h1><p>How to run Jolt from source and how to pull Clojure libraries into a project.</p><h2 id="running">Running</h2><pre><code class="bash">git clone https://github.com/jolt-lang/jolt.git
+cd jolt
+git submodule update --init   # vendor/sci &#40;used by the SCI bootstrap tests&#41;
+bin/joltc -e '&#40;println &quot;hello&quot;&#41;'
+</code></pre><p>There is <strong>no build step</strong>. <code>bin/joltc</code> (<code>host/chez/cli.ss</code>) loads the checked-in bootstrap seed (<code>host/chez/seed/{prelude,image}.ss</code>) plus the spine and compiles+evals on Chez (read → analyze → IR → emit → eval), so a fresh clone runs immediately. The whole <code>.clj</code> standard library (<code>clojure.string</code>/<code>set</code>/<code>walk</code>/<code>edn</code>/<code>pprint</code>/…) and <code>clojure.core</code> are part of the overlay, so they're always available.</p><p><code>bin/joltc</code> is both the runtime (REPL, file/expr runner) and the dependency front-end (<code>deps.edn</code> resolution, see below). A run with no <code>deps.edn</code> never touches the resolver.</p><p>The bootstrap seed is <strong>checked in</strong>. After changing a seed source — the reader (<code>host/chez/reader.ss</code>), the analyzer/IR/backend (<code>jolt-core/jolt/&#42;.clj</code>), or the <code>clojure.core</code> overlay (<code>jolt-core/clojure/core/&#42;.clj</code>) — re-mint the seed with <code>make remint</code> (it iterates <code>host/chez/bootstrap.ss</code> to a byte-fixpoint), or <code>make selfhost</code> fails. Runtime-only <code>host/chez/&#42;.ss</code> shims don't need a re-mint.</p><h2 id="how&#95;namespaces&#95;are&#95;found">How namespaces are found</h2><p><code>&#40;require ...&#41;</code> resolves a namespace to a file by searching an ordered list of source roots — the stdlib first, then any extra roots — trying <code>&lt;ns&gt;.clj</code> then <code>&lt;ns&gt;.cljc</code> (dots become directories, dashes become underscores). Extra roots come from:</p><ul><li><code>JOLT&#95;PATH</code> — a colon-separated list of directories (like a classpath), applied  at runtime;</li><li>the <code>:paths</code> option to <code>init</code> when embedding Jolt as a library.</li></ul><p>If a namespace isn't found on any root, the loader falls back to the stdlib in the overlay — that's how <code>clojure.string</code> and friends resolve when you run outside the source tree.</p><p>So you can point Jolt at a directory of Clojure source with no deps machinery at all:</p><pre><code class="bash">JOLT&#95;PATH=/path/to/lib/src bin/joltc run myfile.clj
+</code></pre><h2 id="dependencies&#95;via&#95;deps.edn">Dependencies via deps.edn</h2><p><code>bin/joltc</code> reads a <code>deps.edn</code> in the current directory, fetches its dependencies, and prepends the resolved source directories to the source roots for the run. The CLI commands (<code>jolt.deps</code> + <code>jolt.main</code>):</p><pre><code class="bash">bin/joltc run -m NS &#91;args&#93;      # resolve deps.edn, load NS, call its -main
+bin/joltc run FILE              # resolve deps.edn, load a Clojure file
+bin/joltc -M:alias &#91;args&#93;       # run the alias's :main-opts
+bin/joltc -A:alias &#91;args&#93;       # add the alias's paths/deps, then run the rest
+bin/joltc repl                  # start a line REPL &#40;project deps + native libs loaded&#41;
+bin/joltc nrepl-server &#91;port&#93;   # start an nREPL server &#40;default 7888&#41; for editors
+bin/joltc path                  # print the resolved source roots &#40;':'-joined&#41;
+bin/joltc &lt;task&gt;                # run a deps.edn :tasks entry
+</code></pre><p>Example <code>deps.edn</code>:</p><pre><code class="clojure">{:paths &#91;&quot;src&quot;&#93;
+ :deps {weavejester/medley {:git/url &quot;https://github.com/weavejester/medley&quot;
+                            :git/sha &quot;&lt;full-sha&gt;&quot;}
+        my/helpers          {:local/root &quot;../helpers&quot;}}}
+</code></pre><pre><code class="bash">bin/joltc run -m myapp.main
+</code></pre><h3 id="what's&#95;supported">What's supported</h3><ul><li><strong>git deps</strong> — <code>{:git/url … :git/sha …}</code> (use a full SHA; <code>git fetch</code> can't  resolve a short one), with an optional <code>:deps/root</code> for a subdirectory.  Transitive deps from each dependency's own <code>deps.edn</code> are resolved too.</li><li><strong>local deps</strong> — <code>{:local/root &quot;../path&quot;}</code>.</li><li>The project's own <code>:paths</code> (default <code>&#91;&quot;src&quot;&#93;</code>) are included.</li><li><strong>aliases</strong> — `:aliases {:dev {:extra-paths ["dev"] :extra-deps {…}  :main-opts ["-e" "…"]}}<code>, selected with </code>-A:dev<code> &#40;or several: </code>-A:dev:test`).  <code>:extra-paths</code>/<code>:extra-deps</code> accumulate across selected aliases;  <code>:main-opts</code> is last-wins and runs via <code>-M:alias</code>.</li><li><strong>tasks</strong> — <code>:tasks {clean &quot;rm -rf target&quot; test {:main-opts &#91;&quot;-m&quot; &quot;…&quot;&#93;}}</code>.  A string task is a shell command; a map task runs jolt with its <code>:main-opts</code>.  Run one with <code>bin/joltc &lt;taskname&gt;</code>.</li></ul><p>Resolution is breadth-first, so a top-level coordinate always beats a transitive one for the same lib.</p><p>Git clones land in a global, sha-immutable cache shared across projects — <code>$JOLT&#95;GITLIBS</code>, else <code>&#126;/.jolt/gitlibs</code>.</p><h3 id="what's&#95;not">What's not</h3><ul><li><strong>No Maven.</strong> <code>:mvn/version</code> deps are skipped with a warning — git and local  only.</li><li><strong>Pure <code>clj</code>/<code>cljc</code> only.</strong> A library that needs the JVM (Java interop, host  classes) or a <code>clojure.core</code> feature Jolt doesn't implement will fail to load  or fail at a call. Coverage is per-function: a namespace can load with most  functions working and a few not.</li></ul><p>See <a href='/docs/tools-deps.html'>deps.edn internals</a> for the design rationale.</p><h2 id="building&#95;binaries">Building binaries</h2><p><code>jolt build</code> compiles a namespace and its dependencies into a standalone binary:</p><pre><code class="bash">JOLT&#95;PWD=/path/to/project bin/joltc build -m my.app
+</code></pre><p>The binary contains the runtime + app forms + native launcher — no Jolt source or Chez install needed on the target machine (a C compiler and Chez kernel dev files are needed at build time only).</p><h3 id="build&#95;modes">Build modes</h3><p>Three modes control which optimization passes apply. A mode is selected by the CLI flag <code>--opt</code>, <code>--dev</code>, or by the <code>:jolt/build {:opt true}</code> key in <code>deps.edn</code>; the default is <code>release</code>. CLI flags win over <code>deps.edn</code>.</p><table><thead><tr><th>Mode</th><th><code>--opt</code> / <code>{:opt true}</code></th><th><code>--dev</code></th><th>Release (default)</th></tr></thead><tbody><tr><td>const-fold</td><td>yes</td><td>yes</td><td>yes</td></tr><tr><td>numeric-annotate</td><td>yes</td><td>yes</td><td>yes</td></tr><tr><td>type inference (run-inference)</td><td>yes</td><td>-</td><td>yes</td></tr><tr><td>record-shape + protocol-method caches</td><td>yes</td><td>-</td><td>yes</td></tr><tr><td>inline + scalar-replace fixpoint</td><td>with <code>--direct-link</code></td><td>-</td><td>-</td></tr></tbody></table><p><code>--opt</code> enables the annotation-producing passes (type inference, PIC/devirtualization, record-ctor caches) for better runtime performance without committing to a closed world. Add <code>--direct-link</code> to also enable the inline + scalar-replace fixpoint — this gives the best performance but gives up runtime redefinition of direct-linked vars. For fully closed-world binaries, combine <code>--opt --direct-link --tree-shake</code> to drop dead code.</p><p><code>--dev</code> produces a debug binary under <code>target/debug/</code> (const-fold + numeric annotate only), typically used during development for faster build times.</p><h3 id="typed&#95;arithmetic&#95;and&#95;inference">Typed arithmetic and inference</h3><p>Numeric code compiles to raw Chez flonum/fixnum operations (<code>fl&#42;</code>, <code>fx+</code>) when the compiler can prove every operand's type. Three things prove types, in order of preference:</p><ol><li><strong>Inference.</strong> Whole-program builds (<code>build</code>, or running a program with   <code>-m</code>) infer types with no annotations: float literals and their arithmetic,   <code>&#94;double</code>/<code>&#94;long</code> signatures across call sites, record fields whose every   constructor site passes a flonum, protocol-method returns, and reduce/HOF   accumulators all propagate. Most hot float code needs nothing else.</li><li><strong><code>&#94;double</code> / <code>&#94;long</code> hints</strong> on fn params, returns, loop bindings, and   record fields. A hint is a contract enforced by coercion at the boundary:   a <code>&#94;double</code> param converts its argument on entry, a <code>&#94;long</code> param is a   fixnum promise — arithmetic on it raises on 61-bit overflow instead of   promoting to bignum. Use <code>&#94;long</code> only where overflow is impossible.</li><li><strong><code>&#40;double x&#41;</code> / <code>&#40;long x&#41;</code> casts</strong> where inference can't see — a value   from I/O, an untyped map, a dynamic call. The cast keeps its full Clojure   semantics (throws on non-numbers, <code>&#40;long 1.5&#41;</code> truncates) and types the   result like a hint. Portable: the same code speeds up on the JVM.</li></ol><p>Inference stays sound by widening: a conflicting, escaping, or unprovable type falls back to the generic (boxed, correct) path, never a wrong answer. Interactive modes (<code>repl</code>, <code>-e</code>, <code>nrepl-server</code>) skip whole-program passes so redefinition keeps working.</p><h3 id="deps.edn&#95;build&#95;options">deps.edn build options</h3><p>The <code>:jolt/build</code> map in <code>deps.edn</code> accepts these keys:</p><ul><li><strong><code>:opt true</code></strong> — build in optimized mode (like <code>--opt</code>)</li><li><strong><code>:direct-link true</code></strong> — closed-world direct linking (like <code>--direct-link</code>)</li><li><strong><code>:tree-shake true</code></strong> — drop unreachable library code (like <code>--tree-shake</code>)</li><li><strong><code>:embed &#91;dirs&#93;</code></strong> — bake resource files into the binary so <code>io/resource</code> resolves  with no files on disk</li><li><strong><code>:dynamic-natives true</code></strong> — load native shared objects at runtime instead of  statically linking</li></ul><p>Example:</p><pre><code class="clojure">{:paths &#91;&quot;src&quot;&#93;
+ :jolt/build {:opt true
+              :direct-link true
+              :tree-shake true
+              :embed &#91;&quot;resources&quot;&#93;}}
+</code></pre>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>

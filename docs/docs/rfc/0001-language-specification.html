@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>RFC 0001: Language Specification — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Supported Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (jolt.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>RFC 0001: Language Specification</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#rfc_0001_—_a_specification_for_the_clojure_language">RFC 0001 — A Specification for the Clojure Language</a></li><li><a href="#summary">Summary</a></li><li><a href="#motivation">Motivation</a><ol><li><a href="#why_us_/_why_now">Why us / why now</a></li></ol></li><li><a href="#goals">Goals</a></li><li><a href="#non-goals">Non-goals</a></li><li><a href="#the_specification_document">The specification document</a><ol><li><a href="#the_normative_entry_format">The normative entry format</a></li><li><a href="#evidence_sources,_in_priority_order">Evidence sources, in priority order</a></li></ol></li><li><a href="#current_baseline_(measured_2026-06-10)">Current baseline (measured 2026-06-10)</a></li><li><a href="#process">Process</a></li><li><a href="#alternatives_considered">Alternatives considered</a></li><li><a href="#open_questions">Open questions</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <h1 id="rfc&#95;0001&#95;—&#95;a&#95;specification&#95;for&#95;the&#95;clojure&#95;language">RFC 0001 — A Specification for the Clojure Language</h1><ul><li><strong>Status</strong>: Draft</li><li><strong>Champions</strong>: jolt maintainers</li><li><strong>Created</strong>: 2026-06-10</li></ul><h2 id="summary">Summary</h2><p>Produce a normative, implementation-independent specification of the Clojure language — the reader, the evaluation model, the special forms, the data types and their equality/hashing/ordering contracts, sequences and laziness, and the <code>clojure.core</code> library — to the standard set by R7RS Scheme and the Racket reference. The specification is developed <em>in this repository</em>, validated continuously by jolt's executable conformance suite, and intended to be useful to every alternative implementation (ClojureScript, jank, babashka/sci, Basilisp, ClojureCLR, jolt).</p><h2 id="motivation">Motivation</h2><p>Clojure has no specification. The language is defined by:</p><ol><li>the reference JVM implementation's source,</li><li>docstrings (frequently silent on edge cases),</li><li>community folklore (ClojureDocs examples, mailing-list threads),</li><li>each alternative implementation's reverse-engineering effort.</li></ol><p>Every alternative implementation independently re-derives answers to the same questions — *what does <code>&#40;nth coll nil&#41;</code> do? is <code>&#40;first &quot;&quot;&#41;</code> an error? does <code>conj</code> on <code>nil</code> produce a list or vector? in what order does <code>reduce-kv</code> visit a map?* — and they routinely diverge. The cross-dialect <a href='https://github.com/jank-lang/clojure-test-suite'>clojure-test-suite</a> exists precisely because these divergences are real and frequent: it currently encodes hundreds of edge-case assertions that no normative document captures.</p><p>Building jolt's self-hosted compiler forced us to answer these questions one at a time (the conformance harness runs every behavior through three independent execution paths and demands agreement). That work product — over 300 three-way-validated conformance assertions, ~1,500 behavioral spec cases, and a frozen catalog of which forms are language vs. host — is the seed of a specification, currently trapped in test files. This RFC proposes promoting it into prose with normative force.</p><h3 id="why&#95;us&#95;/&#95;why&#95;now">Why us / why now</h3><p>A useful spec needs an implementation that can <em>afford</em> to be strict. The reference implementation can't adopt a spec retroactively without breaking changes; an alternative implementation chasing drop-in compatibility can't deviate from the reference even where the reference is accidental. jolt's goals (self-hosted, minimal seed, multiple execution paths that must agree) already require us to decide, for every form, <em>what the contract is</em> — we are writing the spec anyway, in test form. The marginal cost of writing it down properly is small; the value to the ecosystem is large.</p><h2 id="goals">Goals</h2><ol><li><strong>Normative core</strong>: reader grammar, evaluation model, all special forms,   data types with equality/hashing/ordering contracts, seq/laziness   contracts, namespaces/vars, and per-var entries for the portable   <code>clojure.core</code> surface.</li><li><strong>Executable</strong>: every normative statement is paired with at least one   conformance test. The spec and the suite are maintained together; a spec   claim without a test is marked <code>unverified</code>.</li><li><strong>Host classification</strong>: every <code>clojure.core</code> var is classified   <strong>portable</strong> (specified normatively), <strong>host-dependent</strong> (interface   specified, behavior host-defined — e.g. <code>slurp</code>, <code>&#42;out&#42;</code>), or   <strong>JVM-specific</strong> (documented as outside the portable language — e.g.   <code>bases</code>, <code>definline</code>, agents/STM as currently scoped).</li><li><strong>Versioned against reference Clojure</strong>: each spec edition states the   reference version it describes (initially 1.12) and records <em>deliberate</em>   divergences (e.g. where reference behavior is accidental — these become   labeled "implementation-defined" with the reference behavior noted).</li><li><strong>Useful to other implementations</strong>: no jolt-specific concepts in   normative text. jolt appears only in conformance-suite references.</li></ol><h2 id="non-goals">Non-goals</h2><ul><li>Specifying the JVM interop surface (<code>proxy</code>, <code>gen-class</code>, <code>.</code>-forms beyond  their syntax), agents, STM refs, or the Java class hierarchy mapping.  These are catalogued as host/JVM surface, not specified.</li><li>Specifying <code>clojure.spec</code>, <code>core.async</code>, or other contrib libraries  (candidates for later, separate documents).</li><li>Changing the language. The spec describes Clojure as it is; divergence  decisions document reality, they don't invent semantics.</li><li>Replacing clojure-test-suite — we contribute to it and cite it.</li></ul><h2 id="the&#95;specification&#95;document">The specification document</h2><p>Lives in <code>docs/spec/</code>. Shape (mirroring R7RS chapters):</p><table><thead><tr><th>§</th><th>Document</th><th>Content</th></tr></thead><tbody><tr><td>0</td><td><code>00-front-matter.md</code></td><td>conformance terms (RFC 2119), entry format, host classification</td></tr><tr><td>1</td><td><code>01-evaluation.md</code></td><td>evaluation model: forms, environments, vars, macroexpansion order</td></tr><tr><td>2</td><td><code>02-reader.md</code></td><td>lexical syntax: formal grammar, all reader macros, reader conditionals</td></tr><tr><td>3</td><td><code>03-special-forms.md</code></td><td>the special forms, one normative entry each</td></tr><tr><td>4</td><td><code>04-data-types.md</code></td><td>nil/booleans/numbers/strings/chars/keywords/symbols/colls; equality, hashing, ordering</td></tr><tr><td>5</td><td><code>05-sequences.md</code></td><td>the seq abstraction, laziness contract, realization boundaries</td></tr><tr><td>6</td><td><code>06-namespaces-vars.md</code></td><td>namespaces, vars, dynamic binding, resolution</td></tr><tr><td>7</td><td><code>07-polymorphism.md</code></td><td>protocols, records/types, multimethods, hierarchies</td></tr><tr><td>8</td><td><code>08-macros.md</code></td><td>defmacro, syntax-quote/hygiene, <code>&amp;env</code>/<code>&amp;form</code></td></tr><tr><td>9</td><td><code>09-core-library.md</code></td><td>normative per-var entries for the portable surface</td></tr><tr><td>A</td><td><code>coverage.md</code></td><td>generated status dashboard: 694 vars × {specified, tested, implemented, classification}</td></tr></tbody></table><h3 id="the&#95;normative&#95;entry&#95;format">The normative entry format</h3><p>Every special form and library var gets an entry with these fields (exemplars in <code>03-special-forms.md</code> and <code>09-core-library.md</code>):</p><pre><code>### name
+Signature&#40;s&#41;, since-version
+1. Semantics — numbered MUST/SHOULD statements
+2. Edge cases — nil, empty, bounds, wrong-type behavior &#40;normative&#41;
+3. Errors — what MUST throw, and when error type is implementation-defined
+4. Examples — executable, drawn from ClojureDocs where community-validated
+5. Conformance — test IDs that verify each numbered statement
+</code></pre><h3 id="evidence&#95;sources,&#95;in&#95;priority&#95;order">Evidence sources, in priority order</h3><ol><li><strong>Differential testing</strong> against reference Clojure 1.12 (the ground truth   for behavior questions).</li><li><strong>clojure-test-suite</strong> (cross-dialect agreement = portable semantics;   dialect splits = host-dependent candidates).</li><li><strong>ClojureDocs export</strong> (<code>clojuredocs-export.edn</code>, 694 core vars, 648 with   community examples) — examples become spec examples after verification.</li><li><strong>jank's language test corpus</strong> (~800 per-form tests under   <code>test/jank/{form,call,metadata,reader-macro,syntax-quote,var}</code>) — the   per-construct granularity model for §2–§3 conformance.</li><li>Reference implementation source — last resort, for intent.</li></ol><h2 id="current&#95;baseline&#95;(measured&#95;2026-06-10)">Current baseline (measured 2026-06-10)</h2><ul><li>ClojureDocs inventory: <strong>694</strong> <code>clojure.core</code> vars (648 with examples).</li><li>jolt implements <strong>572</strong>; <strong>373 (66%)</strong> are exercised by the behavioral  spec/conformance suites; 139 implemented-but-untested.</li><li>Initial classification of the 182 unimplemented: ~31 dynamic vars, ~20  agents/taps, ~11 STM, ~15 special-form docs, ~105 to adjudicate  (genuinely-portable gaps spotted already: <code>compare</code>, <code>any?</code>, <code>update-keys</code>,  <code>update-vals</code>, <code>parse-long</code>, <code>parse-double</code>, <code>parse-boolean</code>,  <code>partitionv</code>, <code>splitv-at</code>, <code>macroexpand</code>, <code>time</code>, <code>with-redefs</code>).</li><li>Conformance: 302 assertions × 3 execution paths; ~1,500 behavioral cases;  clojure-test-suite ≥ 4081/4707 assertions.</li></ul><h2 id="process">Process</h2><ol><li><strong>Section by section</strong>, in chapter order. §2 (reader) and §3 (special   forms) first — they are the smallest closed sets and jank's corpus gives   per-construct conformance shape immediately.</li><li>Each PR that adds/edits normative text MUST add or cite the conformance   tests for every numbered statement, and update <code>coverage.md</code>.</li><li>Divergences from reference Clojure discovered during writing get filed,   then either fixed in jolt or recorded as a labeled divergence — never   silently spec'd to jolt's behavior.</li><li>Editions: spec snapshots versioned independently of jolt releases   (<code>Clojure Language Specification, Draft N</code>).</li><li>When a chapter stabilizes, solicit review from other implementations   (jank, babashka, Basilisp maintainers) before marking it Stable.</li></ol><h2 id="alternatives&#95;considered">Alternatives considered</h2><ul><li><strong>Contribute prose to clojure-test-suite instead</strong>: the suite is the right  <em>conformance</em> home but tests can't express rationale, classification, or  grammar; both are needed and they cross-reference.</li><li><strong>Spec only what jolt implements</strong>: rejected — the host classification of  the <em>full</em> 694-var surface is half the value.</li><li><strong>EDN/data-format spec only</strong> (edn already has a loose spec): far too  narrow; the evaluation model and core library are where divergence lives.</li></ul><h2 id="open&#95;questions">Open questions</h2><ol><li>Numerics: the reference has longs/doubles/ratios/BigInt with promotion   rules; CLJS has JS numbers. Resolved: jolt carries the Scheme numeric tower   (exact integers/bignums, exact ratios, flonum doubles), matching the   reference's tower — see the numerics note in §4.</li><li>Where do <code>&#42;print-length&#42;</code>-style dynamic vars land — host-dependent   interface or portable with defaults?</li><li>License/venue if the spec outgrows this repo (likely CC-BY; separate repo   once §1–§3 stabilize).</li></ol>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>

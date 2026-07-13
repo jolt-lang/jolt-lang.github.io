@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>Language Specification — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Supported Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (jolt.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li class="selected">
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>Language Specification</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#the_clojure_language_specification_(draft)">The Clojure Language Specification (Draft)</a></li><li><a href="#documents">Documents</a></li><li><a href="#current_numbers_(2026-06-22)">Current numbers (2026-06-22)</a></li><li><a href="#how_this_connects_to_the_test_suites">How this connects to the test suites</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <h1 id="the&#95;clojure&#95;language&#95;specification&#95;(draft)">The Clojure Language Specification (Draft)</h1><p>A normative, implementation-independent specification of the Clojure language, developed alongside jolt's self-hosted compiler and validated by its executable conformance suites. <strong>Why</strong>: Clojure has no spec — every alternative implementation re-derives semantics from the reference implementation and folklore. See the RFC for motivation, scope, evidence sources, and process: <a href='/docs/rfc/0001-language-specification.html'><code>0001-language-specification.md</code></a>.</p><h2 id="documents">Documents</h2><table><thead><tr><th>Doc</th><th>Content</th><th>Status</th></tr></thead><tbody><tr><td><a href='/docs/spec/00-front-matter.html'><code>00-front-matter.md</code></a></td><td>conformance terms, entry format, host classification</td><td>drafted</td></tr><tr><td><a href='/docs/spec/02-reader.html'><code>02-reader.md</code></a></td><td>token grammar + reader-macro catalog</td><td>drafted</td></tr><tr><td><code>01</code>, <code>04</code>–<code>08</code></td><td>see chapter plan in front matter</td><td>planned</td></tr><tr><td><a href='/docs/spec/03-special-forms.html'><code>03-special-forms.md</code></a></td><td>special-form catalog + normative exemplars (<code>if</code>, <code>let&#42;</code>)</td><td>exemplars</td></tr><tr><td><a href='/docs/spec/09-core-library.html'><code>09-core-library.md</code></a></td><td>per-var entry format + exemplars (<code>first</code>, <code>reduce</code>, <code>parse-uuid</code>)</td><td>exemplars</td></tr><tr><td><a href='/docs/spec/coverage.html'><code>coverage.md</code></a></td><td>generated dashboard over the 694-var surface</td><td>generated</td></tr><tr><td><code>../grammar.ebnf</code></td><td>reader surface syntax (EBNF), companion to <code>02-reader.md</code></td><td>reference</td></tr></tbody></table><p>Regenerate the dashboard after surface changes: <code>python3 tools/spec&#95;coverage.py</code> (reads <code>tools/clojuredocs-export.json</code> and probes a working jolt checkout via <code>bin/joltc</code>).</p><h2 id="current&#95;numbers&#95;(2026-06-22)">Current numbers (2026-06-22)</h2><p>Of the 694 <code>clojure.core</code> vars in the ClojureDocs inventory, jolt interns 574. Broadly:</p><ul><li><strong>568</strong> implemented in jolt <em>and</em> exercised by the behavioral suites</li><li><strong>6</strong> implemented but not directly tested — each gets a test with its spec entry</li><li><strong>6</strong> portable but absent from jolt's resolvable surface (the REPL history  vars <code>&#42;1</code>/<code>&#42;2</code>/<code>&#42;3</code>/<code>&#42;e</code>, plus <code>letfn</code>/<code>re-groups</code>, which work but aren't  interned where <code>resolve</code> can see them) — tracked as gaps</li><li>the rest classified host/JVM/concurrency (see the dashboard for the full  per-var breakdown — it is the source of truth)</li></ul><h2 id="how&#95;this&#95;connects&#95;to&#95;the&#95;test&#95;suites">How this connects to the test suites</h2><ul><li><code>test/chez/corpus.edn</code> — the host-neutral behavioral corpus, one row per  case (<code>{:suite :label :expected :actual}</code>). The Chez compiler evaluates each  case via <code>host/chez/run-corpus.ss</code> (run with <code>make corpus</code>), and  <code>test/conformance/certify.clj</code> certifies every <code>:expected</code> against reference  JVM Clojure (run with <code>make certify</code>). Spec entries cite these cases.</li><li><code>test/conformance/</code> — the certification tooling and classified divergences  (<code>certify.clj</code>, <code>known-divergences.edn</code>); see its <code>README.md</code> and <code>SPEC.md</code>.</li><li><code>vendor/clojure-test-suite</code> — the cross-dialect suite (≥4081 assertions  passing); dialect splits there are classification evidence.</li><li>jank's per-construct corpus (<code>&#126;/src/jank/compiler+runtime/test/jank</code>) is  the granularity model for §2/§3 conformance.</li></ul><p>The invariant: **every numbered normative statement names its conformance test**, or is marked UNVERIFIED. The spec cannot drift from the implementations that check it.</p>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>

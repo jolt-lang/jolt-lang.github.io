@@ -6,7 +6,7 @@
     <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
     <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
     <meta name="canonical" content="https://jolt-lang.github.io">
-    <title>Differences from Clojure — Jolt</title>
+    <title>Seed &amp; Overlay Registry — Jolt</title>
     <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
     <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
     <link href="/css/screen.css" rel="stylesheet" type="text/css" />
@@ -42,7 +42,7 @@
         <a href="/docs/getting-started.html">Getting Started</a>
       </li>
       
-      <li class="selected">
+      <li >
         <a href="/docs/differences.html">Differences from Clojure</a>
       </li>
       
@@ -109,7 +109,7 @@
         <a href="/docs/MODULES.html">Module Map (Contributors)</a>
       </li>
       
-      <li >
+      <li class="selected">
         <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
       </li>
       
@@ -122,15 +122,15 @@
   </aside>
 
   <main class="docs-main">
-    <h1>Differences from Clojure</h1>
+    <h1>Seed &amp; Overlay Registry</h1>
     
     <nav class="toc">
       <h2>Contents</h2>
-      <ol class="contents"><li><a href="#no_jvm,_no_java_interop">No JVM, no Java interop</a></li><li><a href="#no_bigdecimal">No BigDecimal</a></li><li><a href="#no_software_transactional_memory">No software transactional memory</a></li><li><a href="#regex_engine">Regex engine</a></li><li><a href="#coverage">Coverage</a></li></ol>
+      <ol class="contents"><li><a href="#seed_↔_overlay_registry">Seed ↔ Overlay Registry</a></li><li><a href="#the_two_tiers">The two tiers</a></li><li><a href="#the_compiled_seed">The compiled seed</a></li><li><a href="#consistency_guard">Consistency guard</a></li></ol>
     </nav>
     
     <div id="content">
-      <p>Jolt targets Clojure semantics but runs on Chez Scheme, not the JVM. Most portable Clojure runs unchanged: persistent collections (32-way-trie vectors, HAMT maps/sets), the numeric tower (exact integers, bignums, ratios, doubles), lazy and infinite sequences, transducers, destructuring, multimethods with hierarchies, protocols and records, metadata, namespaces, atoms, <code>future</code>/<code>promise</code>/<code>agent</code>/<code>pmap</code>, <code>clojure.core.async</code>, runtime <code>eval</code>/<code>load-string</code>/<code>defmacro</code>, and the full reader all behave as on the JVM. <code>=</code> is category-aware (<code>&#40;= 3 3.0&#41;</code> ⇒ <code>false</code>) and <code>==</code> is value-equality, exactly as in Clojure.</p><p>The sections below are the genuine divergences — where the absence of the JVM actually shows through.</p><h2 id="no&#95;jvm,&#95;no&#95;java&#95;interop">No JVM, no Java interop</h2><p>This is the difference that matters. There is no JVM underneath, so there is no general Java interop, no reflection, and no <code>gen-class</code>/<code>proxy</code>. Interop syntax (<code>Class.</code>, <code>Class/staticMethod</code>, <code>.method</code>) resolves only against a shimmed subset of the <code>java.&#42;</code> standard library; a class token is a name, not a loaded class. See <a href='/docs/host-interop.html'>Host Interop</a> for what's covered and how to register your own host classes.</p><p>To call C libraries directly — the way the SQLite/Postgres and HTTP-client libraries work — Jolt has a foreign-function interface. See <a href='/docs/native-interop.html'>Native Interop</a>.</p><h2 id="no&#95;bigdecimal">No BigDecimal</h2><p>The numeric tower otherwise matches the JVM, but there is no <code>BigDecimal</code>: <code>decimal?</code> is always false, and there is no <code>M</code>-suffixed literal. Exact integers, bignums, ratios (<code>&#40;/ 1 2&#41;</code> ⇒ <code>1/2</code>), and doubles all work as expected.</p><h2 id="no&#95;software&#95;transactional&#95;memory">No software transactional memory</h2><p>There are no refs — <code>ref</code>, <code>dosync</code>, <code>alter</code>, <code>commute</code>, and <code>ensure</code> are absent. Coordinated shared state that would use the STM on the JVM uses atoms instead (a per-atom mutex with compare-and-set). Everything else concurrent is present and matches: <code>future</code>/<code>promise</code>/<code>agent</code>/<code>pmap</code> and <code>clojure.core.async</code> run on real OS threads over a shared heap.</p><h2 id="regex&#95;engine">Regex engine</h2><p>Patterns compile through <a href='https://github.com/ashinn/irregex'>irregex</a> (vendored), not <code>java.util.regex</code>. <code>re-find</code>, <code>re-matches</code>, <code>re-seq</code>, the <code>clojure.string</code> regex functions, and <code>#&quot;…&quot;</code> literals all work for common patterns, but Java-specific regex features can differ at the edges.</p><h2 id="coverage">Coverage</h2><p><code>clojure.core</code> is implemented function by function against a conformance corpus whose expected values come from reference JVM Clojure. Coverage is broad but not total: a namespace can load with most functions working and a few not yet implemented. The per-function coverage lives in the <a href='https://github.com/jolt-lang/jolt/tree/main/docs/spec'>project's spec</a>.</p>
+      <h1 id="seed&#95;↔&#95;overlay&#95;registry">Seed ↔ Overlay Registry</h1><p>Jolt is Clojure on Chez Scheme. <code>clojure.core</code> is built from two tiers that both define <code>clojure.core</code>-facing vars, and for a handful of names <em>both</em> tiers carry a definition. This document records how the two tiers relate and which copy is authoritative.</p><h2 id="the&#95;two&#95;tiers">The two tiers</h2><ul><li><strong>Native shims</strong> (<code>host/chez/natives-&#42;.ss</code>) bind a set of <code>clojure.core</code> vars  directly to Scheme runtime values via <code>def-var!</code> — collection constructors,  seq fns, numeric/string ops, and so on. These cover names the overlay assumes  exist as bare <code>clojure.core</code> vars but does not define itself.</li><li><strong>The Clojure overlay</strong> (<code>jolt-core/clojure/core/NN-&#42;.clj</code>) defines the rest of  <code>clojure.core</code> in dependency-ordered tiers, loaded in order: <code>00-syntax</code>,  <code>00-kernel</code>, <code>10-seq</code>, <code>20-coll</code>, <code>25-sorted</code>, <code>30-macros</code>, <code>40-lazy</code>, <code>50-io</code>.</li></ul><p>The overlay loads after the native shims. When an overlay tier <code>&#40;defn X …&#41;</code> for a name a native shim already bound, the <strong>overlay def shadows the native binding</strong> — user code sees the overlay copy. The native binding then survives only if some other native/runtime code still calls the Scheme value directly.</p><p>So a name's <em>home</em> is determined by two facts:</p><ol><li>is it bound by a native shim? (the Scheme value is reachable from the runtime)</li><li>does an overlay tier <code>&#40;defn X …&#41;</code>? (the overlay copy is what user code sees)</li></ol><h2 id="the&#95;compiled&#95;seed">The compiled seed</h2><p><code>clojure.core</code> is compiled ahead of time into the checked-in seed (<code>host/chez/seed/{prelude,image}.ss</code>) as Scheme <code>def-var!</code> forms. The seed's source twin is the overlay (<code>jolt-core/clojure/core/&#42;.clj</code> plus the stdlib namespaces under <code>stdlib/clojure/</code>); <code>host/chez/emit-image.ss</code> re-emits the prelude from those sources on Chez. The build is a byte-fixpoint: rebuilding from an up-to-date seed reproduces it exactly.</p><h2 id="consistency&#95;guard">Consistency guard</h2><p>There is no separate drift-check test for the registry. The self-hosting fixpoint is the guard: after changing a seed source (a core tier, the compiler namespaces, the host contract, the reader, or <code>emit-image.ss</code>) you must re-mint the seed (<code>make remint</code>), and <code>make selfhost</code> fails if the checked-in seed and its sources have drifted. So if the overlay's shadowing relationship changes, the re-minted prelude changes with it, and the fixpoint check keeps source and seed in agreement.</p>
     </div>
   </main>
 </div>

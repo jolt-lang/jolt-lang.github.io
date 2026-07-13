@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>RFC 0006: Success Type Checking — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Supported Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (jolt.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>RFC 0006: Success Type Checking</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#rfc_0006_—_compile-time_detection_of_provably-wrong_code_(success_typing)">RFC 0006 — Compile-time detection of provably-wrong code (success typing)</a></li><li><a href="#summary">Summary</a></li><li><a href="#motivation">Motivation</a></li><li><a href="#principle:_success_typing,_never_a_false_positive">Principle: success typing, never a false positive</a></li><li><a href="#what_">What "provably wrong" means</a></li><li><a href="#examples">Examples</a></li><li><a href="#error_reporting">Error reporting</a></li><li><a href="#strictness_levels">Strictness levels</a></li><li><a href="#soundness_of_rejection_(no_false_positives)">Soundness of rejection (no false positives)</a></li><li><a href="#relationship_to_other_systems">Relationship to other systems</a></li><li><a href="#implementation">Implementation</a></li><li><a href="#design_problems_and_open_questions">Design problems and open questions</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <h1 id="rfc&#95;0006&#95;—&#95;compile-time&#95;detection&#95;of&#95;provably-wrong&#95;code&#95;(success&#95;typing)">RFC 0006 — Compile-time detection of provably-wrong code (success typing)</h1><ul><li><strong>Status</strong>: Implemented. Core-fn error domains (arithmetic on non-numbers,  count/first/rest/next/seq/nth on non-seqable scalars), `JOLT<i>TYPE</i>CHECK=  off|warn|error`. Follow-ups landed: bounded scalar <strong>unions</strong> so a  use is reported only when every member is in the error domain; **user-fn  error domains** behind <code>JOLT&#95;TYPE&#95;CHECK&#95;USER</code> (closed-world);  precise <strong>file:line:col</strong> locations. The checker is now one  inference walk (folded into <code>infer</code>), and is **on by default in direct-link  builds** — where it piggybacks on the specialization inference for ~free —  and opt-in (<code>JOLT&#95;TYPE&#95;CHECK</code>) in plain builds.</li><li><strong>Champions</strong>: jolt maintainers</li><li><strong>Created</strong>: 2026-06-13</li><li><strong>Depends on</strong>: RFC 0005 (structural collection-type inference)</li></ul><h2 id="summary">Summary</h2><p>Reuse the structural type inference of RFC 0005 as a <strong>loose type checker</strong>: at compile time, flag code that is <em>provably</em> wrong, accept everything that is merely ambiguous, and never produce a false positive. Concretely, when an expression's inferred type is concrete and the operation applied to it would throw at runtime for that type (for example passing a string where a function only ever operates on numbers), report a clear compile-time error pointing at the offending form, with the inferred type and what was expected. When the type is <code>:any</code>, a union that includes a valid case, or beyond the inference's depth cap, accept it silently. This is <strong>success typing</strong> (the discipline behind Erlang's Dialyzer), applied to jolt for free on top of the inference we already need for optimization.</p><h2 id="motivation">Motivation</h2><p>Once the compiler tracks concrete types for many values (RFC 0005), it can see some programs that cannot possibly be correct: <code>&#40;inc &quot;x&quot;&#41;</code>, <code>&#40;first 5&#41;</code>, <code>&#40;count :k&#41;</code>, <code>&#40;/ 1 &quot;two&quot;&#41;</code>. Today these compile and fail at runtime, often far from the cause. Reporting them at compile time, with a precise location and message, turns a class of runtime crashes into immediate, actionable feedback, at no extra inference cost.</p><p>The design constraint the user set is the right one and is exactly success typing's contract: <strong>accept ambiguous cases, reject only provably-wrong ones.</strong> A checker that never lies about errors is one developers trust and that does not get in the way of correct-but-untypeable dynamic code.</p><h2 id="principle:&#95;success&#95;typing,&#95;never&#95;a&#95;false&#95;positive">Principle: success typing, never a false positive</h2><p>Success typing (Lindahl and Sagonas, "Practical Type Inference Based on Success Typings", 2006; the basis of Dialyzer) inverts the usual type-checker stance. A normal checker accepts only what it can prove correct and rejects the rest (false positives on dynamic code). A success typer accepts everything that <em>could</em> be correct and rejects only what <em>cannot</em> be correct under any execution. It is sound for <strong>rejection</strong>: if it reports an error, the code is genuinely wrong. It is intentionally incomplete: it misses errors it cannot prove. That is the correct trade for a dynamic language, and it matches the user's "accept ambiguous, reject provably wrong".</p><p>Mapped onto jolt:</p><ul><li>The inference assigns a value a concrete type only when it can prove it  (RFC 0005). Unprovable is <code>:any</code>.</li><li>A use site is reported <strong>iff</strong> the argument's inferred type is concrete and  lies entirely outside the operation's accepted domain, where the operation  <em>throws</em> on that domain (not merely returns a benign default).</li><li><code>:any</code>, a depth-capped child, or a union that includes an accepted type is  <strong>never</strong> reported.</li></ul><h2 id="what&#95;"provably&#95;wrong"&#95;means">What "provably wrong" means</h2><p>The checker needs, per operation it understands, an <strong>error domain</strong>: the set of argument types for which the operation throws at runtime. This is narrower than "the types it is documented to accept", because Clojure is lenient in many places and flagging a benign case would be a false positive:</p><ul><li><code>&#40;get 5 :k&#41;</code> returns <code>nil</code>, it does not throw. NOT reported.</li><li><code>&#40;:k 5&#41;</code> returns <code>nil</code>. NOT reported.</li><li><code>&#40;count 5&#41;</code> throws ("count not supported on number"). Reported when the  argument is provably a non-countable scalar.</li><li><code>&#40;first 5&#41;</code> throws (not seqable). Reported for a provably non-seqable scalar.</li><li><code>&#40;inc &quot;x&quot;&#41;</code>, <code>&#40;+ 1 &quot;x&quot;&#41;</code> throw. Reported when an argument is provably a  non-number (<code>:str</code>, <code>:kw</code>, <code>:struct</code>, <code>:vec</code>, ...).</li><li><code>&#40;nth 5 0&#41;</code> throws. Reported for a provably non-indexable scalar.</li></ul><p>So the checker ships a curated table of the clearest throwing operations with their error domains. It starts small (arithmetic on non-numbers, seq/<code>count</code>/ <code>nth</code>/<code>first</code> on non-seqables) and grows conservatively. Anything not in the table is not checked, which is safe (no false positive).</p><p>A use site is reported only when:</p><ol><li>the argument's inferred type <code>T</code> is concrete (not <code>:any</code>, not a union that   includes an accepted type, not truncated by the depth cap), and</li><li><code>T</code> is in the operation's error domain (the operation provably throws on <code>T</code>).</li></ol><h2 id="examples">Examples</h2><pre><code class="clojure">&#40;inc &quot;x&quot;&#41;                 ; ERROR: inc expects a number, got a string
+&#40;let &#91;n &quot;x&quot;&#93; &#40;inc n&#41;&#41;     ; ERROR: same, n inferred :str
+&#40;count :foo&#41;              ; ERROR: count not supported on :kw
+&#40;first 42&#41;                ; ERROR: 42 is not seqable
+&#40;:k 5&#41;                    ; accepted &#40;returns nil, not an error&#41;
+&#40;inc &#40;rand-nth coll&#41;&#41;     ; accepted if the element type is :any/unknown
+&#40;inc &#40;if c 1 &quot;x&quot;&#41;&#41;        ; accepted: union {:num, :str} includes :num &#40;ambiguous&#41;
+&#40;defn f &#91;n&#93; &#40;inc n&#41;&#41; ...  ; if f is ALWAYS called with strings in-unit, ERROR at the call;
+                          ;   if its callers are unknown/varied, accepted
+</code></pre><h2 id="error&#95;reporting">Error reporting</h2><p>A reported error includes:</p><ul><li>the source location (<code>file:line:col</code>) of the offending form;</li><li>the operation and the parameter position;</li><li>the inferred type of the argument, rendered readably (<code>:str</code>,  <code>{:struct {:r :num}}</code>, <code>{:vec :any}</code>);</li><li>what the operation requires (<code>a number</code>, <code>a seqable</code>).</li></ul><p>Example:</p><pre><code>type error scene.clj:42:18: `inc` requires a number, but argument 1 is a string
+</code></pre><p>Errors are attributed to the form the user wrote. For macro-expanded code, the checker reports at the original form's recorded position (the loader already tracks <code>:error-pos</code>), never at synthesized internals.</p><h2 id="strictness&#95;levels">Strictness levels</h2><p><code>JOLT&#95;TYPE&#95;CHECK</code> controls behavior:</p><ul><li><strong>off</strong> — no checking.</li><li><strong>warn</strong> — report to stderr, do not fail compilation. **The default in  direct-link builds**, where checking rides the specialization inference for  ~free; opt-in elsewhere.</li><li><strong>error</strong> — fail compilation on a provable type error. Opt-in for CI / strict  builds.</li></ul><p>When <code>JOLT&#95;TYPE&#95;CHECK</code> is unset, checking is **on (<code>warn</code>) in direct-link builds<strong> and </strong>off in plain REPL/dev builds** (where it would cost a standalone inference pass, ~2.6× compile). <code>JOLT&#95;TYPE&#95;CHECK&#95;USER</code> additionally enables reporting against inferred user-function domains (closed-world; see below).</p><p>Because the checker only fires on provable errors, even <code>error</code> mode cannot break a correct program: a correct program has no provable type errors to report. (A correct-but-untypeable program is simply not reported, since its types degrade to <code>:any</code>.)</p><h2 id="soundness&#95;of&#95;rejection&#95;(no&#95;false&#95;positives)">Soundness of rejection (no false positives)</h2><p>The whole value of this feature is that a reported error is real. The guarantees:</p><ul><li>The inference assigns concrete types only when provable (RFC 0005). So a  concrete <code>T</code> at a use site is a genuine lower bound on what flows there in the  analyzed world.</li><li>The error-domain table lists only operations that genuinely throw on the  listed types, verified against the runtime.</li><li>Ambiguity is always accepted: <code>:any</code>, unions containing an accepted type, and  depth-capped children are never reported.</li></ul><p>Two boundaries need care and bound where the checker is allowed to fire:</p><ul><li><strong>Closed-world / redefinition.</strong> Inter-procedural argument types assume the  compiled unit is the whole program (inherited from RFC 0005). For the checker,  this means a reported error on a <em>user</em> function's parameter is only as sound  as that assumption. The conservative initial policy: only report against  <strong>core-function</strong> error domains (stable, not redefinable) and against types  derived without crossing an open boundary. Reporting against inferred user-fn  signatures is a later, opt-in escalation.</li><li><strong>Macros / generated code.</strong> Check post-expansion IR but report at the user's  source location, and suppress reports inside expansions the user did not  write (or attribute them to the macro call site).</li></ul><h2 id="relationship&#95;to&#95;other&#95;systems">Relationship to other systems</h2><ul><li><strong>Dialyzer / success typing</strong> (Erlang): the direct model — sound for  rejection, no false positives, accepts the ambiguous.</li><li><strong>Typed Clojure / core.typed</strong>: opt-in <em>sound</em> gradual typing that rejects  what it cannot prove correct; the opposite trade (false positives on dynamic  code), which is why we do not follow it.</li><li><strong>clj-kondo</strong>: a popular Clojure linter that flags some obvious type misuses  syntactically; this RFC subsumes the type-driven subset with inference-backed  precision and no false positives.</li></ul><h2 id="implementation">Implementation</h2><p>The checker is a thin pass over the same inference results:</p><ol><li>After (or during) inference, walk the IR. At each call to an operation in   the error-domain table, look at the inferred type of each checked argument.</li><li>If concrete and in the error domain, record a diagnostic with location, the   inferred type, and the expected domain.</li><li>Emit diagnostics per the strictness level.</li></ol><p>It adds no new inference; it consumes RFC 0005's types and a small curated table. It can ship after RFC 0005 lands, starting in <code>warn</code> mode with the smallest high-confidence table (arithmetic and seq/count/nth/first), and grow.</p><h2 id="design&#95;problems&#95;and&#95;open&#95;questions">Design problems and open questions</h2><ul><li><strong>Curating the error domain.</strong> The table must list only genuinely-throwing  cases. Getting it wrong (listing a lenient op) yields false positives, which  destroys trust. Mitigation: start tiny, test each entry against the runtime,  grow slowly. Open question: derive the table from the same machinery the  runtime uses, to avoid drift?</li><li><strong>Unions.</strong> <em>Resolved.</em> The lattice has a bounded scalar union  <code>{:union #{T...}}</code> (cap 4); differing if-branches form a union instead of  collapsing to <code>:any</code>, and a use is reported only when <em>every</em> member is in the  error domain. Unions are opaque to structural specialization, so codegen is  unchanged.</li><li><strong>User-function signatures.</strong> <em>Resolved, opt-in.</em> Behind  <code>JOLT&#95;TYPE&#95;CHECK&#95;USER</code>: the checker re-checks a registered non-redefinable  user fn's body with one parameter bound to its concrete argument type; a  diagnostic the all-<code>:any</code> body did not have means that argument is provably  wrong. Monotonic, so still no false positives; closed-world, hence opt-in.</li><li><strong>Negative/never types.</strong> <em>Resolved.</em> Calling a provably  non-callable value (<code>:num</code>/<code>:str</code> — keywords/maps/vectors/sets are IFn) is  reported at the default level; wrong-arity to a registered single-fixed-arity  user fn is reported under the <code>JOLT&#95;TYPE&#95;CHECK&#95;USER</code> opt-in. A union callee is  flagged only when every member is non-callable.</li><li><strong>Position vs intent.</strong> <em>Resolved.</em> The reader records each list  form's absolute offset (identity-keyed, so positions survive macroexpansion  exactly when the user's sub-form is spliced through); the analyzer stamps it  onto <code>:invoke</code> nodes, the checker carries it into each diagnostic, and the  back end renders <code>file:line:col</code>. Inlining/scalar-replace preserve it via  <code>assoc</code>.</li><li><strong>Interaction with the optimization gate.</strong> <em>Resolved (jolt audit).</em> The  checker is one inference walk folded into <code>infer</code>. In direct-link builds it  piggybacks on the specialization inference that already runs (~free, default  on); in plain builds it runs as a standalone pass only when <code>JOLT&#95;TYPE&#95;CHECK</code>  is set. "Run inference for checking" and "specialize from inference" are the  same walk now, gated by a <code>checking?</code> flag.</li></ul>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>

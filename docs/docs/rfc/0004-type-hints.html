@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>RFC 0004: Type Hints — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Supported Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (jolt.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>RFC 0004: Type Hints</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#rfc_0004:_type_hints_and_keyword-lookup_specialization">RFC 0004: Type hints and keyword-lookup specialization</a></li><li><a href="#background:_why_the_lookup_carries_a_guard">Background: why the lookup carries a guard</a></li><li><a href="#what_the_hints_mean">What the hints mean</a></li><li><a href="#how_it_flows">How it flows</a></li><li><a href="#record_hints_across_namespaces,_and_as_inference_seeds">Record hints across namespaces, and as inference seeds</a></li><li><a href="#soundness_and_the_checked_mode">Soundness and the checked mode</a></li><li><a href="#coverage">Coverage</a></li><li><a href="#measured_effect">Measured effect</a></li><li><a href="#status_and_non-goals">Status and non-goals</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <h1 id="rfc&#95;0004:&#95;type&#95;hints&#95;and&#95;keyword-lookup&#95;specialization">RFC 0004: Type hints and keyword-lookup specialization</h1><p>Status: accepted (design note)</p><p>This note describes how Jolt treats Clojure type hints, and the one place it uses them: a <code>&#94;:struct</code> or <code>&#94;Record</code> hint on a local lets a constant-keyword lookup skip its runtime representation guard. It records the rationale, the soundness contract, the checked mode for catching inaccurate hints, and the measured effect, so later work does not relitigate it.</p><h2 id="background:&#95;why&#95;the&#95;lookup&#95;carries&#95;a&#95;guard">Background: why the lookup carries a guard</h2><p>A Jolt map value has several runtime representations (see RFC on collections and <code>host/chez/collections.ss</code>): a persistent hash map (a bitmap HAMT) for the general case, plus sorted maps, transients, and record/deftype instances. A record instance is a Chez record (<code>jrec</code>) whose fields are read directly off the record's storage, while a HAMT lookup runs the full <code>jolt=</code>/<code>jolt-hash</code>-keyed collection path.</p><p>A constant-keyword lookup <code>&#40;:k m&#41;</code> compiles to a guarded form: it inspects the subject's representation and routes a HAMT/sorted/transient/lazy-seq value to the full <code>jolt-get</code> semantics, while a record/raw-get-safe value takes the direct field read, which matches <code>jolt-get</code> for keyword keys. The guard is correct and cheap, but on a raw-get-safe value it is wasted work: profiling the ray tracer (a naive all-maps program) found keyword lookups are about half of a render, and the guard is the only avoidable part of each one.</p><p>Dropping the guard is only safe when the subject is known to be a plain struct/record rather than a tagged collection. Jolt does not infer that inter-procedurally (it would be unsound across a dynamic language's call boundaries). A type hint supplies the same fact soundly, as a programmer assertion.</p><h2 id="what&#95;the&#95;hints&#95;mean">What the hints mean</h2><p>Two hints on a local resolve to the "plain struct/record" assertion, which we call the <code>:struct</code> hint internally:</p><ul><li><code>&#94;:struct</code> — the value is a plain struct or record map. There is no Clojure  keyword with this meaning (Clojure's type hints are class names), so this is a  Jolt-specific metadata flag, analogous to <code>&#94;:dynamic</code>.</li><li><code>&#94;Name</code> where <code>Name</code> is a <code>defrecord</code>/<code>deftype</code>. Both forms define a <code>-&gt;Name</code>  positional constructor, so the analyzer treats a tag whose <code>-&gt;Name</code> resolves  as a record type. Record instances are raw-get-safe, so the lookup drops the  guard. A <code>&#94;String</code>, <code>&#94;long</code>, or any other non-record tag is not a record and  is ignored, exactly as before.</li></ul><p>Every other hint parses and is inert, matching Clojure (S12b in the reader spec). A hint never changes a program's result; it only permits an optimization.</p><h2 id="how&#95;it&#95;flows">How it flows</h2><p>The reader already keeps <code>&#94;hint</code> metadata on the binding symbol and is otherwise transparent (<code>host/chez/reader.ss</code>). The change threads that fact to the lookup site:</p><ol><li>The analyzer (<code>jolt-core/jolt/analyzer.clj</code>) records a <code>:struct</code> hint per   local in its env when a param or <code>let</code> binding carries <code>&#94;:struct</code> or a   record-type tag, and attaches <code>:hint :struct</code> to that local's <code>:local</code> IR   node. Resolving a record-type tag uses the host contract function   <code>record-type?</code> (<code>jolt.host</code>, backed by <code>host/chez/host-contract.ss</code>), which   checks for the <code>-&gt;Name</code> constructor.</li><li>The back end (<code>jolt-core/jolt/backend&#95;scheme.clj</code>) emits the direct field read   when the lookup subject is a <code>:local</code> carrying the hint, and the guarded form   otherwise. The unhinted path is identical to before.</li><li>The inline pass (<code>jolt-core/jolt/passes.clj</code>) propagates the hint: when it   binds a non-trivial call argument to a fresh local, it carries the called   function's parameter hint onto that local, so lookups inside the spliced body   keep the direct path. Without this, inlining a hinted function would erase the   benefit, because the hinted parameter is replaced by an unhinted temporary.</li></ol><p>The same machinery covers both <code>&#40;:k m&#41;</code> and <code>&#40;get m :k &#91;default&#93;&#41;</code> when the key is a constant keyword. A <code>get</code> with a variable, numeric, or string key falls through to <code>jolt-get</code> unchanged.</p><h2 id="record&#95;hints&#95;across&#95;namespaces,&#95;and&#95;as&#95;inference&#95;seeds">Record hints across namespaces, and as inference seeds</h2><p>A <code>&#94;RecordType</code> hint does two things beyond dropping the lookup guard.</p><p><strong>It carries the specific type, not just "a struct".</strong> The guard-skip only needs to know the value is raw-get-safe (<code>:struct</code>), but the structural inference (RFC 0005) wants the actual record type so a field read gets the field's type — <code>&#40;:origin ray&#41;</code> on a <code>&#94;Ray ray</code> is a <code>Vec3</code>, not <code>:any</code>. A record hint on a parameter is resolved to the record's constructor key and used to **seed the inference's parameter type**. That is what keeps a record parameter's reads typed across a namespace boundary <em>without</em> whole-program inference (RFC 0005, "Cross-namespace inference") — the open-world counterpart to the whole-program pass. Hinting only the public entry point is not enough; the hint has to be on the function where the hot reads actually happen.</p><p><strong>It resolves across namespaces.</strong> A hint may name a record defined in another namespace, in either spelling — <code>&#94;Vec3</code> where the type is <code>:refer</code>-ed, or <code>&#94;v/Vec3</code> where the namespace is <code>:as</code>-aliased. Resolution (<code>record-ctor-key</code>, a <code>jolt.host</code> contract function backed by <code>host/chez/host-contract.ss</code>) runs against the <em>compile</em> namespace and maps the type to its home constructor key through a constructor-value index — keyed by the constructor value, not a var's namespace, so a <code>:refer</code>-interned var (whose namespace is the referring one) still resolves home. The reader keeps a tag's namespace qualifier (<code>&#94;v/Vec3</code> → <code>&quot;v/Vec3&quot;</code>, not <code>&quot;Vec3&quot;</code>) so the aliased spelling has something to resolve. Both <code>defrecord</code> field hints and function parameter hints use this resolution.</p><h2 id="soundness&#95;and&#95;the&#95;checked&#95;mode">Soundness and the checked mode</h2><p>An accurate hint is correctness-preserving by construction: for a struct or record the bare get equals the guarded result. An inaccurate hint (asserting <code>&#94;:struct</code> for a value that is actually a phm) makes the raw get return the wrong thing. This is the same contract as a wrong Clojure <code>&#94;String</code>, except that a wrong Jolt hint fails silently rather than throwing.</p><p>To make a lie visible without taxing the fast path, <code>JOLT&#95;CHECK&#95;HINTS=1</code> keeps the guard but throws on the tagged arm with a message naming the local and key:</p><pre><code>type hint violated on `m`: &#40;:a m&#41; — value is a
+phm/sorted/transient/lazy-seq, not the plain struct/record the
+&#94;:struct/&#94;Record hint asserts
+</code></pre><p>This is a development aid, off by default, with zero cost to normal builds (the flag is read when the lookup is compiled, and the bare get is emitted when it is off). The flag is part of the image-cache fingerprint.</p><h2 id="coverage">Coverage</h2><p>Type hints parse in every position Clojure accepts them and are inert except for the optimization above. This matches Clojure's "parse and otherwise do nothing" model, with the difference that Clojure additionally uses hints to avoid reflection and select primitive arithmetic, which do not apply to the Chez host.</p><h2 id="measured&#95;effect">Measured effect</h2><p>On the ray tracer (<code>&#126;/src/examples/ray-tracer</code>, all values are <code>{:r :g :b}</code>-style maps), with inlining on and the hot parameters hinted, a render goes from 13.3s to 10.9s, about 1.22x, taking it to roughly 7.8x the JVM from 9.4x after the inline pass. A seeded render produces an identical pixel checksum hinted and unhinted, confirming the hints are correctness-preserving on the full pipeline.</p><h2 id="status&#95;and&#95;non-goals">Status and non-goals</h2><p>Implemented. Not pursued: inter-procedural shape inference (unsound in a dynamic language without a guard, which costs as much as the one being removed) and a shape-based "hidden class" representation (profiling showed allocation is about 1% of the workload, so a cheaper allocation would not help, and an escaping-map lookup through a runtime shape check costs about the same as the guard it would replace). The hint is the sound, opt-in lever on the part of the cost that can move.</p>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>

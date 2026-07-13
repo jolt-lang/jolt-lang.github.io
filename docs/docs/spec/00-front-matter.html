@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>Spec: Front Matter — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Supported Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (jolt.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>Spec: Front Matter</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#clojure_language_specification_—_front_matter">Clojure Language Specification — Front Matter</a></li><li><a href="#1._conformance_terminology">1. Conformance terminology</a></li><li><a href="#2._classification_of_the_core_surface">2. Classification of the core surface</a></li><li><a href="#3._the_normative_entry_format">3. The normative entry format</a></li><li><a href="#4._evidence_and_verification">4. Evidence and verification</a></li><li><a href="#5._chapter_plan">5. Chapter plan</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <h1 id="clojure&#95;language&#95;specification&#95;—&#95;front&#95;matter">Clojure Language Specification — Front Matter</h1><p><strong>Edition</strong>: Draft 1 · <strong>Describes</strong>: Clojure 1.12 (reference) · <strong>Status</strong>: in progress</p><p>This document specifies the Clojure programming language independently of any implementation. See <code>docs/rfc/0001-language-specification.md</code> for motivation, process, and scope.</p><h2 id="1.&#95;conformance&#95;terminology">1. Conformance terminology</h2><p>The key words <strong>MUST</strong>, <strong>MUST NOT</strong>, <strong>SHOULD</strong>, <strong>SHOULD NOT</strong>, and <strong>MAY</strong> are to be interpreted as described in RFC 2119.</p><ul><li>A statement marked <strong>MUST</strong> is normative: a conforming implementation  exhibits exactly this behavior, and the conformance suite tests it.</li><li><strong>implementation-defined</strong> marks behavior a conforming implementation must  document but may choose (e.g. the concrete error type thrown where the  reference throws a JVM exception class).</li><li><strong>host-defined</strong> marks behavior delegated to the host platform (e.g. what  <code>slurp</code> accepts as a source).</li><li><strong>⚠ reference-divergence</strong> marks a place where this spec deliberately  differs from observed reference behavior, with rationale; the reference  behavior is always recorded alongside.</li></ul><h2 id="2.&#95;classification&#95;of&#95;the&#95;core&#95;surface">2. Classification of the core surface</h2><p>Every <code>clojure.core</code> var carries exactly one classification (dashboard: <code>coverage.md</code>):</p><table><thead><tr><th>Class</th><th>Meaning</th><th>Spec treatment</th></tr></thead><tbody><tr><td><strong>portable</strong></td><td>semantics independent of host</td><td>full normative entry (§9)</td></tr><tr><td><strong>host-dependent</strong></td><td>portable <em>interface</em>, host-defined behavior</td><td>interface entry; behavior host-defined</td></tr><tr><td><strong>JVM-specific</strong></td><td>meaningful only on the JVM</td><td>catalogued in Appendix; not specified</td></tr></tbody></table><p>Initial classifications are mechanical and reviewable; reclassification is an ordinary spec change.</p><h2 id="3.&#95;the&#95;normative&#95;entry&#95;format">3. The normative entry format</h2><p>Each special form (§3) and portable var (§9) is specified as:</p><pre><code>### name                                 — since &lt;version&gt;
+&#40;signature ...&#41;  &#40;signature ...&#41;
+
+Semantics
+  S1. &lt;numbered normative statement, MUST/SHOULD/MAY&gt;
+  S2. ...
+Edge cases
+  E1. &lt;nil / empty / bounds / wrong-type behavior — normative&gt;
+Errors
+  X1. &lt;what MUST throw; error TYPE is implementation-defined unless stated&gt;
+Examples
+  &lt;executable; verified against the reference; sourced from ClojureDocs
+   where community-validated&gt;
+Conformance
+  S1 → &lt;suite&gt;/&lt;test id&gt;; E1 → ...   &#40;statements without a test: UNVERIFIED&#41;
+</code></pre><p>The <strong>Conformance</strong> field is load-bearing: every numbered statement names the test(s) that verify it. A normative statement with no test is labeled <code>UNVERIFIED</code> and is a defect in the spec.</p><h2 id="4.&#95;evidence&#95;and&#95;verification">4. Evidence and verification</h2><p>Behavioral questions are settled in this order: differential testing against the reference implementation → cross-dialect agreement in clojure-test-suite → ClojureDocs community examples (verified before inclusion) → reference source (for intent). Conformance tests live in this repository (the corpus <code>test/chez/corpus.edn</code>, run on Chez via <code>host/chez/run-corpus.ss</code> and certified against reference JVM Clojure by <code>test/conformance/certify.clj</code>) and in the cross-dialect clojure-test-suite.</p><h2 id="5.&#95;chapter&#95;plan">5. Chapter plan</h2><table><thead><tr><th>§</th><th>File</th><th>Status</th></tr></thead><tbody><tr><td>1</td><td><code>01-evaluation.md</code></td><td>planned</td></tr><tr><td>2</td><td><code>02-reader.md</code></td><td><strong>drafted</strong> (grammar + reader-macro catalog; 2 divergences open)</td></tr><tr><td>3</td><td><code>03-special-forms.md</code></td><td><strong>exemplars written</strong> (<code>if</code>, <code>let&#42;</code>); catalog complete</td></tr><tr><td>4</td><td><code>04-data-types.md</code></td><td>planned (numeric-tower design note required)</td></tr><tr><td>5</td><td><code>05-sequences.md</code></td><td>planned (laziness contract from jolt Phase-5 work)</td></tr><tr><td>6</td><td><code>06-namespaces-vars.md</code></td><td>planned</td></tr><tr><td>7</td><td><code>07-polymorphism.md</code></td><td>planned</td></tr><tr><td>8</td><td><code>08-macros.md</code></td><td>planned</td></tr><tr><td>9</td><td><code>09-core-library.md</code></td><td><strong>exemplars written</strong> (<code>first</code>, <code>reduce</code>, <code>parse-uuid</code>)</td></tr><tr><td>A</td><td><code>coverage.md</code></td><td><strong>generated</strong> (regenerate: <code>python3 tools/spec&#95;coverage.py</code>)</td></tr></tbody></table>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>

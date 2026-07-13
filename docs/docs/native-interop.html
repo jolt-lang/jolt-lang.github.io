@@ -43,11 +43,15 @@
       </li>
       
       <li >
-        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+        <a href="/docs/differences.html">Differences from Clojure</a>
       </li>
       
       <li >
-        <a href="/docs/differences.html">Differences from Clojure</a>
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
       </li>
       
       <li >
@@ -89,6 +93,32 @@
       
     </ul>
     
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
   </aside>
 
   <main class="docs-main">
@@ -96,7 +126,7 @@
     
     <nav class="toc">
       <h2>Contents</h2>
-      <ol class="contents"><li><a href="#declaring_the_native_library">Declaring the native library</a><ol><li><a href="#static_vs_dynamic_linking_in_a_built_binary">Static vs dynamic linking in a built binary</a></li></ol></li><li><a href="#binding_a_function">Binding a function</a><ol><li><a href="#&lt;code&gt;:blocking&lt;/code&gt;">{:tag :code, :attrs nil, :content [":blocking"]}</a></li></ol></li><li><a href="#types_at_the_boundary">Types at the boundary</a></li><li><a href="#memory_and_strings">Memory and strings</a><ol><li><a href="#out-parameters">Out-parameters</a></li><li><a href="#structs_by_offset">Structs by offset</a></li><li><a href="#binary_data">Binary data</a></li></ol></li><li><a href="#checklist_for_a_binding">Checklist for a binding</a></li></ol>
+      <ol class="contents"><li><a href="#declaring_the_native_library">Declaring the native library</a><ol><li><a href="#static_vs_dynamic_linking_in_a_built_binary">Static vs dynamic linking in a built binary</a></li></ol></li><li><a href="#binding_a_function">Binding a function</a><ol><li><a href="#&lt;code&gt;:blocking&lt;/code&gt;">{:tag :code, :attrs nil, :content [":blocking"]}</a></li></ol></li><li><a href="#types_at_the_boundary">Types at the boundary</a></li><li><a href="#memory_and_strings">Memory and strings</a><ol><li><a href="#out-parameters">Out-parameters</a></li><li><a href="#structs_by_offset">Structs by offset</a></li><li><a href="#binary_data">Binary data</a></li></ol></li><li><a href="#checklist_for_a_binding">Checklist for a binding</a></li><li><a href="#calling_into_jolt_from_c">Calling into Jolt from C</a></li></ol>
     </nav>
     
     <div id="content">
@@ -169,7 +199,17 @@
       got &#40;c-BIO-read wbio buf n&#41;&#93;
   &#40;when &#40;pos? got&#41; &#40;net/send-bytes sock &#40;ffi/read-array buf got&#41;&#41;&#41;
   &#40;ffi/free buf&#41;&#41;
-</code></pre><h2 id="checklist&#95;for&#95;a&#95;binding">Checklist for a binding</h2><ul><li>Declare the library in <code>deps.edn</code> <code>:jolt/native</code> with per-OS candidates; mark optional drivers <code>:optional</code>, process symbols <code>:process</code>. Add a <code>:static</code> archive to link it into a built binary (keep the dynamic candidates for <code>run</code>/<code>repl</code>).</li><li>Bind each C function with <code>defcfn</code>, exact argument/return types, and <code>:blocking</code> on anything that waits.</li><li>Free every <code>ffi/alloc</code> and <code>ffi/string-&gt;ptr</code> — wrap allocation in <code>try</code>/<code>finally</code>. Leaked foreign memory is never reclaimed.</li><li>Check C return codes and null pointers explicitly, and <code>throw</code> an <code>ex-info</code> on failure.</li><li>Keep struct offsets and type widths LP64-correct, and branch on <code>os.name</code> where macOS and Linux differ.</li></ul>
+</code></pre><h2 id="checklist&#95;for&#95;a&#95;binding">Checklist for a binding</h2><ul><li>Declare the library in <code>deps.edn</code> <code>:jolt/native</code> with per-OS candidates; mark optional drivers <code>:optional</code>, process symbols <code>:process</code>. Add a <code>:static</code> archive to link it into a built binary (keep the dynamic candidates for <code>run</code>/<code>repl</code>).</li><li>Bind each C function with <code>defcfn</code>, exact argument/return types, and <code>:blocking</code> on anything that waits.</li><li>Free every <code>ffi/alloc</code> and <code>ffi/string-&gt;ptr</code> — wrap allocation in <code>try</code>/<code>finally</code>. Leaked foreign memory is never reclaimed.</li><li>Check C return codes and null pointers explicitly, and <code>throw</code> an <code>ex-info</code> on failure.</li><li>Keep struct offsets and type widths LP64-correct, and branch on <code>os.name</code> where macOS and Linux differ.</li></ul><h2 id="calling&#95;into&#95;jolt&#95;from&#95;c">Calling into Jolt from C</h2><p><code>bin/joltc build --library</code> (see the README) produces a shared object whose entry points you reach through a C ABI instead of JVM-style interop. The Jolt side uses <code>jolt.ffi/export!</code>; the C side uses <code>jolt&#95;library&#95;init</code> + <code>jolt&#95;lookup</code>. This is the inverse of <code>foreign-fn</code>: <code>foreign-fn</code> calls <em>out</em> of Jolt into C; <code>export!</code> lets C call <em>in</em>.</p><pre><code class="clojure">&#40;defn add &#91;x y&#93; &#40;+ x y&#41;&#41;
+&#40;jolt.ffi/export! &quot;add&quot; add &#91;:int :int&#93; :int&#41;
+</code></pre><p>The argtype/rettype keywords are the same set <code>foreign-fn</code>/<code>ffi-type-&gt;chez</code> accepts: `:int :uint :long :ulong :int64 :uint64 :size<i>t :ssize</i>t :iptr :uptr :double :float :pointer<code> &#40;alias </code>:void*<code>&#41; </code>:string :void :uint8` (aliases <code>:u8</code>/<code>:byte</code>) <code>:char</code>. A <code>:pointer</code>/<code>:void&#42;</code> returns an opaque address you pass back unchanged; <code>:string</code> copies a C string in/out.</p><pre><code class="c">typedef int &#40;&#42;init&#95;fn&#41;&#40;int, char&#42;&#42;&#41;;
+typedef void&#42; &#40;&#42;lookup&#95;fn&#41;&#40;const char&#42;&#41;;
+typedef int &#40;&#42;add&#95;fn&#41;&#40;int, int&#41;;
+
+void&#42; h = dlopen&#40;&quot;./libadd.so&quot;, RTLD&#95;NOW | RTLD&#95;LOCAL&#41;;
+&#40;&#40;init&#95;fn&#41;dlsym&#40;h, &quot;jolt&#95;library&#95;init&quot;&#41;&#41;&#40;0, NULL&#41;;
+add&#95;fn add = &#40;add&#95;fn&#41;&#40;&#40;lookup&#95;fn&#41;dlsym&#40;h, &quot;jolt&#95;lookup&quot;&#41;&#41;&#40;&quot;add&quot;&#41;;
+add&#40;2, 3&#41;;                          /&#42; =&gt; 5 &#42;/
+</code></pre><p>Things to keep in mind across the boundary:</p><ul><li><strong>Single thread.</strong> The library carries its own GC. Call <code>jolt&#95;library&#95;init</code>  exactly once, and make <code>jolt&#95;lookup</code> and every exported-function call from that  same thread — the callbacks are not registered as collect-safe, so entering  them from another OS thread the runtime never activated is undefined behavior.  Call <code>jolt&#95;library&#95;shutdown</code> to tear it down.</li><li><strong>Pointer lifetimes.</strong> A value returned as <code>:pointer</code>/<code>:void&#42;</code> is not GC-tracked  by the caller — if Jolt hands back a pointer into managed memory you must keep  it alive on the Jolt side (e.g. hold it in a top-level ref) for as long as C  uses it.</li><li><strong>Linux needs a PIC kernel.</strong> The link folds Chez's <code>libkernel.a</code> into the  shared object. On Linux that archive must be position-independent; a kernel  built without <code>-fPIC</code> fails the <code>-shared</code> link with a relocation error. macOS is  always PIC. Build Chez from source with a PIC kernel if your distro's isn't.</li></ul>
     </div>
   </main>
 </div>
