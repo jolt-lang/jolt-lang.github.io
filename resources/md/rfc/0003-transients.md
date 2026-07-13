@@ -98,11 +98,12 @@ fast path, or `update!`-style conveniences — is plain Clojure over
 
 ## Future work
 
-- The persistent map/set are a bitmap HAMT with structural sharing
-  (`host/chez/collections.ss`), so Clojure-style O(1) `transient`/`persistent!`
-  via editable nodes is a real option there — an internal change behind the same
-  surface, not a semantics change. The persistent vector is a flat
-  copy-on-write Scheme vector rather than a trie, so the transient surface for
-  it stays the copy-to-growable-vector path.
+- The persistent map/set are a bitmap HAMT and the persistent vector is a
+  32-way trie, both with structural sharing (`host/chez/collections.ss`). The
+  transient surface currently uses a separate mutable backing (a growable
+  Scheme vector for vectors, a mutable hash table for maps/sets) that
+  `persistent!` hands off in place. Editing the persistent trie's nodes
+  directly — Clojure's approach — is a real option behind the same surface, an
+  internal change, not a semantics change.
 - `transient?` (Jolt extension, useful in tests) stays; Clojure has no public
   predicate, so it must not leak into portability-sensitive code.
