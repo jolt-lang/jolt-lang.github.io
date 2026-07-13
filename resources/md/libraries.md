@@ -48,6 +48,8 @@ These Clojure libraries are confirmed to load and pass their conformance checks 
 - **[hiccup](https://github.com/weavejester/hiccup)** — HTML from Clojure data, on the [hiccup-app example](https://github.com/jolt-lang/examples/tree/main/hiccup-app).
 - **[markdown-clj](https://github.com/yogthos/markdown-clj)** — Markdown to HTML, on the [markdown-app example](https://github.com/jolt-lang/examples/tree/main/markdown-app).
 - **[cuerdas](https://github.com/funcool/cuerdas)** — string manipulation.
+- **[camel-snake-kebab](https://github.com/clj-commons/camel-snake-kebab)** — word-case conversions.
+- **[clj-rss](https://github.com/yogthos/clj-rss)** — RSS feed generation, over [jolt-lang/xml](https://github.com/jolt-lang/xml)'s `clojure.data.xml` emit.
 
 ## Date and time
 
