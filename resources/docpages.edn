@@ -12,7 +12,7 @@
   ["libraries.md"                  "Libraries"                          "topic"]
 
   ["api/infix.md"                  "Infix Notation"                    "api"]
-  ["api/fs.md"                     "File System (jolt.fs)"             "api"]
+  ["api/fs.md"                     "File System (babashka.fs)"             "api"]
   ["api/ffi.md"                    "Foreign Functions (jolt.ffi)"      "api"]
   ["api/parser.md"                 "Parser Combinators (jolt.parser)"  "api"]
 
