@@ -17,7 +17,7 @@ sources, and process: [`0001-language-specification.md`](/docs/rfc/0001-language
 | [`03-special-forms.md`](/docs/spec/03-special-forms.html) | special-form catalog + normative exemplars (`if`, `let*`) | exemplars |
 | [`09-core-library.md`](/docs/spec/09-core-library.html) | per-var entry format + exemplars (`first`, `reduce`, `parse-uuid`) | exemplars |
 | [`coverage.md`](/docs/spec/coverage.html) | generated dashboard over the 694-var surface | generated |
-| `../grammar.ebnf` | reader surface syntax (EBNF), companion to `02-reader.md` | reference |
+| [grammar.ebnf](/grammar.ebnf) | reader surface syntax (EBNF), companion to `02-reader.md` | reference |
 
 Regenerate the dashboard after surface changes:
 `python3 tools/spec_coverage.py` (reads `tools/clojuredocs-export.json` and
