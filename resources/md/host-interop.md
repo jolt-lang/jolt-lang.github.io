@@ -36,7 +36,7 @@ This is the surface today, not the whole JVM. Methods not listed generally aren'
 
 ### Time, net, encoding
 
-- **`java.util.Date`** and **`java.time`** (`Instant`, `LocalDateTime`, `ZoneId`, `DateTimeFormatter`), **`java.text.SimpleDateFormat`** / **`NumberFormat`**.
+- **`java.util.Date`** — the `#inst` reader literal and `java.util.Date` / `java.sql.Date` / `Calendar`, plus `java.text.SimpleDateFormat` / `NumberFormat`. The full **`java.time.*`** surface (`Instant`, `LocalDate`, `ZonedDateTime`, `Duration`, `DateTimeFormatter`, zones) lives in the [time](https://github.com/jolt-lang/time) library, not core.
 - **`java.net.URL`** / **`URI`** — construction and component accessors.
 - **`java.util.UUID`** — `randomUUID`, `fromString`.
 - **`java.util.Base64`**, **`java.nio.charset.Charset`**.
