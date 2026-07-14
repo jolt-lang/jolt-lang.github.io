@@ -189,7 +189,6 @@ bin/joltc path                <span class="syn-comment"># print the resolved sou
       <tbody>
         <tr><td>Java interop</td><td>No JVM, so no general Java interop, reflection, or <code>gen-class</code>/<code>proxy</code> — a shimmed subset of <code>java.*</code> is available, plus a C <a href="/docs/native-interop.html">FFI</a></td></tr>
         <tr><td>BigDecimal</td><td>Not available (<code>decimal?</code> is always false); the rest of the numeric tower matches</td></tr>
-        <tr><td>STM</td><td>No <code>ref</code>/<code>dosync</code> — shared state uses atoms; everything else concurrent matches Clojure</td></tr>
         <tr><td>Regex</td><td>Compiled by <a href="https://github.com/ashinn/irregex" target="_blank" rel="noopener">irregex</a>, not <code>java.util.regex</code> — common patterns work, some Java-specific features differ</td></tr>
       </tbody>
     </table>
