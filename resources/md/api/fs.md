@@ -1,6 +1,6 @@
 Jolt ships [babashka.fs](https://github.com/babashka/fs) as a built-in
 file-system library, over a `java.nio.file` shim. Require it directly, or use
-`jolt.fs`, which re-exports it under the old name for backward compatibility.
+`jolt.fs`, which re-exports the supported subset under a stable public name.
 
 ```clojure
 (require '[babashka.fs :as fs])
@@ -27,9 +27,8 @@ The core surface works: coercion (`path`/`file`), predicates (`exists?`,
 `delete-if-exists`, `delete-tree`), copy and move (`copy`, `copy-tree`, `move`),
 times (`last-modified-time`/`set-last-modified-time`, `creation-time`), and
 POSIX permissions (`posix-file-permissions`/`set-posix-file-permissions`,
-`posix->str`/`str->posix`). Symbolic links, creation time, and permissions —
-which the earlier jolt.fs could not do — now work through the shim's `stat`,
-`realpath`, `symlink`, and `chmod` bindings.
+`posix->str`/`str->posix`). Symbolic links, creation time, and permissions
+work through the shim's `stat`, `realpath`, `symlink`, and `chmod` bindings.
 
 ## Gaps
 

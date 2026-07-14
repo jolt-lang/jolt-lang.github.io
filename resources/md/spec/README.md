@@ -23,18 +23,10 @@ Regenerate the dashboard after surface changes:
 `python3 tools/spec_coverage.py` (reads `tools/clojuredocs-export.json` and
 probes a working jolt checkout via `bin/joltc`).
 
-## Current numbers (2026-06-22)
-
-Of the 694 `clojure.core` vars in the ClojureDocs inventory, jolt interns 574.
-Broadly:
-
-- **568** implemented in jolt *and* exercised by the behavioral suites
-- **6** implemented but not directly tested — each gets a test with its spec entry
-- **6** portable but absent from jolt's resolvable surface (the REPL history
-  vars `*1`/`*2`/`*3`/`*e`, plus `letfn`/`re-groups`, which work but aren't
-  interned where `resolve` can see them) — tracked as gaps
-- the rest classified host/JVM/concurrency (see the dashboard for the full
-  per-var breakdown — it is the source of truth)
+The [coverage dashboard](/docs/spec/coverage.html) is the source of truth for
+per-var status over the 694-var `clojure.core` surface: which vars are
+implemented, tested, and how each is classified (portable / host-dependent /
+JVM-specific).
 
 ## How this connects to the test suites
 
@@ -45,8 +37,8 @@ Broadly:
   JVM Clojure (run with `make certify`). Spec entries cite these cases.
 - `test/conformance/` — the certification tooling and classified divergences
   (`certify.clj`, `known-divergences.edn`); see its `README.md` and `SPEC.md`.
-- `vendor/clojure-test-suite` — the cross-dialect suite (≥4081 assertions
-  passing); dialect splits there are classification evidence.
+- `vendor/clojure-test-suite` — the cross-dialect suite; dialect splits there
+  are classification evidence.
 - jank's per-construct corpus (`~/src/jank/compiler+runtime/test/jank`) is
   the granularity model for §2/§3 conformance.
 

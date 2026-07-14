@@ -162,7 +162,7 @@ checks → UNVERIFIED (rows to add).
   `#{:jolt :clj :default}` — jolt emulates `clojure.lang.*`/`java.*`, so it
   reads the `:clj` branch of a `.cljc` library by default; a library can put a
   `:jolt` branch first to override, or a loading context can call
-  `reader-features-set!`. History in RFC 0002.)
+  `reader-features-set!`.)
 - Reader conditionals MUST be an error outside `.cljc`-style reading unless
   the implementation documents otherwise.
 

@@ -1,9 +1,8 @@
 # RFC 0005 — Structural collection-type inference
 
-- **Status**: Implemented. Ray tracer 12.8s to 11.0s hint-free,
-  matching the explicit `^:struct` version; render checksum unchanged.
+- **Status**: Implemented — hint-free inference reaches the same specialization
+  as an explicit `^:struct` annotation.
 - **Champions**: jolt maintainers
-- **Created**: 2026-06-13
 
 ## Summary
 

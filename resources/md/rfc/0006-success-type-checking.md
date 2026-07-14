@@ -1,16 +1,15 @@
 # RFC 0006 — Compile-time detection of provably-wrong code (success typing)
 
-- **Status**: Implemented. Core-fn error domains (arithmetic on non-numbers,
-  count/first/rest/next/seq/nth on non-seqable scalars), `JOLT_TYPE_CHECK=
-  off|warn|error`. Follow-ups landed: bounded scalar **unions** so a
-  use is reported only when every member is in the error domain; **user-fn
-  error domains** behind `JOLT_TYPE_CHECK_USER` (closed-world);
-  precise **file:line:col** locations. The checker is now one
-  inference walk (folded into `infer`), and is **on by default in direct-link
-  builds** — where it piggybacks on the specialization inference for ~free —
-  and opt-in (`JOLT_TYPE_CHECK`) in plain builds.
+- **Status**: Implemented. The checker covers core-fn error domains (arithmetic
+  on non-numbers, `count`/`first`/`rest`/`next`/`seq`/`nth` on non-seqable
+  scalars), bounded scalar **unions** (a use is reported only when every member
+  is in the error domain), **user-fn error domains** behind
+  `JOLT_TYPE_CHECK_USER` (closed-world), and precise **file:line:col**
+  locations. It is a single inference walk (folded into `infer`): **on by
+  default in direct-link builds**, where it piggybacks on the specialization
+  inference for ~free, and opt-in via `JOLT_TYPE_CHECK=off|warn|error` in plain
+  builds.
 - **Champions**: jolt maintainers
-- **Created**: 2026-06-13
 - **Depends on**: RFC 0005 (structural collection-type inference)
 
 ## Summary

@@ -29,7 +29,6 @@
   ["spec/09-core-library.md"      "Spec: Core Library"                 "page"]
   ["spec/coverage.md"             "Spec: Coverage"                     "page"]
   ["rfc/0001-language-specification.md"          "RFC 0001: Language Specification"        "page"]
-  ["rfc/0002-reader-conditional-features.md"     "RFC 0002: Reader Conditional Features"   "page"]
   ["rfc/0003-transients.md"                      "RFC 0003: Transients"                    "page"]
   ["rfc/0004-type-hints.md"                      "RFC 0004: Type Hints"                    "page"]
   ["rfc/0005-structural-type-inference.md"       "RFC 0005: Structural Type Inference"     "page"]

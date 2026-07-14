@@ -90,8 +90,8 @@ candidates:
 cross-platform form. `:static {:lib NAME :libdir DIR}` links `-lNAME` (with a
 `-Bstatic` preference on Linux); on macOS, which has no `-Bstatic`, prefer the
 archive form. A spec with no `:static` (or a build passed `--dynamic`, or
-`:jolt/build {:dynamic-natives true}`) keeps the old behavior — the shared object
-is loaded at startup via `load-shared-object`.
+`:jolt/build {:dynamic-natives true}`) loads the shared object dynamically at
+startup via `load-shared-object`.
 
 Static linking needs a C compiler (`cc`) on `PATH` at build time (plus the C libs
 the Chez kernel links — lz4, zlib, ncurses). The distributed `joltc` bundles the

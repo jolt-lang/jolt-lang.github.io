@@ -6,7 +6,6 @@ a thing is built the way it is; the code is the source of truth for *how*.
 | # | Title | Status | Governs |
 | --- | --- | --- | --- |
 | [0001](/docs/rfc/0001-language-specification.html) | A Specification for the Clojure Language | Draft | The conformance target — what "is Clojure" means for jolt. |
-| [0002](/docs/rfc/0002-reader-conditional-features.html) | Reader-Conditional Feature Set | Superseded | `#?(...)` feature keys; `:clj` is now on by default. |
 | [0003](/docs/rfc/0003-transients.html) | Transients | Accepted | `transient`/`persistent!` semantics + the Chez mutable backing. |
 | [0004](/docs/rfc/0004-type-hints.html) | Type hints + keyword-lookup specialization | Accepted | `^Type`/`^:struct` hints → the bare-`get` fast path. |
 | [0005](/docs/rfc/0005-structural-type-inference.html) | Structural collection-type inference | Implemented | The `:struct`/`:vec`/`:set` lattice in `passes/types`. |

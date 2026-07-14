@@ -2,7 +2,6 @@
 
 - **Status**: Draft
 - **Champions**: jolt maintainers
-- **Created**: 2026-06-10
 
 ## Summary
 
@@ -129,18 +128,9 @@ Signature(s), since-version
    per-construct granularity model for §2–§3 conformance.
 5. Reference implementation source — last resort, for intent.
 
-## Current baseline (measured 2026-06-10)
-
-- ClojureDocs inventory: **694** `clojure.core` vars (648 with examples).
-- jolt implements **572**; **373 (66%)** are exercised by the behavioral
-  spec/conformance suites; 139 implemented-but-untested.
-- Initial classification of the 182 unimplemented: ~31 dynamic vars, ~20
-  agents/taps, ~11 STM, ~15 special-form docs, ~105 to adjudicate
-  (genuinely-portable gaps spotted already: `compare`, `any?`, `update-keys`,
-  `update-vals`, `parse-long`, `parse-double`, `parse-boolean`,
-  `partitionv`, `splitv-at`, `macroexpand`, `time`, `with-redefs`).
-- Conformance: 302 assertions × 3 execution paths; ~1,500 behavioral cases;
-  clojure-test-suite ≥ 4081/4707 assertions.
+The [coverage dashboard](/docs/spec/coverage.html) tracks the live status of
+every `clojure.core` var: specified, tested, implemented, and its host
+classification.
 
 ## Process
 
