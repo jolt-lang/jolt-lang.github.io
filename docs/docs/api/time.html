@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>Date &amp; Time (jolt-lang/time) — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (babashka.fs)</a>
+      </li>
+      
+      <li class="selected">
+        <a href="/docs/api/time.html">Date &amp; Time (jolt-lang/time)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/util.html">Utilities (jolt.util)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>Date &amp; Time (jolt-lang/time)</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#use">Use</a></li><li><a href="#how_it_works">How it works</a></li><li><a href="#coverage">Coverage</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <p>Date and time on Jolt is the <a href='https://github.com/jolt-lang/time'>jolt-lang/time</a> library. It provides the <code>java.time.&#42;</code> surface as portable Clojure — <code>Instant</code>, <code>LocalDate</code>/<code>LocalTime</code>/<code>LocalDateTime</code>, <code>ZonedDateTime</code>, <code>OffsetDateTime</code>, <code>Duration</code>, <code>Period</code>, <code>Year</code>/<code>YearMonth</code>, <code>ZoneId</code>/<code>ZoneOffset</code>, <code>DateTimeFormatter</code>, and the temporal machinery — and pulls <a href='https://github.com/juxt/tick'>juxt/tick</a> through <code>deps.edn</code> to expose tick's idiomatic API on top.</p><p>Core keeps only the <code>#inst</code> reader literal and the <code>java.util.Date</code> layer; the full <code>java.time</code> surface is this library, so it isn't loaded until you ask for it.</p><h2 id="use">Use</h2><pre><code class="clojure">;; deps.edn
+{:deps {io.github.jolt-lang/time {:git/url &quot;https://github.com/jolt-lang/time.git&quot;
+                                  :git/sha &quot;…&quot;}}}
+</code></pre><p>Requiring <code>jolt.time</code> installs the <code>java.time</code> shim; require <code>tick.core</code> for the tick functions.</p><pre><code class="clojure">&#40;require '&#91;jolt.time&#93;                 ; installs the java.time.&#42; host shim
+         '&#91;tick.core :as t&#93;&#41;
+
+&#40;t/now&#41;                               ; =&gt; an Instant
+&#40;t/date &quot;2020-01-01&quot;&#41;                 ; =&gt; a LocalDate
+&#40;t/&gt;&gt; &#40;t/date &quot;2020-01-01&quot;&#41; &#40;t/new-period 3 :months&#41;&#41;   ; =&gt; 2020-04-01
+&#40;t/zone &quot;Europe/Berlin&quot;&#41;
+
+;; the underlying java.time is there too
+&#40;java.time.ZonedDateTime/parse &quot;2020-07-06T10:59:13.417Z&quot;&#41;
+</code></pre><h2 id="how&#95;it&#95;works">How it works</h2><p>java.time values are opaque host objects registered through Jolt's <code>&#95;&#95;register-class-&#42;</code> seams, so they construct, compare, hash, print, sort, and answer <code>instance?</code> exactly like the real classes — and protocols extended to a <code>java.time</code> class (as tick does) dispatch on them. Named-zone offsets and DST come from the OS through a small libc primitive in core (<code>localtime</code>/<code>tzset</code> reading <code>/usr/share/zoneinfo</code>), with a built-in US/EU/AU/NZ rule table as the fallback; localized month and day names come from <code>strftime</code>.</p><h2 id="coverage">Coverage</h2><p>tick's full test suite passes, along with the <code>java.time</code> conformance rows carried over from Jolt's core corpus. <code>java.util.zip</code>-based helpers are the only gap — there is no <code>java.util.zip</code> shim yet.</p>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>
