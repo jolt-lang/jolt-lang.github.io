@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>Rationale — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li class="selected">
+        <a href="/docs/rationale.html">Rationale</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (babashka.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/time.html">Date &amp; Time (jolt-lang/time)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/util.html">Utilities (jolt.util)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>Rationale</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#rationale">Rationale</a></li><li><a href="#why_chez_scheme?">Why Chez Scheme?</a></li><li><a href="#the_jvm_problem">The JVM Problem</a></li><li><a href="#existing_ecosystem_and_java_shims">Existing Ecosystem and Java Shims</a></li><li><a href="#conformance">Conformance</a></li><li><a href="#under_the_hood">Under the Hood</a></li><li><a href="#why_not_just_wait_for_leyden?">Why Not Just Wait for Leyden?</a></li><li><a href="#desktop_and_native_interop">Desktop and Native Interop</a></li><li><a href="#deployment_and_architecture">Deployment and Architecture</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <h1 id="rationale">Rationale</h1><h2 id="why&#95;chez&#95;scheme?">Why Chez Scheme?</h2><p>Jolt's main goal is a drop-in replacement for JVM Clojure with fast startup and a light memory footprint. Since both languages share the same Lisp roots, the core semantics of Clojure map seamlessly to Scheme, avoiding the impedance mismatch associated with forcing functional paradigms onto the JVM. Chez brings a mature JIT compiler that can aggressively optimize emitted code while maintaining a reasonably small runtime footprint. You also get a highly tuned generational garbage collector that is practically purpose-built to handle the rapid allocation and deallocation of immutable data structures inherent to Clojure workflows. Finally, Chez runs natively across a wide variety of operating systems, so you get lean native binaries with instant startup times rather than hauling around a heavy Java environment.</p><h2 id="the&#95;jvm&#95;problem">The JVM Problem</h2><p>While the JVM is an incredibly powerful piece of engineering, it is also one of the biggest reasons developers cite when passing on Clojure. The Java runtime evolved in an era of enterprise architecture, designed for massive application servers that would greedily consume all available host memory and run continuously for months on end, making long JVM startup phases and heavy initial resource footprints perfectly acceptable trade-offs. That monolithic design clashes with how modern web applications are typically built: fleets of isolated containers that boot instantly and can dynamically scale horizontally to handle sudden traffic spikes. Hauling around a warmed-up Java environment just to run a lightweight standalone service goes directly against that principle.</p><h2 id="existing&#95;ecosystem&#95;and&#95;java&#95;shims">Existing Ecosystem and Java Shims</h2><p>Several Clojure dialects already exist, and Jank in particular is well along toward a full Clojure implementation focused on core language compatibility. Unfortunately, most existing Clojure libraries rely on some JVM interop, meaning they will not run on these dialects without modification. The key realization behind Jolt is that most libraries don't actually use much of the Java standard library surface. Once you map out a few packages like <code>java.io</code>, <code>java.time</code>, and a few others, you can run a large portion of the current Clojure stack without having to reimplement or port it.</p><p>Today Jolt supports a number of popular Clojure libraries. It is already possible to build a fully fledged Ring app using Ring, Reitit, Selmer, and HoneySQL. Some libraries, like Reitit, drop down to Java, but Jolt makes it possible to provide shims using Jolt libraries. If you need access to a particular Clojure library that doesn't have shims available in the core language, you can always add them yourself. In many cases this doesn't need to be done from scratch, as you can leverage mature Scheme or C libraries for the underlying functionality and write a bit of glue code to expose it as a Java API.</p><p>Jolt uses <code>deps.edn</code> for managing dependencies and aliases largely the same way as regular Clojure. The familiar nREPL workflow is fully supported: you can start a Jolt app, jack in from your favorite editor, and develop it just as you would on the JVM. nREPL can also be embedded in compiled release binaries.</p><h2 id="conformance">Conformance</h2><p>As part of the project, Jolt is building out a conformance spec, EBNF, and RFCs to map out what actually constitutes Clojure. The <a href='https://github.com/jank-lang/clojure-test-suite'>clojure-test-suite</a> from the Jank team has been invaluable for getting bootstrapped and having confidence that core language semantics such as the reader, special forms, and the bulk of <code>clojure.core</code> are correct. However, it stops short of the JVM host contract that many libraries depend on, so most of the effort in building the corpus went into closing that gap. The suite sources every expected value from reference JVM Clojure and currently holds around 3,500 cases, each tagged as either portable (<code>:common</code>, something any faithful Clojure dialect must satisfy) or host-dependent (<code>:jvm</code>, exercising interop). A certification step re-evaluates the whole corpus against real Clojure to catch unclassified divergences, ensuring that the contract doesn't quietly drift.</p><h2 id="under&#95;the&#95;hood">Under the Hood</h2><p>Jolt mirrors nine <code>java.&#42;</code> packages commonly used by popular Clojure libraries: <code>java.io</code>, <code>java.lang</code>, <code>java.util</code>, <code>java.time</code>, <code>java.math</code>, <code>java.net</code>, <code>java.nio</code>, <code>java.sql</code>, and <code>java.text</code>, with roughly a thousand method and field implementations across those packages. With no JVM underneath, class identity has to be synthesized using a hierarchy graph to back <code>instance?</code> and <code>&#40;class x&#41;</code>, and raw Chez runtime errors need to be mapped onto a faithful JVM exception hierarchy so that catch dispatch works correctly.</p><p>The real test was running the actual test suites for individual libraries to discover subtle implementation quirks and Java host interactions. Porting spec.alpha, core.logic, core.async, test.check, tools.reader, rewrite-clj, and a few dozen others shook out most of the edge cases: data readers returning code forms, namespaced-map literals, <code>&#42;print-length&#42;</code> and <code>&#42;print-level&#42;</code>, protocol methods merging across <code>deftype</code> and <code>reify</code>, and even soft and weak references with genuine GC eviction wired through Chez's weak pairs and guardians.</p><p>In terms of footprint, a minimal binary compiles to around 13 MB without optimizations and just 8 MB when direct linked. Performance is currently comparable with JVM Clojure in a number of benchmarks, having parity or being around 2× slower on most, while only being around 7× worse in a couple of cases. This was made possible entirely by the mature Chez runtime. And just as you can drop down to Java with regular Clojure, Jolt lets you do the same with Scheme or even C FFI for cases where you need peak performance.</p><h2 id="why&#95;not&#95;just&#95;wait&#95;for&#95;leyden?">Why Not Just Wait for Leyden?</h2><p>Project Leyden will address the notorious startup times and memory footprint issues associated with the JVM, but Jolt can push optimization much further by leveraging tricks like the full program optimization seen in Stalin Scheme. While both Leyden and Stalin rely on closed-world constraints, they have entirely different end goals. Leyden primarily focuses on shifting computation from runtime to build time, letting AOT compilers perform aggressive dead code elimination along with devirtualization and monomorphization. But Leyden cannot achieve the same type of structural erasure that Stalin does because it must respect Java semantics. A Stalin-style optimizer is entirely free to scalarize objects or bypass standard garbage collection paths when it proves an object is short-lived.</p><p>Building on Chez Scheme also sidesteps architectural baggage that Java simply cannot shed, the most obvious example being proper tail call optimization. Scheme mandates TCO by definition, so compiling Clojure down to Scheme provides infinite mutually recursive functions for free and embraces functional programming paradigms that the JVM actively fights against. The memory model and native interoperability provide another important divergence. Even with Leyden shrinking the JVM footprint, every value still carries the weight of a Java object header. Chez Scheme runs with much lower overhead and boots in microseconds. From Scheme you can manipulate raw C pointers and structs directly, wrapping high-performance libraries without the serialization and context-switching tax that JNI and Panama incur at the managed boundary.</p><p>There is also the reality of numeric computing. The JVM forces dynamic types into boxed objects, creating immense garbage collection pressure during tight mathematical loops unless you rely heavily on primitive type hinting. Scheme implementations utilize techniques like NaN boxing or tagged pointers to represent dynamic types directly in CPU registers, allowing dynamic mathematical operations to run much closer to the metal. Importantly, achieving Leyden-level performance with the JVM relies on an ahead-of-time compilation phase that destroys the interactive REPL experience that makes Clojure so powerful in the first place. Jolt can leverage Chez Scheme to generate highly optimized native machine code while retaining dynamic binding. You get the execution profile of a tightly compiled binary while keeping the interactive soul of Clojure intact. And you can still do AOT to get even better performance when interactive features aren't needed.</p><p>Jolt also supports tree shaking modeled on the ClojureScript compiler. Tracing the call graph and eliminating namespaces and functions that aren't referenced anywhere makes for a lean release binary.</p><h2 id="desktop&#95;and&#95;native&#95;interop">Desktop and Native Interop</h2><p>The bigger long-term benefit comes in the form of unlocking direct access to the Scheme and C ecosystems. Currently, the most common approach to building desktop applications in Clojure is to use wrappers around Java UI frameworks and accept the bloat that comes from a Java runtime. Bringing Clojure to Chez Scheme sidesteps the problem, allowing you to directly bind to native C libraries like GTK through a foreign function interface. Even though JNI and Project Panama exist, they necessarily introduce friction and overhead when crossing the boundary from managed memory to native pointers. From Scheme, the C boundary becomes practically invisible.</p><p>To prove the concept, <a href='https://github.com/jolt-lang/glimmer'>glimmer</a> uses Reagent-style reactive atoms to drive GTK components. The reactive data model has proven itself to be an extremely effective tool in ClojureScript, and wrapping GTK with a Reagent-style API brings these same ergonomics to a native desktop environment. The application ends up having a far smaller memory footprint than anything running in a JVM possibly could, and nREPL-driven development works here as well. This extends further to <a href='https://github.com/jolt-lang/glimmer-gl'>glimmer-gl</a> for OpenGL contexts inside GTK windows, and even a full Quake-style FPS driven by reactive 3D scenes. Driving an OpenGL pipeline directly from Clojure makes it easy to model complex visual state dynamically without sacrificing raw performance.</p><h2 id="deployment&#95;and&#95;architecture">Deployment and Architecture</h2><p>Deploying or distributing a Jolt app means building a binary for the target platform. Users don't need a JVM installed, and you don't even need Chez Scheme installed to develop using Jolt, because it produces its own self-contained <code>joltc</code> binary. It's also possible to create a Jolt library that can be embedded in C, C++, or Rust projects, providing a high-level Clojure API and interactivity via nREPL on top of performant native code.</p><p>Architecturally, the compiler is structured into three parts: a Clojure-in-Clojure compiler for the language itself, and a Scheme part consisting of the host layer and Java interop shims. A stretch goal is a portable Clojure implementation that could easily target different runtimes for cases where JVM interop isn't needed. You can start with a minimally irreducible set of forms and grow the compiler like a seed, so the host just needs to provide support for that minimal bootstrap code. While Chez gives us a good overall target, it makes a few architectural assumptions (like being able to write instructions to a section of memory and then execute that code) that do not hold for targets like WASM. Decoupling the host layer from Chez would give us access to interactive development for WASM via runtimes like Guile.</p>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>

@@ -3,7 +3,8 @@
  ;;        "reference" (Reference & Internals nav), "page" (rendered, reached
  ;;        from an index page, not shown in the nav).
  [["getting-started.md"            "Getting Started"                   "topic"]
-  ["differences.md"                "Differences from Clojure"          "topic"]
+ ["rationale.md"                   "Rationale"                         "topic"]
+ ["differences.md"                 "Differences from Clojure"          "topic"]
   ["building-and-deps.md"          "Building & Running"                "topic"]
   ["repl-driven-development.md"    "REPL-Driven Development"           "topic"]
   ["writing-libraries.md"          "Writing Libraries"                 "topic"]
