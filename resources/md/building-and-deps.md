@@ -86,6 +86,13 @@ bin/joltc run -m myapp.main
   resolve a short one), with an optional `:deps/root` for a subdirectory.
   Transitive deps from each dependency's own `deps.edn` are resolved too.
 - **local deps** — `{:local/root "../path"}`.
+- **Maven deps** — `{:mvn/version "…"}`. A Clojure library's JAR carries its
+  `.clj`/`.cljc` source, so the coordinate resolves by fetching the JAR
+  (Clojars, then Maven Central) and using its extracted source as a root; the
+  POM supplies transitive deps. JARs live in the standard `~/.m2/repository`,
+  shared with the JVM toolchain in both directions (`:mvn/local-repo` in
+  `deps.edn` relocates it, `JOLT_LOCAL_REPO` overrides from the environment).
+  A pure-Java JAR has no source to run and contributes nothing.
 - The project's own `:paths` (default `["src"]`) are included.
 - **aliases** — `:aliases {:dev {:extra-paths ["dev"] :extra-deps {…}
   :main-opts ["-e" "…"]}}`, selected with `-A:dev` (or several: `-A:dev:test`).
@@ -103,14 +110,32 @@ Git clones land in a global, sha-immutable cache shared across projects —
 
 ### What's not
 
-- **No Maven.** `:mvn/version` deps are skipped with a warning — git and local
-  only.
 - **Pure `clj`/`cljc` only.** A library that needs the JVM (Java interop, host
   classes) or a `clojure.core` feature Jolt doesn't implement will fail to load
   or fail at a call. Coverage is per-function: a namespace can load with most
-  functions working and a few not.
+  functions working and a few not. This applies to Maven deps too — the JAR's
+  Clojure source is what runs; compiled `.class` files are ignored.
 
 See [deps.edn internals](/docs/tools-deps.html) for the design rationale.
+
+### Adding deps from a script
+
+A single-file script can declare its dependencies inline with
+`jolt.deps/add-deps` (mirrors `babashka.deps/add-deps`) instead of a
+`deps.edn`:
+
+```clojure
+(when (System/getProperty "jolt.version")
+  ((requiring-resolve 'jolt.deps/add-deps)
+   '{:deps {org.clojure/data.json {:mvn/version "2.5.0"}}}))
+
+(ns main (:require [clojure.data.json :as json]))
+```
+
+The `jolt.version` property guard makes the script portable: on jolt it's
+always set, elsewhere the form is skipped — the same idiom babashka scripts
+use with `babashka.version`. See [Dependencies (jolt.deps)](/docs/api/deps.html)
+for the full API.
 
 ## Building binaries
 

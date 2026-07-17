@@ -12,6 +12,7 @@
   ["native-interop.md"             "Native Interop (FFI)"              "topic"]
   ["libraries.md"                  "Libraries"                          "topic"]
 
+  ["api/deps.md"                   "Dependencies (jolt.deps)"          "api"]
   ["api/infix.md"                  "Infix Notation"                    "api"]
   ["api/fs.md"                     "File System (babashka.fs)"             "api"]
   ["api/time.md"                   "Date & Time (jolt-lang/time)"      "api"]

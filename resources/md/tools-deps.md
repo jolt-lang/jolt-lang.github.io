@@ -5,12 +5,14 @@ way it is. For how to *use* it, see [building-and-deps.md](/docs/building-and-de
 
 Scope, decided up front:
 
-- **git + local deps only** — no Maven/`~/.m2` resolution.
+- **source resolution only** — git, local, and Maven coordinates all resolve to
+  Clojure *source* directories; compiled `.class` files are ignored.
 - **pure `clj`/`cljc`** — anything needing the JVM won't load or run; expected.
 - **no classpath abstraction** — `require` just needs to find a dep's namespaces;
   "the classpath" is an ordered list of source directories.
-- **own resolver, own reader** — `deps.edn` is read by jolt's own reader, and git
-  fetch/cache is a thin shell-out to `git`; no external package manager.
+- **own resolver, own reader** — `deps.edn` is read by jolt's own reader, and
+  fetching is a thin shell-out to `git`/`curl`/`unzip`; no external package
+  manager.
 - **deps-agnostic runtime core** — resolution is a CLI front-end concern, not a
   runtime one. The runtime knows nothing about `deps.edn`; it only consumes a
   list of source roots. The CLI resolves a `deps.edn` into those roots before
@@ -24,13 +26,26 @@ parses the EDN), then walks `:deps`:
 - `:git/url` + `:git/sha` (+ optional `:deps/root`) → clone the sha into the git
   cache and contribute the checkout (or its `:deps/root` subdir);
 - `:local/root` → the path as-is;
-- `:mvn/*` → skipped with a warning;
+- `:mvn/version` → fetch the JAR and use its extracted Clojure source as a
+  root (see below);
 - anything else → ignored.
 
 git resolution shells out to `git` through `jolt.host/sh` — `git init` + remote
-add + fetch + reset at the requested sha. Clones land in a global, sha-immutable
-cache (`$JOLT_GITLIBS`, else `~/.jolt/gitlibs`) shared across projects, the
-`tools.gitlibs` `~/.gitlibs` model.
+add + fetch + reset at the requested sha. An existing `tools.gitlibs` checkout
+(`$GITLIBS`, else `~/.gitlibs`) is reused when the JVM toolchain already
+fetched the sha; otherwise clones land in a global, sha-immutable cache
+(`$JOLT_GITLIBS`, else `~/.jolt/gitlibs`) shared across projects.
+
+Maven resolution works because a Clojure library's JAR ships its `.clj`/`.cljc`
+source, not just bytecode: the JAR is fetched (Clojars, then Maven Central)
+into the standard local repository (`~/.m2/repository`) at its standard path —
+so artifacts are shared with JVM Clojure/tools.deps in both directions — and
+extracted once into a `<artifact>-<version>.jar.jolt/` directory beside it,
+whose source becomes the root. The POM's `<dependency>` blocks supply
+transitive deps (test/provided/optional scopes skipped). A JAR with no
+Clojure source (pure Java) contributes nothing; the ClojureScript compiler
+subtree is skipped outright. `:mvn/local-repo` in `deps.edn` relocates the
+repository like tools.deps; `JOLT_LOCAL_REPO` overrides from the environment.
 
 Each resolved dependency contributes its own `:paths` (default `["src"]`) as
 source roots; the walk is **breadth-first** so every top-level coordinate
@@ -61,6 +76,11 @@ roots, and de-sugars the argv into a run:
 
 The resolver lives in the overlay alongside the runtime, but the runtime's only
 dependency interface is the list of source roots it's handed.
+
+Scripts can also resolve deps at runtime with `jolt.deps/add-deps` (the
+`babashka.deps/add-deps` twin) — same coordinates, roots appended after the
+current ones so an added dep never shadows a loaded namespace. See
+[Dependencies (jolt.deps)](/docs/api/deps.html).
 
 ## Native libraries
 
