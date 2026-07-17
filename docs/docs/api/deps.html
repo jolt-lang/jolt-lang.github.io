@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>Dependencies (jolt.deps) — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rationale.html">Rationale</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li class="selected">
+        <a href="/docs/api/deps.html">Dependencies (jolt.deps)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (babashka.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/time.html">Date &amp; Time (jolt-lang/time)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/util.html">Utilities (jolt.util)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>Dependencies (jolt.deps)</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#add-deps">add-deps</a></li><li><a href="#caches">Caches</a></li><li><a href="#the_rest_of_the_namespace">The rest of the namespace</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <p><code>jolt.deps</code> is the dependency front-end: it resolves <code>deps.edn</code> coordinates into source roots the loader searches. The CLI runs it for you on every <code>joltc run</code>/<code>repl</code>/<code>build</code> (see <a href='/docs/building-and-deps.html'>Building & Running</a>); this page covers the programmatic API — chiefly <code>add-deps</code>, which resolves dependencies from inside a running script.</p><h2 id="add-deps">add-deps</h2><p><code>jolt.deps/add-deps</code> mirrors <code>babashka.deps/add-deps</code>: pass a map with a <code>:deps</code> entry, and the resolved source roots are appended to the loader so a following <code>require</code> finds them. It's how a single-file script declares its dependencies without a <code>deps.edn</code>:</p><pre><code class="clojure">&#40;jolt.deps/add-deps
+ '{:deps {org.clojure/data.json {:mvn/version &quot;2.5.0&quot;}}}&#41;
+
+&#40;require '&#91;clojure.data.json :as json&#93;&#41;
+&#40;json/write-str {:ok true}&#41;   ; =&gt; &quot;{\&quot;ok\&quot;:true}&quot;
+</code></pre><p>All coordinate types work: <code>:mvn/version</code> (the JAR's Clojure source, fetched from Clojars then Maven Central), <code>:git/url</code> + <code>:git/sha</code>, and <code>:local/root</code> (resolved against the project directory). Transitive dependencies resolve too.</p><p>A script meant to also run on babashka or the JVM can guard on the <code>jolt.version</code> system property — the same shape as babashka's <code>babashka.version</code> idiom:</p><pre><code class="clojure">&#40;when &#40;System/getProperty &quot;jolt.version&quot;&#41;
+  &#40;&#40;requiring-resolve 'jolt.deps/add-deps&#41;
+   '{:deps {org.clojure/data.json {:mvn/version &quot;2.5.0&quot;}}}&#41;&#41;
+
+&#40;ns main &#40;:require &#91;clojure.data.json :as json&#93;&#41;&#41;
+</code></pre><p>On jolt the property is always set (so the deps are added); elsewhere it's absent and the form is skipped. Jolt-only scripts can test <code>&#42;jolt-version&#42;</code> instead — it's always bound, never nil.</p><p>Notes:</p><ul><li>New roots are appended <strong>after</strong> the current roots, so an added dep can  never shadow a namespace the runtime already resolves. The return value is  the vector of roots actually added (empty when everything was already  known).</li><li>A second options-map argument is accepted for babashka call-shape  compatibility; no options are currently honored.</li><li><code>:jolt/native</code> declarations carried by added deps are <strong>not</strong> auto-loaded —  native libraries are a project-launch concern. A warning names them so the  caller can load them via <code>jolt.ffi</code>.</li><li>An <code>:mvn/local-repo</code> key at the top of the map relocates the Maven  repository for that call, like the <code>deps.edn</code> key.</li></ul><h2 id="caches">Caches</h2><p>Resolution reuses what the JVM toolchain already has, in both directions:</p><ul><li><strong>Maven</strong> — JARs live at their standard path in the local Maven repository  (<code>&#126;/.m2/repository</code>): an artifact <code>clj</code> already fetched is reused without a  download, and one jolt fetches is there for <code>clj</code>. Jolt's source extraction  sits beside the jar in a <code>&lt;artifact&gt;-&lt;version&gt;.jar.jolt/</code> directory.  <code>:mvn/local-repo</code> in <code>deps.edn</code> relocates the repository like tools.deps;  the <code>JOLT&#95;LOCAL&#95;REPO</code> environment variable overrides it.</li><li><strong>git</strong> — an existing tools.gitlibs checkout (<code>$GITLIBS</code>, else <code>&#126;/.gitlibs</code>)  is reused when present; otherwise clones land in a sha-immutable cache  (<code>$JOLT&#95;GITLIBS</code>, else <code>&#126;/.jolt/gitlibs</code>) shared across projects.</li></ul><h2 id="the&#95;rest&#95;of&#95;the&#95;namespace">The rest of the namespace</h2><p><code>resolve-project</code> reads a project's <code>deps.edn</code> and returns its resolved roots, native-library declarations, and build options — the CLI calls it before every run. See <a href='/docs/tools-deps.html'>deps.edn Internals</a> for the resolution design (breadth-first walk, top-level pins win, aliases, tasks).</p>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>
