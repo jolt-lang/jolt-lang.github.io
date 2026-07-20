@@ -14,7 +14,7 @@ full `java.time` surface is this library, so it isn't loaded until you ask for i
 ```clojure
 ;; deps.edn
 {:deps {io.github.jolt-lang/time {:git/url "https://github.com/jolt-lang/time.git"
-                                  :git/sha "…"}}}
+                                  :git/sha "26ae332cbe4b6515ae2386c50ed0ae34cafa483a"}}}
 ```
 
 Requiring `jolt.time` installs the `java.time` shim; require `tick.core` for the

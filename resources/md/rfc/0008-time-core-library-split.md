@@ -1,6 +1,6 @@
 # RFC 0008 — Splitting time between core and the library
 
-- **Status**: Draft
+- **Status**: Implemented (jolt-lang/jolt#431)
 - **Champions**: jolt maintainers
 
 ## Summary
@@ -148,12 +148,23 @@ the library side.
 
 **Remove from `host/chez/java/inst-time.ss`** the `java.time.*` registrations:
 `Instant`, `ZoneId`, `LocalDateTime`, `DateTimeFormatter`, `FormatStyle`, and the
-`mk-instant` / `mk-local` / `mk-zoned` / `mk-local-date` constructors and their
-methods. Also move the `java.time`-returning conversion methods off the core
-`Date` surface — `.toInstant`, `.toLocalDate`, `.toLocalDateTime` — since their
-results are `java.time` values; the library re-adds them when it loads (it
-already owns the `Instant` ctor hook and the `local-date-time` methods, so
-extending `Date.toInstant` to it is natural).
+`mk-local` / `mk-zoned` / `mk-local-date` / `mk-formatter` constructors and their
+methods. Core defines no `java.time` value of its own after this.
+
+The one `java.time` touchpoint that stays is the `Date`/`FileTime` `.toInstant`
+bridge (`java.util.Date.toInstant`, `java.sql.Date/Timestamp.toInstant`, and
+`java.nio.file.attribute.FileTime.toInstant` in `nio-file.ss`, all real Java
+methods). Rather than removing those and having the library re-register them on
+core's values, they route through `mk-instant`, which delegates to the library's
+`Instant` constructor via the existing `set-instant-ctor!` hook. With no library
+loaded there is no `Instant` to build, so `mk-instant` throws a message naming
+the dependency — the bridge requires the library, and core still produces no
+`java.time` value on its own. So `set-instant-ctor!` is kept, not retired: it is
+the seam through which the library owns `Instant` construction.
+
+The `Date.toLocalDate` / `toLocalDateTime` methods core had are dropped outright.
+A `java.util.Date` has no such methods on the JVM (they were a jolt invention),
+so there is nothing to bridge.
 
 **Keep in core**: the `#inst` value model and reader, `java.util.Date` /
 `java.sql.Date` / `Timestamp` with their `java.util` methods (`getTime`,
@@ -165,11 +176,6 @@ layer and the HTTP date path; none of them is `java.time`.
 **Keep in core**: `tz-primitives.ss`. The libc seams stay a host capability. The
 library remains pure Clojure and reaches them through `jolt.host/*`, the way it
 does now.
-
-**The `set-instant-ctor!` hook can retire.** Its whole job is to reconcile core's
-`Instant` with the library's when both exist. Once core has no `Instant`, there
-is one representation and nothing to reconcile. Removing it simplifies the
-handshake, though it can also be left in place harmlessly.
 
 **Tests move with the code.** The `insttime` rows in `test/chez/unit.edn` that go
 through `java.time` (`Instant/ofEpochMilli`, `Instant/now`, `DateTimeFormatter/ofPattern`
@@ -200,12 +206,15 @@ path can special-case the `java.time` package and say so:
 ```
 java.time.LocalDate is provided by the jolt-lang/time library, not core.
 Add it to deps.edn:
-  io.github.jolt-lang/time {:git/sha "…"}
+  io.github.jolt-lang/time {:git/sha "26ae332cbe4b6515ae2386c50ed0ae34cafa483a"}
 ```
 
 This is the same philosophy as the "did you mean?" symbol diagnostics: the error
-carries the fix. It is optional to this RFC but recommended, and it removes the
-digging that surfaced the problem in the first place.
+carries the fix, and it removes the digging that surfaced the problem in the
+first place. It is implemented: `host-static.ss` recognizes a `java.time.*` class
+(fully qualified, or a distinctive short name) that no registration resolves and
+reports that it comes from jolt-lang/time instead of a bare "Unknown class". The
+`.toInstant` bridge throws the same pointer when the library is absent.
 
 ## Guidance for library authors
 
@@ -255,5 +264,8 @@ is present exactly when jolt-lang/time is on the classpath.
   Windows) is entirely a library concern. Nothing in core references it, which is
   already the case, but it is worth stating that core's `tz-backend` seam only
   reports capability and the library owns the fallback policy.
-- **Whether to keep `set-instant-ctor!`.** Retiring it is cleaner; keeping it is
-  harmless and avoids touching the library. Low stakes either way.
+- **The library's parallel `java.util` types.** The library registers its own
+  `java.util.Locale` and `java.util.Date/from`, which core also owns, so those
+  two still register twice (silently, behind `JOLT_DEBUG`). It is a minor
+  follow-up for the library to consume core's `Locale`/`Date` rather than shadow
+  them; core keeping the `java.util` layer is correct by the rule.

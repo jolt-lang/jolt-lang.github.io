@@ -170,7 +170,7 @@ bin/joltc nrepl-server [port]   # an nREPL server (default port 7888)
 bin/joltc run -m myapp.main
 ```
 
-As in tools.deps, a git dependency whose lib name encodes a host can omit `:git/url` — `io.github.OWNER/REPO` (and the `com.github.`, `io.gitlab.`/`com.gitlab.`, `io.bitbucket.`/`org.bitbucket.`, and `ht.sr.~OWNER` prefixes) derives the clone URL from the name, so `io.github.paintparty/lasertag {:git/sha "…"}` resolves with no URL. The `:git/sha` (a full commit SHA) is still required.
+As in tools.deps, a git dependency whose lib name encodes a host can omit `:git/url` — `io.github.OWNER/REPO` (and the `com.github.`, `io.gitlab.`/`com.gitlab.`, `io.bitbucket.`/`org.bitbucket.`, and `ht.sr.~OWNER` prefixes) derives the clone URL from the name, so `io.github.paintparty/lasertag {:git/sha "aa898c1967d10fc198385f1914893b9c75410d16"}` resolves with no URL. The `:git/sha` (a full commit SHA) is still required.
 
 See [Writing Libraries](/docs/writing-libraries.html) for the full `deps.edn` surface (aliases, tasks, transitive deps), and [Supported Libraries](/docs/libraries.html) for Clojure libraries known to work.
 

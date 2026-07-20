@@ -148,7 +148,7 @@
     <div id="content">
       <p>Date and time on Jolt is the <a href='https://github.com/jolt-lang/time'>jolt-lang/time</a> library. It provides the <code>java.time.&#42;</code> surface as portable Clojure — <code>Instant</code>, <code>LocalDate</code>/<code>LocalTime</code>/<code>LocalDateTime</code>, <code>ZonedDateTime</code>, <code>OffsetDateTime</code>, <code>Duration</code>, <code>Period</code>, <code>Year</code>/<code>YearMonth</code>, <code>ZoneId</code>/<code>ZoneOffset</code>, <code>DateTimeFormatter</code>, and the temporal machinery — and pulls <a href='https://github.com/juxt/tick'>juxt/tick</a> through <code>deps.edn</code> to expose tick's idiomatic API on top.</p><p>Core keeps only the <code>#inst</code> reader literal and the <code>java.util.Date</code> layer; the full <code>java.time</code> surface is this library, so it isn't loaded until you ask for it.</p><h2 id="use">Use</h2><pre><code class="clojure">;; deps.edn
 {:deps {io.github.jolt-lang/time {:git/url &quot;https://github.com/jolt-lang/time.git&quot;
-                                  :git/sha &quot;…&quot;}}}
+                                  :git/sha &quot;26ae332cbe4b6515ae2386c50ed0ae34cafa483a&quot;}}}
 </code></pre><p>Requiring <code>jolt.time</code> installs the <code>java.time</code> shim; require <code>tick.core</code> for the tick functions.</p><pre><code class="clojure">&#40;require '&#91;jolt.time&#93;                 ; installs the java.time.&#42; host shim
          '&#91;tick.core :as t&#93;&#41;
 
