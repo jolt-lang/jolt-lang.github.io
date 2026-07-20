@@ -20,8 +20,10 @@ dependencies without a `deps.edn`:
 ```
 
 All coordinate types work: `:mvn/version` (the JAR's Clojure source, fetched
-from Clojars then Maven Central), `:git/url` + `:git/sha`, and `:local/root`
-(resolved against the project directory). Transitive dependencies resolve too.
+from Clojars then Maven Central), `:git/url` + `:git/sha` (`:git/url` optional
+when the lib name is host-prefixed, e.g. `io.github.OWNER/REPO`), and
+`:local/root` (resolved against the project directory). Transitive dependencies
+resolve too.
 
 A script meant to also run on babashka or the JVM can guard on the
 `jolt.version` system property — the same shape as babashka's
