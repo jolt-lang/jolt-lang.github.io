@@ -1,38 +1,47 @@
 # RFC 0008 — Splitting time between core and the library
 
-- **Status**: Implemented (jolt-lang/jolt#431)
+- **Status**: Accepted — implementation pending (supersedes the "remove all
+  `java.time` from core" approach that jolt-lang/jolt#431 first took)
 - **Champions**: jolt maintainers
 
 ## Summary
 
-Date and time on jolt is split across two places: a shim baked into the core
-image (`host/chez/java/inst-time.ss`) and the [jolt-lang/time](https://github.com/jolt-lang/time)
-library. Today that split is ragged. Core carries a partial `java.time.*`
-surface, so some `java.time` calls work with no dependency and some do not, with
-no rule a user can predict. `(java.time.Instant/now)` works out of the box but
-`(java.time.LocalDate/now)` and `(java.time.ZonedDateTime/now)` need the library,
-and nothing tells you why.
+Date and time on jolt is split across `host/chez/java/inst-time.ss` in the core
+runtime and the [jolt-lang/time](https://github.com/jolt-lang/time) library. The
+split was ragged: core carried a partial, UTC-only `java.time.*` shim in Scheme,
+so some calls worked with no dependency and some didn't (`Instant/now` yes,
+`LocalDate/now` no), and that partial shim *duplicated* logic the library already
+implements in Clojure.
 
-This RFC proposes one rule for the boundary and the migration to make the code
-match it:
+The boundary this RFC settles on:
 
-> Core owns the `#inst` reader literal and the legacy `java.util` / `java.text`
-> date layer it round-trips and formats (`java.util.Date`, `java.sql.Date`/
-> `Timestamp`, `java.util.Calendar`, `java.util.TimeZone`, `java.text.SimpleDateFormat`),
-> plus the irreducible libc FFI seams. The entire `java.time.*` namespace is the
-> jolt-lang/time library, loaded on demand.
+> Core owns the `#inst` literal, the `java.util` / `java.text` date layer, and a
+> **base `java.time` API** most JVM libraries expect — the portable, no-system-
+> dependency part: `Instant`, `LocalDate` / `LocalTime` / `LocalDateTime`,
+> `Duration`, `Period`, `Year` / `YearMonth`, `ZoneOffset` (fixed offsets),
+> `ZoneId` construction, and `DateTimeFormatter` pattern/ISO formatting. The
+> jolt-lang/time library adds what depends on the OS timezone database and
+> locale data: named-zone offset resolution and DST (`ZoneId` rules),
+> `ZonedDateTime` / `OffsetDateTime`, localized formatting, and the tick API.
 
-The line is drawn at a namespace boundary, not at "portable versus FFI-backed,"
-because a per-namespace rule is one a user can state in a sentence and never be
-surprised by, while a per-capability rule splits single classes across two homes
-and reintroduces exactly the confusion this RFC exists to remove.
+The line was chosen empirically by surveying `conformance-libraries/` (see
+below): the base is what real libraries reach for incidentally, and it computes
+from epoch arithmetic alone, so it should never require an extra dependency. Only
+named-zone/DST and localized names genuinely need system libraries, and those are
+the library's reason to exist.
+
+There must be **one** implementation, not two. The base is implemented once — as
+the library's existing Clojure namespaces — and *moves into core* so it loads
+without a dependency; the library keeps only the zone/locale layer on top. The
+earlier idea of a Scheme base in core is dropped precisely because it duplicated
+the Clojure base.
 
 ## The current state
 
 Two files in the core image carry time.
 
-`host/chez/java/inst-time.ss` (baked into the seed) registers, through the
-host value-model seams (`register-class-statics!`, `register-host-methods!`,
+`host/chez/java/inst-time.ss` (loaded by the core runtime at boot, not baked into
+the seed) registers, through the host value-model seams (`register-class-statics!`, `register-host-methods!`,
 `register-class-ctor!`, and the `register-{eq,hash,compare,class,pr,instance-check}-arm!`
 family):
 
@@ -94,178 +103,148 @@ This is the confusion reported in the field: `Instant/now` worked, `LocalDate/no
 and `ZonedDateTime/now` did not, and the docs had to be dug through to learn that
 `java.time` is really the jolt-lang/time library.
 
-## The rule
+## The base API, from the conformance survey
 
-`java.time.*` belongs to the library. Core owns `#inst` and the `java.util` /
-`java.text` layer, and the FFI seams. Stated for a user:
+The boundary is set by what real libraries use. A sweep of `conformance-libraries/`
+(58 libraries) for date/time references, excluding `tick` itself, shows the
+common surface is a portable base plus a thin system-dependent tail:
 
-- To read, print, compare, or format a `#inst` / `java.util.Date` — including
-  HTTP-style dates with `java.text.SimpleDateFormat` — you need nothing. It is in
-  core.
-- To touch anything under `java.time.*` — `Instant`, `LocalDate`,
-  `ZonedDateTime`, `Duration`, `DateTimeFormatter`, all of it, uniformly — add
-  jolt-lang/time. It is one dependency, and it is all-or-nothing.
+- Heavily used and portable (pure epoch arithmetic): `Instant` (`now`, `parse`,
+  `ofEpochMilli`, `ofEpochSecond`, `from`, `toEpochMilli`), `LocalDate` /
+  `LocalDateTime` / `LocalTime` (`now`, `of`, `parse`), `Duration` (`ofMillis`,
+  `between`, `ofSeconds`), `ZoneOffset/UTC`, and `DateTimeFormatter` patterns +
+  the `ISO_*` constants. Also `java.util.Date` (`from`, `valueOf`) and `Calendar`.
+- The narrow system-dependent tail: `ZoneId/systemDefault` and named-zone offset
+  lookups (need the OS tz database), and `DateTimeFormatter/ofLocalized*` (need
+  locale month/day names via `strftime`).
 
-There is no third category and no "works sometimes." That predictability is the
-whole point.
+Mapped onto the library's namespaces, only `zones.clj` (tz rules) and the
+localized branch of `fmt.clj` touch the libc seams; `util`, `impl`, `enums`,
+`local`, `amount`, `temporal`, `year`, `instant`, and the pattern engine are all
+system-free.
 
-### Why the namespace, not FFI-dependence
+## The boundary
 
-The tempting alternative is to split by capability: keep the portable parts of
-`java.time` in core (`Instant`, `LocalDate`, `LocalDateTime`, `Duration`,
-`Period` — all computable from epoch arithmetic with no system library) and put
-only the FFI-backed parts in the library (named-zone/DST offsets, localized
-names, so `ZonedDateTime` with a real zone). That matches an intuition that "core
-is the portable shims, the library is the stuff that needs libc."
+Core carries the base API so basic `java.time` works with no dependency; the
+library adds what genuinely needs the OS. For a user:
 
-It is rejected, for three reasons.
+- **In core, no dependency:** `#inst` and the `java.util` / `java.text` layer
+  (`Date`, `sql.Date`/`Timestamp`, `Calendar`, `TimeZone`, `SimpleDateFormat`),
+  plus the base `java.time`: `Instant`, `LocalDate` / `LocalTime` /
+  `LocalDateTime`, `Duration`, `Period`, `Year` / `YearMonth`, `ZoneOffset`,
+  `ZoneId` construction, and `DateTimeFormatter` pattern/ISO formatting.
+- **In jolt-lang/time:** named-zone offset resolution and DST (`ZoneId` rules),
+  `ZonedDateTime` / `OffsetDateTime`, localized formatting, and the tick API.
 
-1. **It splits single classes.** `ZonedDateTime` at a fixed offset is pure
-   arithmetic; `ZonedDateTime` in `Europe/Berlin` needs libc. Under a
-   capability split they live in different repos, and a user cannot know which
-   `ZonedDateTime` they have. `DateTimeFormatter` with a pattern is portable;
-   with a locale it needs `strftime`. Splitting a class across the boundary is
-   the confusion, not the cure.
-2. **Footprint.** A complete portable `java.time` — the Temporal machinery,
-   `LocalDate`/`ZonedDateTime`/`Period`/`Duration` arithmetic, formatter parsing
-   — is large (the library is a dozen namespaces). Baking it into the always-loaded
-   seed grows the live heap that every major GC scans, for a feature most
-   programs never touch. Keeping `java.time` lazy is the right footprint call,
-   and lazy means library.
-3. **The FFI dependence already lives on the right side of the line.** The libc
-   calls are a *host capability* (`jolt.host/tz-offset-seconds` and friends),
-   sitting beside `jolt.host/sh` and `getenv`. The time *functionality* built on
-   them — zone rules, DST, localized formatting — is already in the library. So
-   the "FFI-backed functionality is the library" intuition is honored by the
-   proposed boundary; only the raw seam stays in core, which is where a host
-   capability belongs.
+The line is "does it need the OS timezone database or locale data?" — which is
+the reason the library exists. A per-class rule keeps it predictable: the base
+classes always resolve; a `ZonedDateTime` or a named-zone lookup is what asks for
+the dependency.
 
-## What moves
+## What moves and how (dedupe)
 
-The change is almost entirely a deletion from core; the library already provides
-the superset and overrides core when loaded, so nothing new has to be written on
-the library side.
+The base must not be implemented twice. It exists once — as the library's
+Clojure namespaces — so the base **moves into core** and the library keeps only
+the zone/locale layer on top. (This supersedes jolt#431, which deleted core's
+`java.time` outright; and it drops the idea of a parallel Scheme base in core,
+whose whole problem was that it duplicated the Clojure one.)
 
-**Remove from `host/chez/java/inst-time.ss`** the `java.time.*` registrations:
-`Instant`, `ZoneId`, `LocalDateTime`, `DateTimeFormatter`, `FormatStyle`, and the
-`mk-local` / `mk-zoned` / `mk-local-date` / `mk-formatter` constructors and their
-methods. Core defines no `java.time` value of its own after this.
+1. **Base namespaces move library → core**, becoming part of the runtime:
+   `jolt.time.{util,impl,enums,local,amount,temporal,year,instant}`. These have
+   no zone/locale dependency. `DateTimeFormatter` needs `fmt.clj` split into a
+   pattern/ISO engine (core) and the localized-name branch (library, which reads
+   `jolt.host/locale-name`). `ZoneOffset` (fixed) and `ZoneId` construction come
+   over too; `ZoneId`'s rule lookups stay behind in `zones.clj`.
+2. **The library keeps** `zones.clj` (named-zone rules, DST, the IANA fallback
+   tables), `zoned.clj` (`ZonedDateTime`/`OffsetDateTime`), the localized
+   formatting branch, and tick. Its remaining namespaces `require` the base,
+   which now resolves from core.
+3. **Boot availability.** `(java.time.Instant/now)` must work with no `require`,
+   but stdlib Clojure loads lazily and only the Scheme runtime runs at boot. The
+   base is exposed by *autoloading on first use*: when interop resolves an
+   unregistered `java.time.*` class, the runtime loads the core base namespace
+   that provides it, then retries — so date-free programs pay nothing and a
+   library that touches `java.time` gets it transparently. (A boot-eager
+   `require` of the base is the simpler alternative but makes every run, even
+   `joltc -e '(+ 1 2)'`, carry the base in the live heap; autoload keeps the
+   footprint at zero until first use.)
 
-The one `java.time` touchpoint that stays is the `Date`/`FileTime` `.toInstant`
-bridge (`java.util.Date.toInstant`, `java.sql.Date/Timestamp.toInstant`, and
-`java.nio.file.attribute.FileTime.toInstant` in `nio-file.ss`, all real Java
-methods). Rather than removing those and having the library re-register them on
-core's values, they route through `mk-instant`, which delegates to the library's
-`Instant` constructor via the existing `set-instant-ctor!` hook. With no library
-loaded there is no `Instant` to build, so `mk-instant` throws a message naming
-the dependency — the bridge requires the library, and core still produces no
-`java.time` value on its own. So `set-instant-ctor!` is kept, not retired: it is
-the seam through which the library owns `Instant` construction.
+The `Date`/`FileTime` `.toInstant` bridge keeps routing through `mk-instant` and
+the `set-instant-ctor!` hook, but now the hook is always satisfiable because the
+core base provides `Instant` — `.toInstant` no longer needs the library. The
+`#inst` / `java.util` / `java.text` layer and the `tz-primitives.ss` libc seams
+stay in core as they are.
 
-The `Date.toLocalDate` / `toLocalDateTime` methods core had are dropped outright.
-A `java.util.Date` has no such methods on the JVM (they were a jolt invention),
-so there is nothing to bridge.
-
-**Keep in core**: the `#inst` value model and reader, `java.util.Date` /
-`java.sql.Date` / `Timestamp` with their `java.util` methods (`getTime`,
-`before`/`after`, the deprecated field accessors), `java.util.Calendar`,
-`java.util.TimeZone`, `java.text.SimpleDateFormat`, `java.util.Locale`, and the
-`format-ms` / `parse-ms` engine. These are the legacy `java.util` / `java.text`
-layer and the HTTP date path; none of them is `java.time`.
-
-**Keep in core**: `tz-primitives.ss`. The libc seams stay a host capability. The
-library remains pure Clojure and reaches them through `jolt.host/*`, the way it
-does now.
-
-**Tests move with the code.** The `insttime` rows in `test/chez/unit.edn` that go
-through `java.time` (`Instant/ofEpochMilli`, `Instant/now`, `DateTimeFormatter/ofPattern`
-on a `#inst`, `FormatStyle`, `ZoneId/systemDefault`) move to the jolt-lang/time
-test suite, which is where that behavior will live. The rows that exercise only
-`#inst` / `java.util.Date` stay in core.
+**Tests.** The base `java.time` conformance moves into core's suite alongside
+`#inst`; the library's suite keeps the zone/DST/localized/tick coverage.
 
 ### Compatibility
 
-This is a behavior change for one case: a program that today calls
-`java.time.Instant/now` (or `LocalDateTime/now`, or formats a `#inst` with
-`DateTimeFormatter`) with no dependency will, after the change, need
-jolt-lang/time. That is the cost of the boundary being consistent. It is
-mitigated three ways: the library provides a strict superset, so adding it never
-removes capability; a program that formats a `Date` without `java.time` can use
-`java.text.SimpleDateFormat`, which stays in core; and the compile error for an
-unregistered `java.time` class can name the dependency to add (see below).
+The base is a strict addition to core, so the common surface only gains coverage:
+`Instant`, `LocalDate` / `LocalDateTime`, `Duration`, `DateTimeFormatter`
+patterns, and the rest of the base resolve with no dependency. What still needs
+jolt-lang/time is the zone layer — a `ZonedDateTime`, a named-zone offset
+(`ZoneId/systemDefault` and rule lookups), or a localized formatter. A program
+touching those without the dependency gets an error naming it, rather than a
+silent wrong answer.
 
 ## Making the boundary teach itself
 
-The docs should state the one rule wherever `deps.edn` or host interop is
-introduced: `#inst` and `java.util.Date` are core, all of `java.time` is
-jolt-lang/time. Beyond docs, the interop layer can turn the boundary into a
-pointer at the moment it bites. When a `java.time.*` class is referenced and no
-registration is installed (the library is not loaded), the "unresolved class"
-path can special-case the `java.time` package and say so:
+Beyond docs, the interop layer turns the boundary into a pointer at the moment it
+bites. When a zone-layer `java.time` class is referenced and the library is not
+loaded, the "unresolved class" path names the dependency instead of a bare
+"Unknown class":
 
 ```
-java.time.LocalDate is provided by the jolt-lang/time library, not core.
+java.time.ZonedDateTime is provided by the jolt-lang/time library, not core.
 Add it to deps.edn:
   io.github.jolt-lang/time {:git/sha "26ae332cbe4b6515ae2386c50ed0ae34cafa483a"}
 ```
 
 This is the same philosophy as the "did you mean?" symbol diagnostics: the error
-carries the fix, and it removes the digging that surfaced the problem in the
-first place. It is implemented: `host-static.ss` recognizes a `java.time.*` class
-(fully qualified, or a distinctive short name) that no registration resolves and
-reports that it comes from jolt-lang/time instead of a bare "Unknown class". The
-`.toInstant` bridge throws the same pointer when the library is absent.
+carries the fix. `host-static.ss` already recognizes an unresolved `java.time.*`
+class and points at jolt-lang/time; once the base is in core the message narrows
+to the classes that genuinely live in the library (`ZonedDateTime`,
+`OffsetDateTime`, named-zone `ZoneId` operations), since the base now resolves.
 
 ## Guidance for library authors
 
-A portable Clojure library that wants to run on jolt without forcing the time
-dependency on its users should treat `java.time.*` as a jolt add-on, the same way
-it already treats platform specifics for Babashka. jolt's reader-conditional
-feature set is `{:jolt :clj :default}` (see `host/chez/reader.ss`), and the first
-matching clause wins, so a `:jolt` branch placed before `:clj` lets a library
-special-case jolt precisely:
+The base `java.time` a library reaches for incidentally — `Instant`, `LocalDate`,
+`LocalDateTime`, `Duration`, `DateTimeFormatter` patterns — works on jolt with no
+dependency, so most libraries need no special handling. Only the zone layer asks
+for jolt-lang/time.
+
+If a library uses a `ZonedDateTime`, a named zone, or localized formatting and
+wants to stay dependency-free on jolt, jolt's reader-conditional feature set is
+`{:jolt :clj :default}` (see `host/chez/reader.ss`) and the first matching clause
+wins, so a `:jolt` branch before `:clj` can substitute the base:
 
 ```clojure
-(defn today []
-  #?(:jolt (java.util.Date.)            ; core, no dependency
-     :clj  (java.time.LocalDate/now)))
+(defn stamp []
+  #?(:jolt (java.time.Instant/now)      ; base, in core, no dependency
+     :clj  (java.time.ZonedDateTime/now)))
 ```
 
-For a library like Lasertag whose only jolt gap is a couple of `java.time`
-constructors, the lightest-touch options, in order of preference:
-
-1. **Prefer the core layer on the reachable path.** If the value is only used as
-   an instant or for formatting, `java.util.Date` in core covers it with no
-   dependency and no reader conditional.
-2. **Guard the `java.time` call with a `:jolt` reader branch**, as above, when a
-   `java.time` type is genuinely wanted. This keeps the library dependency-free
-   on jolt while unchanged on the JVM and Babashka.
-3. **Depend on jolt-lang/time** if the library leans on `java.time` broadly. That
-   is the supported way to get the full surface, and it is a single git
-   coordinate.
-
-The direction of travel answers the question directly: `LocalDate/now` and
-`ZonedDateTime/now` will *not* be added to core. The `Instant/now` and
-`LocalDateTime/now` that work today are being removed from core, not kept, so
-that `java.time` is uniformly the library. A library author can rely on that
-rule: on jolt, `#inst` and `java.util.Date` are always present, and `java.time`
-is present exactly when jolt-lang/time is on the classpath.
+For a library like Lasertag whose java.time use is a couple of constructors, the
+base almost certainly covers it now with no change. Reach for a `:jolt` branch
+only for the zone layer, or depend on jolt-lang/time if the library leans on
+zoned/localized time broadly (a single git coordinate).
 
 ## Open questions
 
-- **`java.util.Locale`.** It is `java.util`, so it stays in core by the rule, but
-  its only core consumer is `SimpleDateFormat`, whose `format-ms` engine is
-  English-only. The large `Locale` constant table (lines 481–509 of
-  `inst-time.ss`) may be more than core needs; it could shrink to the handful the
-  legacy layer actually reads, with the rest living in the library alongside the
-  localized formatter that uses them.
-- **Deprecating the fallback rule tables.** With `java.time` fully in the
-  library, the US/EU/AU/NZ zone-rule fallback (used when libc is unusable, e.g.
-  Windows) is entirely a library concern. Nothing in core references it, which is
-  already the case, but it is worth stating that core's `tz-backend` seam only
-  reports capability and the library owns the fallback policy.
+- **`LocalDate/now` and the "current" zone.** `now()` for the local types uses
+  the system default zone to decide the wall-clock date. Core has the
+  `jolt.host/tz-offset-seconds` libc seam, so the base can honor the real zone
+  where available and fall back to UTC otherwise. Whether the base's `now()`
+  should consult the seam or fix on UTC (leaving zone-accurate `now` to the
+  library) is worth pinning down; UTC is the safe default and the library can
+  refine it.
+- **The autoload trigger.** Autoloading the core base on first `java.time.*`
+  reference is a new interop capability. It has to fire in both the compile path
+  (a static call site) and any runtime `resolve` of a `java.time` class, and be a
+  no-op once loaded. Scope it to the `java.time.` package so it never masks a
+  genuine unknown class.
 - **The library's parallel `java.util` types.** The library registers its own
-  `java.util.Locale` and `java.util.Date/from`, which core also owns, so those
-  two still register twice (silently, behind `JOLT_DEBUG`). It is a minor
-  follow-up for the library to consume core's `Locale`/`Date` rather than shadow
-  them; core keeping the `java.util` layer is correct by the rule.
+  `java.util.Locale` and `java.util.Date/from`, which core also owns. Once the
+  base is shared these should collapse to core's, removing the last duplicate
+  registration.
