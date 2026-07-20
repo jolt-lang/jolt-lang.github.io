@@ -11,3 +11,4 @@ a thing is built the way it is; the code is the source of truth for *how*.
 | [0005](/docs/rfc/0005-structural-type-inference.html) | Structural collection-type inference | Implemented | The `:struct`/`:vec`/`:set` lattice in `passes/types`. |
 | [0006](/docs/rfc/0006-success-type-checking.html) | Success typing (provably-wrong-code detection) | Implemented | The error-domain checker in `passes/types`. |
 | [0007](/docs/rfc/0007-compilation-modes-and-binary-output.html) | Compilation modes + binary output | Implemented | `release`/`--opt`/`--dev`, `--direct-link`, `--tree-shake`, numeric lowering, inlining. |
+| [0008](/docs/rfc/0008-time-core-library-split.html) | Splitting time between core and the library | Draft | Where `#inst`/`java.util.Date` end and `java.time.*` (jolt-lang/time) begins. |

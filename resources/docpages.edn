@@ -36,4 +36,5 @@
   ["rfc/0004-type-hints.md"                      "RFC 0004: Type Hints"                    "page"]
   ["rfc/0005-structural-type-inference.md"       "RFC 0005: Structural Type Inference"     "page"]
   ["rfc/0006-success-type-checking.md"           "RFC 0006: Success Type Checking"         "page"]
-  ["rfc/0007-compilation-modes-and-binary-output.md" "RFC 0007: Compilation Modes & Binary Output" "page"]]
+  ["rfc/0007-compilation-modes-and-binary-output.md" "RFC 0007: Compilation Modes & Binary Output" "page"]
+  ["rfc/0008-time-core-library-split.md"         "RFC 0008: Splitting Time Between Core & Library" "page"]]
