@@ -70,6 +70,23 @@ You can also point Jolt at a directory of Clojure source with no dependency mach
 JOLT_PATH=/path/to/lib/src bin/joltc run myfile.clj
 ```
 
+## Diagnostics
+
+Jolt has a few compile-time diagnostics beyond the default error report.
+
+**"Did you mean?"** — when a bare symbol doesn't resolve, the error lists the closest in-scope names by edit distance (current-namespace vars, `clojure.core` publics, and lexical locals):
+
+```bash
+$ bin/joltc -e '(prinltn 1)'
+Unable to resolve symbol: prinltn in this context (did you mean print, printf, println?)
+```
+
+**`JOLT_DIAG=edn`** — emit an uncaught error as a single line of valid EDN to stderr instead of the human report, so an editor or tool can read it back. The map carries the human `:message` and the source `:line`/`:column`/`:file`; an unresolved symbol also carries structured `:type`/`:symbol`/`:suggestions`/`:ns`. Default output is unchanged.
+
+**`JOLT_CHECK`** — opt-in success-type lint ([RFC 0006](/docs/rfc)): each runtime-compiled top-level form is run through the success-type checker and any findings print to stderr as located warnings (`line:col: warning: …`), e.g. `` 1:10: warning: `+` requires a number, but argument 2 is a keyword ``. Off by default (zero cost, no behavior change); a checker error never breaks a compile.
+
+**`JOLT_DEBUG`** — verbose dependency resolution (the fetching / using-cache / skipping progress lines that are otherwise quiet) plus the host static-shim drift warning. See [dependency resolution](#dependencies) below.
+
 ## Compiling a standalone binary
 
 `bin/joltc build` ahead-of-time compiles a project into a single self-contained executable. The runtime, `clojure.core`, the standard library, and your application — together with its `deps.edn` dependencies — are linked in, so the result needs no Chez install, no JVM, and no source on disk to run.
