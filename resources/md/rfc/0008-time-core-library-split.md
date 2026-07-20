@@ -1,7 +1,7 @@
 # RFC 0008 — Splitting time between core and the library
 
-- **Status**: Accepted — implementation pending (supersedes the "remove all
-  `java.time` from core" approach that jolt-lang/jolt#431 first took)
+- **Status**: Implemented (supersedes the "remove all `java.time` from core"
+  approach that jolt-lang/jolt#431 first took)
 - **Champions**: jolt maintainers
 
 ## Summary
@@ -196,9 +196,8 @@ loaded, the "unresolved class" path names the dependency instead of a bare
 "Unknown class":
 
 ```
-java.time.ZonedDateTime is provided by the jolt-lang/time library, not core.
-Add it to deps.edn:
-  io.github.jolt-lang/time {:git/sha "26ae332cbe4b6515ae2386c50ed0ae34cafa483a"}
+java.time.ZonedDateTime is provided by the jolt-lang/time library, not core
+(RFC 0008). Add io.github.jolt-lang/time to your deps.edn.
 ```
 
 This is the same philosophy as the "did you mean?" symbol diagnostics: the error

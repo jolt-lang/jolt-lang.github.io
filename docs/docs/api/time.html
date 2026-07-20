@@ -142,14 +142,25 @@
     
     <nav class="toc">
       <h2>Contents</h2>
-      <ol class="contents"><li><a href="#use">Use</a></li><li><a href="#how_it_works">How it works</a></li><li><a href="#coverage">Coverage</a></li></ol>
+      <ol class="contents"><li><a href="#the_base,_no_dependency">The base, no dependency</a></li><li><a href="#the_zone/locale_layer_and_tick">The zone/locale layer and tick</a></li><li><a href="#how_it_works">How it works</a></li><li><a href="#coverage">Coverage</a></li></ol>
     </nav>
     
     <div id="content">
-      <p>Date and time on Jolt is the <a href='https://github.com/jolt-lang/time'>jolt-lang/time</a> library. It provides the <code>java.time.&#42;</code> surface as portable Clojure — <code>Instant</code>, <code>LocalDate</code>/<code>LocalTime</code>/<code>LocalDateTime</code>, <code>ZonedDateTime</code>, <code>OffsetDateTime</code>, <code>Duration</code>, <code>Period</code>, <code>Year</code>/<code>YearMonth</code>, <code>ZoneId</code>/<code>ZoneOffset</code>, <code>DateTimeFormatter</code>, and the temporal machinery — and pulls <a href='https://github.com/juxt/tick'>juxt/tick</a> through <code>deps.edn</code> to expose tick's idiomatic API on top.</p><p>Core keeps only the <code>#inst</code> reader literal and the <code>java.util.Date</code> layer; the full <code>java.time</code> surface is this library, so it isn't loaded until you ask for it.</p><h2 id="use">Use</h2><pre><code class="clojure">;; deps.edn
+      <p>Date and time on Jolt is split between the core runtime and the <a href='https://github.com/jolt-lang/time'>jolt-lang/time</a> library, along the line of "does it need the OS timezone database or locale data?" (see RFC 0008).</p><p>Core carries the <code>#inst</code> reader literal, the <code>java.util</code> / <code>java.text</code> date layer (<code>Date</code>, <code>sql.Date</code>/<code>Timestamp</code>, <code>Calendar</code>, <code>TimeZone</code>, <code>Locale</code>, <code>SimpleDateFormat</code>), and a <strong>base <code>java.time</code> API</strong> that computes from epoch arithmetic alone: <code>Instant</code>, <code>LocalDate</code>/<code>LocalTime</code>/<code>LocalDateTime</code>, <code>Duration</code>, <code>Period</code>, <code>Year</code>/<code>YearMonth</code>, <code>ZoneOffset</code>, <code>ZoneId</code> construction, and <code>DateTimeFormatter</code> pattern/ISO formatting. The base works with <strong>no dependency</strong> — it autoloads the first time a program touches a <code>java.time.&#42;</code> class, so date-free programs pay nothing.</p><p>The jolt-lang/time library adds what genuinely needs the OS: named-zone offset resolution and DST (<code>ZoneId</code> rules), <code>ZonedDateTime</code>/<code>OffsetDateTime</code>, localized formatting (<code>ofLocalized&#42;</code> and locale month/day names), and it pulls <a href='https://github.com/juxt/tick'>juxt/tick</a> to expose tick's idiomatic API on top.</p><h2 id="the&#95;base,&#95;no&#95;dependency">The base, no dependency</h2><pre><code class="clojure">&#40;java.time.Instant/now&#41;                                   ; base, in core
+&#40;java.time.LocalDate/of 2020 3 5&#41;
+&#40;java.time.Duration/between &#40;java.time.Instant/ofEpochMilli 0&#41;
+                            &#40;java.time.Instant/ofEpochMilli 5000&#41;&#41;
+&#40;.format &#40;java.time.format.DateTimeFormatter/ofPattern &quot;yyyy-MM-dd&quot;&#41;
+         &#40;java.time.LocalDate/now&#41;&#41;
+java.time.ZoneOffset/UTC
+&#40;java.time.ZoneId/of &quot;UTC&quot;&#41;
+</code></pre><p>A <code>#inst</code> / <code>java.util.Date</code> converts into the base with <code>.toInstant</code>, one value:</p><pre><code class="clojure">&#40;.toInstant #inst &quot;2020-01-01T00:00:00Z&quot;&#41;                 ; =&gt; a java.time.Instant
+</code></pre><p>Reach for a zone-layer class without the library and the error names the fix rather than leaving a bare "Unknown class":</p><pre><code>java.time.ZonedDateTime is provided by the jolt-lang/time library, not core
+&#40;RFC 0008&#41;. Add io.github.jolt-lang/time to your deps.edn.
+</code></pre><h2 id="the&#95;zone/locale&#95;layer&#95;and&#95;tick">The zone/locale layer and tick</h2><pre><code class="clojure">;; deps.edn
 {:deps {io.github.jolt-lang/time {:git/url &quot;https://github.com/jolt-lang/time.git&quot;
-                                  :git/sha &quot;26ae332cbe4b6515ae2386c50ed0ae34cafa483a&quot;}}}
-</code></pre><p>Requiring <code>jolt.time</code> installs the <code>java.time</code> shim; require <code>tick.core</code> for the tick functions.</p><pre><code class="clojure">&#40;require '&#91;jolt.time&#93;                 ; installs the java.time.&#42; host shim
+                                  :git/sha &quot;7b6389c...&quot;}}}
+</code></pre><p>Requiring <code>jolt.time</code> adds the zone layer over the base; require <code>tick.core</code> for the tick functions.</p><pre><code class="clojure">&#40;require '&#91;jolt.time&#93;                  ; adds ZonedDateTime, named zones, localized fmt
          '&#91;tick.core :as t&#93;&#41;
 
 &#40;t/now&#41;                               ; =&gt; an Instant
@@ -157,9 +168,8 @@
 &#40;t/&gt;&gt; &#40;t/date &quot;2020-01-01&quot;&#41; &#40;t/new-period 3 :months&#41;&#41;   ; =&gt; 2020-04-01
 &#40;t/zone &quot;Europe/Berlin&quot;&#41;
 
-;; the underlying java.time is there too
 &#40;java.time.ZonedDateTime/parse &quot;2020-07-06T10:59:13.417Z&quot;&#41;
-</code></pre><h2 id="how&#95;it&#95;works">How it works</h2><p>java.time values are opaque host objects registered through Jolt's <code>&#95;&#95;register-class-&#42;</code> seams, so they construct, compare, hash, print, sort, and answer <code>instance?</code> exactly like the real classes — and protocols extended to a <code>java.time</code> class (as tick does) dispatch on them. Named-zone offsets and DST come from the OS through a small libc primitive in core (<code>localtime</code>/<code>tzset</code> reading <code>/usr/share/zoneinfo</code>), with a built-in US/EU/AU/NZ rule table as the fallback; localized month and day names come from <code>strftime</code>.</p><h2 id="coverage">Coverage</h2><p>tick's full test suite passes, along with the <code>java.time</code> conformance rows carried over from Jolt's core corpus. <code>java.util.zip</code>-based helpers are the only gap — there is no <code>java.util.zip</code> shim yet.</p>
+</code></pre><h2 id="how&#95;it&#95;works">How it works</h2><p>java.time values are opaque host objects registered through Jolt's <code>&#95;&#95;register-class-&#42;</code> seams, so they construct, compare, hash, print, sort, and answer <code>instance?</code> exactly like the real classes — and protocols extended to a <code>java.time</code> class (as tick does) dispatch on them. There is one implementation: the base is portable Clojure under <code>stdlib/jolt/time/</code> in core, autoloaded on first use; the library's <code>zones</code>/<code>zoned</code>/<code>fmt</code> namespaces require that base and add only the zone/locale layer on top of it. Named-zone offsets and DST come from the OS through a small libc primitive in core (<code>localtime</code>/<code>tzset</code> reading <code>/usr/share/zoneinfo</code>), with a built-in US/EU/AU/NZ rule table as the fallback; localized month and day names come from <code>strftime</code>.</p><h2 id="coverage">Coverage</h2><p>Base <code>java.time</code> conformance is covered by core's suite; tick's full test suite and the zone/DST/localized coverage run in the library's suite. <code>java.util.zip</code>-based helpers are the only gap — there is no <code>java.util.zip</code> shim yet.</p>
     </div>
   </main>
 </div>
