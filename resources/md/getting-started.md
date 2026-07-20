@@ -135,12 +135,13 @@ bin/joltc nrepl-server [port]   # an nREPL server (default port 7888)
 
 ## Dependencies
 
-`bin/joltc` reads a `deps.edn` in the current directory, fetches its dependencies, and prepends the resolved source directories to the load path for the run. Git and local dependencies are supported (no Maven):
+`bin/joltc` reads a `deps.edn` in the current directory, fetches its dependencies, and prepends the resolved source directories to the load path for the run. Git, local, and Maven dependencies are supported (a Maven jar carries Clojure source, which is what Jolt loads):
 
 ```clojure
 {:paths ["src"]
  :deps {weavejester/medley {:git/url "https://github.com/weavejester/medley"
                             :git/sha "<full-sha>"}
+        org.clojure/math.combinatorics {:mvn/version "0.2.0"}
         my/helpers          {:local/root "../helpers"}}}
 ```
 
@@ -149,3 +150,18 @@ bin/joltc run -m myapp.main
 ```
 
 See [Writing Libraries](/docs/writing-libraries.html) for the full `deps.edn` surface (aliases, tasks, transitive deps), and [Supported Libraries](/docs/libraries.html) for Clojure libraries known to work.
+
+### System requirements for dependency resolution
+
+The `joltc` binary itself is self-contained. Resolving *dependencies* uses a few standard tools, each needed only for the coordinate types you use — a dependency that can't be fetched is skipped, never fatal:
+
+- **Git dependencies** (`:git/url` + `:git/sha`) need `git` on `PATH`.
+- **Maven dependencies** (`:mvn/version`) are downloaded over HTTPS with Jolt's own TLS (no `curl`), which uses the system **OpenSSL** (`libssl`/`libcrypto`) via FFI, and extracted with `unzip`. A jar already in your local `~/.m2/repository` (e.g. fetched by a JVM Clojure toolchain) is reused with no download.
+
+By platform:
+
+- **macOS** — install OpenSSL with Homebrew (`brew install openssl@3`); Jolt loads the Homebrew copy because the protected system `/usr/lib` OpenSSL can't be loaded into a non-Apple binary. `git` and `unzip` ship with the Xcode command-line tools.
+- **Linux** — the distro `libssl3`/`libcrypto3` (or `libssl`/`libcrypto`) packages, plus `git` and `unzip`, all from your package manager.
+- **Windows** — install [Git for Windows](https://git-scm.com/download/win); it puts `git` on `PATH` and bundles the OpenSSL (`libssl-3-x64.dll`/`libcrypto-3-x64.dll`) and `unzip` that Jolt needs (or install [OpenSSL for Windows](https://slproweb.com/products/Win32OpenSSL.html) and `unzip` separately). Run `joltc` from a shell where those are on `PATH` (Git Bash works).
+
+Cross-compilation and `joltc build` additionally need a C toolchain (`cc`, `ar`); see [Building & Deps](/docs/building-and-deps.html).
