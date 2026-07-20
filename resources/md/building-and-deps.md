@@ -149,6 +149,44 @@ The binary contains the runtime + app forms + native launcher — no Jolt source
 install needed on the target machine (a C compiler and Chez kernel dev files are needed
 at build time only).
 
+### How AOT compilation works
+
+`jolt build` does not bundle source or an interpreter. At build time each reachable
+namespace is taken through the same `analyze → emit` pipeline the REPL uses, but the
+final `eval` is replaced by *accumulate-then-compile*: every form is analyzed and
+emitted to Scheme, the emitted Scheme is concatenated into one program, and that program
+is handed to Chez's native compiler and linked into a boot file embedded in the
+executable. The result is compiled Chez native code (a fasl boot image + native
+launcher), not Clojure source — at runtime there is nothing to read or recompile, and no
+source roots are consulted. This is the same machinery `joltc` itself uses to bake its
+own runtime + compiler into the distributed binary (that is why a built `joltc` boots in
+a fraction of a second instead of recompiling its standard library every run).
+
+The build pipeline runs four steps, in order:
+
+1. **Assemble.** Starting from the entry namespace's `-main`, load the transitive
+   `require` graph and collect every reachable top-level form, in dependency order, with
+   its compile namespace. `:tree-shake` (below) prunes unreachable forms in this step.
+2. **Emit.** Run `analyze → emit` for each surviving form under the selected mode's
+   optimization knobs (the `clojure.core` overlay prelude first, in tier order), emitting
+   Scheme and concatenating it into a single program source. This step is *strict*: a
+   form that fails to compile fails the build rather than being skipped.
+3. **Inline the runtime.** Textually splice the compiler/stdlib runtime (the `cli.ss`
+   load sequence, itself already cross-compiled) ahead of the emitted app forms, and
+   append a launcher that calls the entry's `-main`.
+4. **Compile and link.** Feed the inlined source to Chez's native compiler
+   (`compile-file` → `make-boot-file`), embed the resulting boot as C bytes, and
+   `cc`-link it against the Chez kernel (`libkernel.a`) into one self-contained
+   executable. App libraries are baked in here, so the binary carries no on-disk source
+   dependency.
+
+Two consequences are worth knowing. First, an app that never calls `eval`/`load-string`
+ships *without* the compiler image — the build detects those calls and drops the compiler
+when it can, so a closed-world binary is smaller. Second, because the whole program is
+visible at once, whole-program type inference runs across namespaces (field reads
+specialize, protocol calls devirtualize) — something the per-form REPL path can't do.
+The modes below control how far that optimization goes.
+
 ### Build modes
 
 Three modes control which optimization passes apply. A mode is selected by the CLI flag
