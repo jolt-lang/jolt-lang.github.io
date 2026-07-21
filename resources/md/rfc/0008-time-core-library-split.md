@@ -4,6 +4,23 @@
   approach that jolt-lang/jolt#431 first took)
 - **Champions**: jolt maintainers
 
+> **Implementation note.** As shipped, the core base is narrower than the boundary
+> sketched below: it is the java.time **value types only** — `Instant`,
+> `LocalDate`/`LocalTime`/`LocalDateTime`, `Duration`, `Period`,
+> `Year`/`YearMonth`/`MonthDay`, and the `Month`/`DayOfWeek`/`Chrono*` enums.
+> Everything that formats or names a zone — `DateTimeFormatter`, `FormatStyle`,
+> `ZoneOffset`, `ZoneId`, `ZonedDateTime`/`OffsetDateTime`, localized formatting,
+> and `java.util.Locale` — is the jolt-lang/time library, as the single
+> implementation. Putting `DateTimeFormatter` and `ZoneOffset` in core (as the
+> boundary below proposed) meant core carried a reduced pattern engine and fixed
+> zones that the library then had to override with fuller versions under the same
+> namespace names: one implementation split into two source files with subtly
+> different behavior depending on what was loaded. Narrowing the base to value
+> types keeps the "one implementation" rule the RFC is built on. The trade-off is
+> that formatting a date or using `ZoneOffset/UTC` now needs the dependency; the
+> interop error names it, so the failure carries its own fix. The rest of the RFC
+> is the reasoning that led here and is kept as written.
+
 ## Summary
 
 Date and time on jolt is split across `host/chez/java/inst-time.ss` in the core
