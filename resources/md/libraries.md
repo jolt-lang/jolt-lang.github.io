@@ -15,7 +15,7 @@ First-party libraries from the jolt-lang org.
 - **[xml](https://github.com/jolt-lang/xml)** — XML: `clojure.xml/parse` (libxml2) plus a `clojure.data.xml` emit API.
 - **[yaml](https://github.com/jolt-lang/yaml)** — YAML load/dump over the system libyaml (`jolt.yaml`, `clj-yaml.core` compat).
 - **[jolt-crypto](https://github.com/jolt-lang/jolt-crypto)** — OpenSSL FFI (hashing, HMAC, ciphers); backs ring-defaults' session/CSRF crypto.
-- **[time](https://github.com/jolt-lang/time)** — date and time: the `java.time.*` surface (`Instant`, `LocalDate`, `ZonedDateTime`, `Duration`, `DateTimeFormatter`, zones) as portable Clojure, with [tick](https://github.com/juxt/tick)'s idiomatic API on top.
+- **[time](https://github.com/jolt-lang/time)** — the formatting and zone layer of `java.time` (`DateTimeFormatter`, `ZoneOffset`/`ZoneId`, `ZonedDateTime`/`OffsetDateTime`, named-zone offsets and DST, localized formatting, `java.util.Locale`), plus [tick](https://github.com/juxt/tick)'s idiomatic API. The base value types (`Instant`, `LocalDate`, `Duration`, `Period`, `Year`/`YearMonth`, …) are in core with no dependency; this library adds the rest (RFC 0008).
 - **[transit-jolt](https://github.com/jolt-lang/transit-jolt)** — Transit (JSON) read/write.
 - **[router](https://github.com/jolt-lang/router)** — routing trie that mirrors `reitit.Trie`, so reitit runs on Jolt.
 - **[logging](https://github.com/jolt-lang/logging)** — logging API with a native backend (drives `clojure.tools.logging`).
@@ -81,7 +81,7 @@ Third-party Clojure/JVM libraries confirmed to run on Jolt.
 
 ### Date and time
 
-- **[tick](https://github.com/juxt/tick)** — runs on Jolt through [time](https://github.com/jolt-lang/time), which provides the `java.time` surface and bundles tick and its `#time/…` literals.
+- **[tick](https://github.com/juxt/tick)** — runs on Jolt through [time](https://github.com/jolt-lang/time), which adds the formatting/zone layer over core's base `java.time` and bundles tick and its `#time/…` literals.
 
 ### Logging
 
