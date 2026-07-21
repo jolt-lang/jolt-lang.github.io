@@ -66,12 +66,13 @@ Run one with `bin/joltc <taskname>`.
 
 - **git deps** — `{:git/url … :git/sha …}`, with optional `:deps/root`.
 - **local deps** — `{:local/root "../path"}`.
+- **Maven deps** — `{:mvn/version "…"}`. A Clojure library's JAR ships its `.clj`/`.cljc` source, so the coordinate resolves by fetching the JAR (Clojars, then Maven Central) and using that source as a load root; the POM supplies transitive deps. A jar already in `~/.m2/repository` is reused. See [tools.deps compatibility](/docs/tools-deps.html) and [dependency resolution](/docs/getting-started.html#dependencies).
 - **aliases** — `:extra-paths`, `:extra-deps`, `:main-opts`.
 - **tasks** — string (shell) or map (Jolt) entries.
 
 What doesn't:
 
-- **No Maven.** `:mvn/version` deps are skipped with a warning — git and local only. Vendor a Maven-only dependency as a git repo if you need it.
+- **No pure-Java dependencies.** Jolt loads Clojure source, not JVM bytecode, so a JAR that carries only compiled `.class` files (a Java library) has nothing to load and contributes nothing. This is why the constraint is the JAR's *source*, not its coordinate type: a `:mvn/version` Clojure library works, a Java one does not.
 - **Pure `clj`/`cljc` only.** A library that needs the JVM (Java interop, host classes) or a `clojure.core` feature Jolt doesn't implement will fail to load, or fail at the call site. Coverage is per-function, so a namespace can load with most functions working and a few not.
 
 If a library reaches for a Java class, you can often supply it from Clojure — see [Host Interop](/docs/host-interop.html) for registering your own host-class shims from a library, the same mechanism Jolt's own libraries use to run unmodified Clojure code.
