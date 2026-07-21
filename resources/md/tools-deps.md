@@ -24,7 +24,11 @@ Scope, decided up front:
 parses the EDN), then walks `:deps`:
 
 - `:git/url` + `:git/sha` (+ optional `:deps/root`) → clone the sha into the git
-  cache and contribute the checkout (or its `:deps/root` subdir);
+  cache and contribute the checkout (or its `:deps/root` subdir). `:git/url` may
+  be omitted when the lib name encodes a host the way tools.deps allows —
+  `io.github.OWNER/REPO` (or `com.github.`), `io.gitlab.`/`com.gitlab.`,
+  `io.bitbucket.`/`org.bitbucket.`, and `ht.sr.~OWNER` — in which case the clone
+  URL is derived from the name;
 - `:local/root` → the path as-is;
 - `:mvn/version` → fetch the JAR and use its extracted Clojure source as a
   root (see below);

@@ -151,7 +151,7 @@
 
 &#40;require '&#91;clojure.data.json :as json&#93;&#41;
 &#40;json/write-str {:ok true}&#41;   ; =&gt; &quot;{\&quot;ok\&quot;:true}&quot;
-</code></pre><p>All coordinate types work: <code>:mvn/version</code> (the JAR's Clojure source, fetched from Clojars then Maven Central), <code>:git/url</code> + <code>:git/sha</code>, and <code>:local/root</code> (resolved against the project directory). Transitive dependencies resolve too.</p><p>A script meant to also run on babashka or the JVM can guard on the <code>jolt.version</code> system property — the same shape as babashka's <code>babashka.version</code> idiom:</p><pre><code class="clojure">&#40;when &#40;System/getProperty &quot;jolt.version&quot;&#41;
+</code></pre><p>All coordinate types work: <code>:mvn/version</code> (the JAR's Clojure source, fetched from Clojars then Maven Central), <code>:git/url</code> + <code>:git/sha</code> (<code>:git/url</code> optional when the lib name is host-prefixed, e.g. <code>io.github.OWNER/REPO</code>), and <code>:local/root</code> (resolved against the project directory). Transitive dependencies resolve too.</p><p>A script meant to also run on babashka or the JVM can guard on the <code>jolt.version</code> system property — the same shape as babashka's <code>babashka.version</code> idiom:</p><pre><code class="clojure">&#40;when &#40;System/getProperty &quot;jolt.version&quot;&#41;
   &#40;&#40;requiring-resolve 'jolt.deps/add-deps&#41;
    '{:deps {org.clojure/data.json {:mvn/version &quot;2.5.0&quot;}}}&#41;&#41;
 

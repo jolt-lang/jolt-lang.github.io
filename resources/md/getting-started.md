@@ -1,6 +1,16 @@
 Jolt is a Clojure implementation that runs on [Chez Scheme](https://cisco.github.io/ChezScheme/). It reads Clojure source, analyzes it to a host-neutral IR, emits Scheme, and runs it on Chez. The compiler is self-hosted — written in Clojure and compiling itself — and ships a Clojure-compatible standard library.
 
+## Requirements
+
+The prebuilt binaries need only the base system libraries: **Linux x86_64**
+requires glibc 2.35 or newer (Ubuntu 22.04+, Debian 12+, RHEL 9+ — the
+installer verifies the binary runs and reports the exact glibc mismatch if
+not); **macOS arm64** requires macOS 14+. Anything else (Intel Mac,
+musl/Alpine, older glibc) builds from source — see [From source](#from_source).
+
 ## Install
+
+**If you are using an Intel Mac, musl/Alpine, or an older glibc, the prebuilt binaries below are not supported. Follow the [From source](#from_source) instructions instead.**
 
 The quickest way is the prebuilt `joltc` binary (Linux and macOS). It bundles the runtime, compiler, and standard library, so there is no JVM, no Chez, and nothing else to install.
 
@@ -21,12 +31,6 @@ Then:
 ```bash
 joltc -e '(+ 1 2)'        # => 3
 ```
-
-The prebuilt binaries need only the base system libraries: **Linux x86_64**
-requires glibc 2.35 or newer (Ubuntu 22.04+, Debian 12+, RHEL 9+ — the
-installer verifies the binary runs and reports the exact glibc mismatch if
-not); **macOS arm64** requires macOS 14+. Anything else (Intel Mac,
-musl/Alpine, older glibc) builds from source.
 
 ### From source
 
@@ -165,6 +169,8 @@ bin/joltc nrepl-server [port]   # an nREPL server (default port 7888)
 ```bash
 bin/joltc run -m myapp.main
 ```
+
+As in tools.deps, a git dependency whose lib name encodes a host can omit `:git/url` — `io.github.OWNER/REPO` (and the `com.github.`, `io.gitlab.`/`com.gitlab.`, `io.bitbucket.`/`org.bitbucket.`, and `ht.sr.~OWNER` prefixes) derives the clone URL from the name, so `io.github.paintparty/lasertag {:git/sha "aa898c1967d10fc198385f1914893b9c75410d16"}` resolves with no URL. The `:git/sha` (a full commit SHA) is still required.
 
 See [Writing Libraries](/docs/writing-libraries.html) for the full `deps.edn` surface (aliases, tasks, transitive deps), and [Supported Libraries](/docs/libraries.html) for Clojure libraries known to work.
 

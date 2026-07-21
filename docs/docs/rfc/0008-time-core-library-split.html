@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>RFC 0008: Splitting Time Between Core &amp; Library — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rationale.html">Rationale</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/deps.html">Dependencies (jolt.deps)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (babashka.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/time.html">Date &amp; Time (jolt-lang/time)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/util.html">Utilities (jolt.util)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>RFC 0008: Splitting Time Between Core &amp; Library</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#rfc_0008_—_splitting_time_between_core_and_the_library">RFC 0008 — Splitting time between core and the library</a></li><li><a href="#summary">Summary</a></li><li><a href="#the_current_state">The current state</a></li><li><a href="#the_problem">The problem</a></li><li><a href="#the_base_api,_from_the_conformance_survey">The base API, from the conformance survey</a></li><li><a href="#the_boundary">The boundary</a></li><li><a href="#what_moves_and_how_(dedupe)">What moves and how (dedupe)</a><ol><li><a href="#compatibility">Compatibility</a></li></ol></li><li><a href="#making_the_boundary_teach_itself">Making the boundary teach itself</a></li><li><a href="#guidance_for_library_authors">Guidance for library authors</a></li><li><a href="#open_questions">Open questions</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <h1 id="rfc&#95;0008&#95;—&#95;splitting&#95;time&#95;between&#95;core&#95;and&#95;the&#95;library">RFC 0008 — Splitting time between core and the library</h1><ul><li><strong>Status</strong>: Implemented (supersedes the "remove all <code>java.time</code> from core"  approach that jolt-lang/jolt#431 first took)</li><li><strong>Champions</strong>: jolt maintainers<blockquote><p></li></ul> <strong>Implementation note.</strong> As shipped, the core base is narrower than the boundary<br /> sketched below: it is the java.time <strong>value types only</strong> — <code>Instant</code>,  <code>LocalDate</code>/<code>LocalTime</code>/<code>LocalDateTime</code>, <code>Duration</code>, <code>Period</code>,  <code>Year</code>/<code>YearMonth</code>/<code>MonthDay</code>, and the <code>Month</code>/<code>DayOfWeek</code>/<code>Chrono&#42;</code> enums.  Everything that formats or names a zone — <code>DateTimeFormatter</code>, <code>FormatStyle</code>,  <code>ZoneOffset</code>, <code>ZoneId</code>, <code>ZonedDateTime</code>/<code>OffsetDateTime</code>, localized formatting,  and <code>java.util.Locale</code> — is the jolt-lang/time library, as the single  implementation. Putting <code>DateTimeFormatter</code> and <code>ZoneOffset</code> in core (as the  boundary below proposed) meant core carried a reduced pattern engine and fixed  zones that the library then had to override with fuller versions under the same  namespace names: one implementation split into two source files with subtly  different behavior depending on what was loaded. Narrowing the base to value  types keeps the "one implementation" rule the RFC is built on. The trade-off is  that formatting a date or using <code>ZoneOffset/UTC</code> now needs the dependency; the  interop error names it, so the failure carries its own fix. The rest of the RFC  is the reasoning that led here and is kept as written. </p></blockquote><h2 id="summary">Summary</h2><p>Date and time on jolt is split across <code>host/chez/java/inst-time.ss</code> in the core runtime and the <a href='https://github.com/jolt-lang/time'>jolt-lang/time</a> library. The split was ragged: core carried a partial, UTC-only <code>java.time.&#42;</code> shim in Scheme, so some calls worked with no dependency and some didn't (<code>Instant/now</code> yes, <code>LocalDate/now</code> no), and that partial shim <em>duplicated</em> logic the library already implements in Clojure.</p><p>The boundary this RFC settles on:</p><blockquote><p> Core owns the <code>#inst</code> literal, the <code>java.util</code> / <code>java.text</code> date layer, and a  <strong>base <code>java.time</code> API</strong> most JVM libraries expect — the portable, no-system-  dependency part: <code>Instant</code>, <code>LocalDate</code> / <code>LocalTime</code> / <code>LocalDateTime</code>,  <code>Duration</code>, <code>Period</code>, <code>Year</code> / <code>YearMonth</code>, <code>ZoneOffset</code> (fixed offsets),  <code>ZoneId</code> construction, and <code>DateTimeFormatter</code> pattern/ISO formatting. The  jolt-lang/time library adds what depends on the OS timezone database and  locale data: named-zone offset resolution and DST (<code>ZoneId</code> rules),  <code>ZonedDateTime</code> / <code>OffsetDateTime</code>, localized formatting, and the tick API. </p></blockquote><p>The line was chosen empirically by surveying <code>conformance-libraries/</code> (see below): the base is what real libraries reach for incidentally, and it computes from epoch arithmetic alone, so it should never require an extra dependency. Only named-zone/DST and localized names genuinely need system libraries, and those are the library's reason to exist.</p><p>There must be <strong>one</strong> implementation, not two. The base is implemented once — as the library's existing Clojure namespaces — and <em>moves into core</em> so it loads without a dependency; the library keeps only the zone/locale layer on top. The earlier idea of a Scheme base in core is dropped precisely because it duplicated the Clojure base.</p><h2 id="the&#95;current&#95;state">The current state</h2><p>Two files in the core image carry time.</p><p><code>host/chez/java/inst-time.ss</code> (loaded by the core runtime at boot, not baked into the seed) registers, through the host value-model seams (<code>register-class-statics!</code>, <code>register-host-methods!</code>, <code>register-class-ctor!</code>, and the <code>register-{eq,hash,compare,class,pr,instance-check}-arm!</code> family):</p><ul><li>The <code>#inst</code> literal — parse (<code>jolt-inst-from-string</code>), the <code>jinst</code> value type,  and its equality / hashing / comparison / printing / <code>instance?</code> integration.  This is intrinsic: the reader and printer must round-trip <code>#inst</code> with no  library present, so this can only live in core.</li><li>The legacy <code>java.util</code> / <code>java.text</code> date layer: <code>java.util.Date</code>,  <code>java.sql.Date</code> / <code>Timestamp</code>, <code>java.util.Calendar</code>, <code>java.util.TimeZone</code>,  <code>java.text.SimpleDateFormat</code>, <code>java.util.Locale</code>, and the UTC/GMT <code>format-ms</code> /  <code>parse-ms</code> pattern engine that backs them (and HTTP date headers).</li><li>A partial <code>java.time.&#42;</code> surface: <code>Instant</code> (<code>ofEpochMilli</code>, <code>now</code>, <code>parse</code>,  <code>from</code>), <code>ZoneId</code> (<code>systemDefault</code>, <code>of</code>), <code>LocalDateTime</code> (<code>ofInstant</code>,  <code>now</code>, <code>parse</code>), <code>DateTimeFormatter</code> (<code>ofPattern</code>, the <code>ISO&#95;&#42;</code> constants,  <code>ofLocalized&#42;</code>), and <code>FormatStyle</code>. <code>LocalDate</code> and <code>ZonedDateTime</code> values  exist only as conversion <em>targets</em> (<code>.toLocalDate</code>, <code>.atZone</code>) — there is no  <code>LocalDate/now</code> and no <code>ZonedDateTime/now</code>.</li></ul><p><code>host/chez/java/tz-primitives.ss</code> (also baked in) exposes three host seams: <code>jolt.host/tz-offset-seconds</code> (a named IANA zone's offset at an instant, via libc <code>localtime</code>/<code>tzset</code>), <code>jolt.host/locale-name</code> (localized month/day names via <code>strftime</code>), and <code>jolt.host/tz-backend</code> (<code>:libc</code> or <code>:fallback</code>). These are thin FFI wrappers with graceful fallback, not time logic.</p><p>The <a href='https://github.com/jolt-lang/time'>jolt-lang/time</a> library provides the full <code>java.time.&#42;</code> surface as portable Clojure — <code>Instant</code>, <code>LocalDate</code>/<code>LocalTime</code>/ <code>LocalDateTime</code>, <code>ZonedDateTime</code>/<code>OffsetDateTime</code>, <code>Duration</code>/<code>Period</code>, <code>Year</code>/<code>YearMonth</code>, <code>ZoneId</code>/<code>ZoneOffset</code>, <code>DateTimeFormatter</code>, and the temporal machinery — then layers tick on top. It registers through the <em>same</em> host seams, which are last-write-wins, so when the library loads it <strong>overrides</strong> core's partial surface and becomes authoritative. It reads zones and locale names from the core FFI seams, and it installs <code>jolt.host/set-instant-ctor!</code> so a <code>Date</code> or <code>#inst</code> converted with <code>.toInstant</code> yields the library's <code>Instant</code>, not a second representation.</p><p>So the java.time pieces in core are, in practice, a fallback that only matters when the library is absent. When the library is present they are dead.</p><h2 id="the&#95;problem">The problem</h2><p>Because core registers <em>some</em> of <code>java.time</code> and not the rest, the surface a program sees with no dependency is arbitrary:</p><pre><code class="clojure">&#40;java.time.Instant/now&#41;        ; works — core registers Instant/now
+&#40;java.time.LocalDateTime/now&#41;  ; works — core registers LocalDateTime/now
+&#40;java.time.LocalDate/now&#41;      ; fails — core has no LocalDate/now
+&#40;java.time.ZonedDateTime/now&#41;  ; fails — needs zone-aware construction
+</code></pre><p>The two that work are the anomaly. They are <code>now</code> constructors that crept into core next to the <code>#inst</code> formatting-and-conversion helpers, even though core does not need them to read, print, or format a <code>#inst</code>. Their siblings never got the same treatment, and there is no signpost. A user reasonably concludes <code>java.time</code> is supported, hits the first missing piece, and cannot tell whether it is a bug, a gap, or a missing dependency.</p><p>This is the confusion reported in the field: <code>Instant/now</code> worked, <code>LocalDate/now</code> and <code>ZonedDateTime/now</code> did not, and the docs had to be dug through to learn that <code>java.time</code> is really the jolt-lang/time library.</p><h2 id="the&#95;base&#95;api,&#95;from&#95;the&#95;conformance&#95;survey">The base API, from the conformance survey</h2><p>The boundary is set by what real libraries use. A sweep of <code>conformance-libraries/</code> (58 libraries) for date/time references, excluding <code>tick</code> itself, shows the common surface is a portable base plus a thin system-dependent tail:</p><ul><li>Heavily used and portable (pure epoch arithmetic): <code>Instant</code> (<code>now</code>, <code>parse</code>,  <code>ofEpochMilli</code>, <code>ofEpochSecond</code>, <code>from</code>, <code>toEpochMilli</code>), <code>LocalDate</code> /  <code>LocalDateTime</code> / <code>LocalTime</code> (<code>now</code>, <code>of</code>, <code>parse</code>), <code>Duration</code> (<code>ofMillis</code>,  <code>between</code>, <code>ofSeconds</code>), <code>ZoneOffset/UTC</code>, and <code>DateTimeFormatter</code> patterns +  the <code>ISO&#95;&#42;</code> constants. Also <code>java.util.Date</code> (<code>from</code>, <code>valueOf</code>) and <code>Calendar</code>.</li><li>The narrow system-dependent tail: <code>ZoneId/systemDefault</code> and named-zone offset  lookups (need the OS tz database), and <code>DateTimeFormatter/ofLocalized&#42;</code> (need  locale month/day names via <code>strftime</code>).</li></ul><p>Mapped onto the library's namespaces, only <code>zones.clj</code> (tz rules) and the localized branch of <code>fmt.clj</code> touch the libc seams; <code>util</code>, <code>impl</code>, <code>enums</code>, <code>local</code>, <code>amount</code>, <code>temporal</code>, <code>year</code>, <code>instant</code>, and the pattern engine are all system-free.</p><h2 id="the&#95;boundary">The boundary</h2><p>Core carries the base API so basic <code>java.time</code> works with no dependency; the library adds what genuinely needs the OS. For a user:</p><ul><li><strong>In core, no dependency:</strong> <code>#inst</code> and the <code>java.util</code> / <code>java.text</code> layer  (<code>Date</code>, <code>sql.Date</code>/<code>Timestamp</code>, <code>Calendar</code>, <code>TimeZone</code>, <code>SimpleDateFormat</code>),  plus the base <code>java.time</code>: <code>Instant</code>, <code>LocalDate</code> / <code>LocalTime</code> /  <code>LocalDateTime</code>, <code>Duration</code>, <code>Period</code>, <code>Year</code> / <code>YearMonth</code>, <code>ZoneOffset</code>,  <code>ZoneId</code> construction, and <code>DateTimeFormatter</code> pattern/ISO formatting.</li><li><strong>In jolt-lang/time:</strong> named-zone offset resolution and DST (<code>ZoneId</code> rules),  <code>ZonedDateTime</code> / <code>OffsetDateTime</code>, localized formatting, and the tick API.</li></ul><p>The line is "does it need the OS timezone database or locale data?" — which is the reason the library exists. A per-class rule keeps it predictable: the base classes always resolve; a <code>ZonedDateTime</code> or a named-zone lookup is what asks for the dependency.</p><h2 id="what&#95;moves&#95;and&#95;how&#95;(dedupe)">What moves and how (dedupe)</h2><p>The base must not be implemented twice. It exists once — as the library's Clojure namespaces — so the base <strong>moves into core</strong> and the library keeps only the zone/locale layer on top. (This supersedes jolt#431, which deleted core's <code>java.time</code> outright; and it drops the idea of a parallel Scheme base in core, whose whole problem was that it duplicated the Clojure one.)</p><ol><li><strong>Base namespaces move library → core</strong>, becoming part of the runtime:   <code>jolt.time.{util,impl,enums,local,amount,temporal,year,instant}</code>. These have   no zone/locale dependency. <code>DateTimeFormatter</code> needs <code>fmt.clj</code> split into a   pattern/ISO engine (core) and the localized-name branch (library, which reads   <code>jolt.host/locale-name</code>). <code>ZoneOffset</code> (fixed) and <code>ZoneId</code> construction come   over too; <code>ZoneId</code>'s rule lookups stay behind in <code>zones.clj</code>.</li><li><strong>The library keeps</strong> <code>zones.clj</code> (named-zone rules, DST, the IANA fallback   tables), <code>zoned.clj</code> (<code>ZonedDateTime</code>/<code>OffsetDateTime</code>), the localized   formatting branch, and tick. Its remaining namespaces <code>require</code> the base,   which now resolves from core.</li><li><strong>Boot availability.</strong> <code>&#40;java.time.Instant/now&#41;</code> must work with no <code>require</code>,   but stdlib Clojure loads lazily and only the Scheme runtime runs at boot. The   base is exposed by <em>autoloading on first use</em>: when interop resolves an   unregistered <code>java.time.&#42;</code> class, the runtime loads the core base namespace   that provides it, then retries — so date-free programs pay nothing and a   library that touches <code>java.time</code> gets it transparently. (A boot-eager   <code>require</code> of the base is the simpler alternative but makes every run, even   <code>joltc -e '&#40;+ 1 2&#41;'</code>, carry the base in the live heap; autoload keeps the   footprint at zero until first use.)</li></ol><p>The <code>Date</code>/<code>FileTime</code> <code>.toInstant</code> bridge keeps routing through <code>mk-instant</code> and the <code>set-instant-ctor!</code> hook, but now the hook is always satisfiable because the core base provides <code>Instant</code> — <code>.toInstant</code> no longer needs the library. The <code>#inst</code> / <code>java.util</code> / <code>java.text</code> layer and the <code>tz-primitives.ss</code> libc seams stay in core as they are.</p><p><strong>Tests.</strong> The base <code>java.time</code> conformance moves into core's suite alongside <code>#inst</code>; the library's suite keeps the zone/DST/localized/tick coverage.</p><h3 id="compatibility">Compatibility</h3><p>The base is a strict addition to core, so the common surface only gains coverage: <code>Instant</code>, <code>LocalDate</code> / <code>LocalDateTime</code>, <code>Duration</code>, <code>DateTimeFormatter</code> patterns, and the rest of the base resolve with no dependency. What still needs jolt-lang/time is the zone layer — a <code>ZonedDateTime</code>, a named-zone offset (<code>ZoneId/systemDefault</code> and rule lookups), or a localized formatter. A program touching those without the dependency gets an error naming it, rather than a silent wrong answer.</p><h2 id="making&#95;the&#95;boundary&#95;teach&#95;itself">Making the boundary teach itself</h2><p>Beyond docs, the interop layer turns the boundary into a pointer at the moment it bites. When a zone-layer <code>java.time</code> class is referenced and the library is not loaded, the "unresolved class" path names the dependency instead of a bare "Unknown class":</p><pre><code>java.time.ZonedDateTime is provided by the jolt-lang/time library, not core
+&#40;RFC 0008&#41;. Add io.github.jolt-lang/time to your deps.edn.
+</code></pre><p>This is the same philosophy as the "did you mean?" symbol diagnostics: the error carries the fix. <code>host-static.ss</code> already recognizes an unresolved <code>java.time.&#42;</code> class and points at jolt-lang/time; once the base is in core the message narrows to the classes that genuinely live in the library (<code>ZonedDateTime</code>, <code>OffsetDateTime</code>, named-zone <code>ZoneId</code> operations), since the base now resolves.</p><h2 id="guidance&#95;for&#95;library&#95;authors">Guidance for library authors</h2><p>The base <code>java.time</code> a library reaches for incidentally — <code>Instant</code>, <code>LocalDate</code>, <code>LocalDateTime</code>, <code>Duration</code>, <code>DateTimeFormatter</code> patterns — works on jolt with no dependency, so most libraries need no special handling. Only the zone layer asks for jolt-lang/time.</p><p>If a library uses a <code>ZonedDateTime</code>, a named zone, or localized formatting and wants to stay dependency-free on jolt, jolt's reader-conditional feature set is <code>{:jolt :clj :default}</code> (see <code>host/chez/reader.ss</code>) and the first matching clause wins, so a <code>:jolt</code> branch before <code>:clj</code> can substitute the base:</p><pre><code class="clojure">&#40;defn stamp &#91;&#93;
+  #?&#40;:jolt &#40;java.time.Instant/now&#41;      ; base, in core, no dependency
+     :clj  &#40;java.time.ZonedDateTime/now&#41;&#41;&#41;
+</code></pre><p>For a library like Lasertag whose java.time use is a couple of constructors, the base almost certainly covers it now with no change. Reach for a <code>:jolt</code> branch only for the zone layer, or depend on jolt-lang/time if the library leans on zoned/localized time broadly (a single git coordinate).</p><h2 id="open&#95;questions">Open questions</h2><ul><li><strong><code>LocalDate/now</code> and the "current" zone.</strong> <code>now&#40;&#41;</code> for the local types uses  the system default zone to decide the wall-clock date. Core has the  <code>jolt.host/tz-offset-seconds</code> libc seam, so the base can honor the real zone  where available and fall back to UTC otherwise. Whether the base's <code>now&#40;&#41;</code>  should consult the seam or fix on UTC (leaving zone-accurate <code>now</code> to the  library) is worth pinning down; UTC is the safe default and the library can  refine it.</li><li><strong>The autoload trigger.</strong> Autoloading the core base on first <code>java.time.&#42;</code>  reference is a new interop capability. It has to fire in both the compile path  (a static call site) and any runtime <code>resolve</code> of a <code>java.time</code> class, and be a  no-op once loaded. Scope it to the <code>java.time.</code> package so it never masks a  genuine unknown class.</li><li><strong>The library's parallel <code>java.util</code> types.</strong> The library registers its own  <code>java.util.Locale</code> and <code>java.util.Date/from</code>, which core also owns. Once the  base is shared these should collapse to core's, removing the last duplicate  registration.</li></ul>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>
