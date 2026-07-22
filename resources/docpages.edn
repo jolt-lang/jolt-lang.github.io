@@ -10,6 +10,7 @@
   ["writing-libraries.md"          "Writing Libraries"                 "topic"]
   ["host-interop.md"               "Host Interop"                      "topic"]
   ["native-interop.md"             "Native Interop (FFI)"              "topic"]
+  ["numeric-performance.md"        "Numeric Performance"               "topic"]
   ["libraries.md"                  "Libraries"                          "topic"]
 
   ["api/deps.md"                   "Dependencies (jolt.deps)"          "api"]
