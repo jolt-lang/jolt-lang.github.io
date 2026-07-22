@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>Numeric Performance — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rationale.html">Rationale</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li class="selected">
+        <a href="/docs/numeric-performance.html">Numeric Performance</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/deps.html">Dependencies (jolt.deps)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (babashka.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/time.html">Date &amp; Time (jolt-lang/time)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/util.html">Utilities (jolt.util)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>Numeric Performance</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#most_of_the_time_you_write_plain_clojure">Most of the time you write plain Clojure</a></li><li><a href="#hints,_when_you_need_them">Hints, when you need them</a></li><li><a href="#primitive_arrays">Primitive arrays</a></li><li><a href="#java.lang.math">java.lang.Math</a></li><li><a href="#how_to_tell_it_worked">How to tell it worked</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <p>Jolt compiles to Chez Scheme, which represents small integers and flonums close to the metal (tagged fixnums and unboxed flonums), and jolt leans on that to run tight numeric code without the boxing and megamorphic dispatch a dynamic language usually pays. The key idea: when jolt can <em>prove</em> a value is a <code>double</code> (flonum) or a <code>long</code> (fixnum), it emits the native Chez operation — <code>fl+</code>/<code>fl&#42;</code>/<code>flsqrt</code>, <code>fx+</code>/<code>fx&#42;</code> — instead of the generic numeric-tower path that inspects the operand's type at runtime. This page is about how that proof happens and how you help it along.</p><p>Everything here is a pure optimization: it never changes a result, only how fast it runs. A program that gives jolt no type information still runs correctly through the generic path — it is just slower in a hot loop.</p><h2 id="most&#95;of&#95;the&#95;time&#95;you&#95;write&#95;plain&#95;clojure">Most of the time you write plain Clojure</h2><p>Jolt infers numeric types structurally, with no hints, in a closed-world build (<a href='/docs/rfc'>RFC 0005</a>). A few things fall out of that:</p><ul><li><strong>Whole-program parameter inference.</strong> A function whose every call site passes a flonum has its parameter typed <code>double</code>, so its body unboxes — even with no <code>&#94;double</code> hint. An integer caller leaves it generic; a function that escapes (stored in a var, passed around) stays dynamic.</li><li><strong>Record field inference.</strong> A <code>defrecord</code> whose constructor is only ever called with flonums for a field has that field typed <code>double</code>, so reads off the field unbox and arithmetic over them lowers to <code>fl</code> ops. All-flonum construction is enough; you don't annotate the field.</li><li><strong>Flonum contagion.</strong> A numeric field read next to a proven <code>double</code> operand is coerced (<code>exact-&gt;inexact</code>) and lowers to <code>fl&#42;</code>, matching Clojure's contagion rules, without giving up the generic path where the type isn't proven.</li></ul><p>So idiomatic numeric code — a <code>defrecord</code> of doubles, functions over them, a <code>reduce</code> accumulating a sum — often unboxes on its own. Reach for hints when the inference can't see enough: across a var boundary, at an entry point, or on a value that comes from outside the closed world.</p><h2 id="hints,&#95;when&#95;you&#95;need&#95;them">Hints, when you need them</h2><p>A <code>&#94;double</code> or <code>&#94;long</code> hint on a parameter or <code>let</code>-binding asserts the type directly, and arithmetic over that binding lowers to the native op:</p><pre><code class="clojure">&#40;defn dist &#94;double &#91;&#94;double dx &#94;double dy&#93;
+  &#40;Math/sqrt &#40;+ &#40;&#42; dx dx&#41; &#40;&#42; dy dy&#41;&#41;&#41;&#41;
+</code></pre><p>Here <code>dx</code>/<code>dy</code> are proven <code>double</code>, so <code>&#42;</code> and <code>+</code> emit <code>fl&#42;</code>/<code>fl+</code>, <code>Math/sqrt</code> emits <code>flsqrt</code> (see below), and the <code>&#94;double</code> on the function name coerces the return. No value is boxed in the loop that calls <code>dist</code>.</p><ul><li><code>&#94;double</code> / <code>&#94;long</code> on a <strong>param</strong> or <strong><code>let</code>-binding</strong> → the binding's arithmetic unboxes to <code>fl&#42;</code>/<code>fl+</code>/… or <code>fx&#42;</code>/<code>fx+</code>/….</li><li><code>&#94;double</code> on the <strong>defn name</strong> → the body's return value is coerced to a flonum.</li><li>A <strong>float literal</strong> (<code>2.0</code>, <code>1e3</code>) is a flonum, so it seeds <code>double</code> into the expression it sits in.</li></ul><p>A hint is an assertion, not a cast: if you hint <code>&#94;double</code> on a value that is actually a boxed integer at runtime, the result can differ from the JVM. The success-type lint (<code>JOLT&#95;CHECK</code>, <a href='/docs/rfc'>RFC 0006</a>) surfaces provably-wrong arithmetic as a located warning, and is a good screen for a hinted numeric kernel.</p><h2 id="primitive&#95;arrays">Primitive arrays</h2><p><code>double-array</code> and <code>float-array</code> produce arrays backed by an <strong>unboxed Chez flvector</strong>, so the elements never box, and the other array constructors (<code>long-array</code>, <code>int-array</code>, <code>short-array</code>, <code>object-array</code>) carry their element kind too. Reading and writing them stays unboxed when jolt knows the element type, which you assert with an array hint:</p><pre><code class="clojure">&#40;defn dot &#94;double &#91;&#94;doubles a &#94;doubles b &#94;long n&#93;
+  &#40;loop &#91;i 0 acc 0.0&#93;
+    &#40;if &#40;&lt; i n&#41;
+      &#40;recur &#40;inc i&#41; &#40;+ acc &#40;&#42; &#40;aget a i&#41; &#40;aget b i&#41;&#41;&#41;&#41;
+      acc&#41;&#41;&#41;
+</code></pre><ul><li><code>&#94;doubles</code> / <code>&#94;floats</code> on a param or <code>let</code>-binding → <code>&#40;aget a i&#41;</code> lowers to a direct <code>flvector-ref</code> typed <code>double</code>, and <code>&#40;aset a i v&#41;</code> to a direct <code>flvector-set!</code>. So a read/fill loop stays unboxed on both ends, and the surrounding arithmetic (<code>acc</code>, <code>&#42;</code>) unboxes with it.</li><li><code>&#94;longs</code> / <code>&#94;ints</code> are threaded through the same plumbing.</li><li>Even without a hint, the hot one-dimensional <code>aget</code> / <code>aset</code> / <code>alength</code> lower to the array-aware native ops rather than the <code>clojure.core</code> overlay's var-deref + reduce path; multi-dimensional forms fall back to the overlay.</li></ul><p>This is the fastest way to hold a large block of numbers in jolt: a primitive array reads and writes with no per-element allocation, where a persistent vector of boxed doubles would allocate on every update.</p><h2 id="java.lang.math">java.lang.Math</h2><p>When every operand of a <code>java.lang.Math</code> call is a proven <code>double</code> (or an integer literal, which is coerced to one, as long as at least one operand is a genuine double), the call lowers to the native Chez flonum op and its result types <code>double</code>:</p><table><thead><tr><th>Clojure</th><th>native op</th></tr></thead><tbody><tr><td><code>Math/sqrt</code> <code>Math/sin</code> <code>Math/cos</code> <code>Math/tan</code></td><td><code>flsqrt</code> <code>flsin</code> <code>flcos</code> <code>fltan</code></td></tr><tr><td><code>Math/asin</code> <code>Math/acos</code> <code>Math/atan</code> <code>Math/atan2</code></td><td><code>flasin</code> <code>flacos</code> <code>flatan</code> <code>flatan</code></td></tr><tr><td><code>Math/exp</code> <code>Math/log</code></td><td><code>flexp</code> <code>fllog</code></td></tr><tr><td><code>Math/floor</code> <code>Math/ceil</code> <code>Math/pow</code> <code>Math/abs</code></td><td><code>flfloor</code> <code>flceiling</code> <code>flexpt</code> <code>flabs</code></td></tr></tbody></table><p>Because the result types <code>double</code>, a <code>Math</code> call in the middle of an arithmetic expression keeps the whole expression unboxed (flonum contagion is preserved) rather than de-optimizing it. Untyped operands, or an all-integer call like <code>&#40;Math/abs 5&#41;</code>, stay on the generic string-keyed host-static path and return the ordinary boxed result.</p><h2 id="how&#95;to&#95;tell&#95;it&#95;worked">How to tell it worked</h2><p>The numeric fast paths are covered by gates in the jolt repo (<code>make numeric</code>, <code>numwp</code>, <code>mandelbrot-num</code>, <code>fieldnum</code>, <code>fieldjoin</code>, <code>contagion</code>, <code>flarr</code>, <code>mathfl</code>) that assert the emitted Scheme contains the native op — <code>fl+</code>, <code>jolt-flaget</code>, <code>flsqrt</code> — and not the generic dispatch. If you are tuning a kernel and want to confirm it unboxes, those gates are the reference for what proven-numeric emission looks like, and the <a href='https://github.com/jolt-lang/jolt/tree/main/bench'><code>bench/</code></a> programs (mandelbrot, the numeric micro-benchmarks) are the wall-clock check.</p><p>Remember the fallback is always correctness: if a value can't be proven numeric, jolt runs it through the generic tower and the answer is the same. Hints and structural shape only decide whether that happens in a register or through a dispatch.</p>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>
