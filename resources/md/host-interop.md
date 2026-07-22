@@ -192,3 +192,44 @@ If a shim would be useful to everyone, it's also a great contribution to the
 runtime itself — the built-in shims use exactly these registries; see
 [Writing Libraries](/docs/writing-libraries.html) and Jolt's `host/chez/java`
 sources.
+
+## Running work on the main thread
+
+Some native calls must run on the process's **main** (primordial) thread. A GUI
+toolkit is the usual case: on macOS a Cocoa/GTK-quartz call off the main thread
+aborts the process ("setting the main menu on a non-main thread"). Jolt has no
+JVM AWT thread, so it exposes a small marshalling API in `jolt.host` that a GUI
+library builds on. Most applications never call these directly — you use a UI
+library (e.g. [glimmer](https://github.com/jolt-lang/glimmer)) that does — but if
+you bind a toolkit yourself, this is the seam.
+
+The model is a **main-thread pump**: one thread becomes a queue-draining event
+loop, and other threads hand it thunks to run there.
+
+- `(jolt.host/call-on-main-thread thunk)` — run `thunk` on the pump thread and
+  **block** until it finishes, returning its value (or re-raising its error). If
+  no pump is active it runs `thunk` inline on the calling thread, and a call
+  already on the pump runs inline too (reentrant).
+- `(jolt.host/call-on-main-thread-async thunk)` — schedule `thunk` on the pump
+  and **return immediately** (`nil`), without waiting. This is what lets a GUI
+  library's `run` start the toolkit's event loop — which blocks the pump for the
+  app's whole lifetime — while the call that started it returns, so an nREPL
+  session stays live for reactive edits. With no pump active it runs inline. *(New
+  in 0.4.14.)*
+- `(jolt.host/run-main-pump)` — turn the calling thread **into** the pump: drain
+  and run queued jobs FIFO, blocking until `stop-main-pump`. Call this on the
+  main thread of a program whose main thread should service GUI work.
+- `(jolt.host/stop-main-pump)` — tell a running pump to finish draining and
+  return.
+- `(jolt.host/park-until-interrupt)` — park the calling (main) thread until a
+  keyboard interrupt (`^C`), running shutdown hooks and exiting when it arrives,
+  **and** own the pump while parked. This is the variant a foreground server uses:
+  the nREPL server parks the primordial thread here so a UI event loop evaluated
+  from the REPL runs on the real main thread (not off-main, which would abort),
+  while `^C` still shuts the server down cleanly. Unlike `run-main-pump`'s bare
+  wait, it idles in an interrupt-checked poll so `^C` is delivered.
+
+Because both blocking and async calls fall back to running inline when no pump is
+active, code written against this API also works in a plain `-M:run` launch,
+where the main thread is already the caller — the library resolves the seam at
+call time and needs no separate non-GUI path.
