@@ -1,6 +1,6 @@
 `jolt.deps` is the dependency front-end: it resolves `deps.edn` coordinates
 into source roots the loader searches. The CLI runs it for you on every
-`joltc run`/`repl`/`build` (see [Building & Running](/docs/building-and-deps.html));
+`jolt run`/`repl`/`build` (see [Building & Running](/docs/building-and-deps.html));
 this page covers the programmatic API — chiefly `add-deps`, which resolves
 dependencies from inside a running script.
 
@@ -21,9 +21,11 @@ dependencies without a `deps.edn`:
 
 All coordinate types work: `:mvn/version` (the JAR's Clojure source, fetched
 from Clojars then Maven Central), `:git/url` + `:git/sha` (`:git/url` optional
-when the lib name is host-prefixed, e.g. `io.github.OWNER/REPO`), and
-`:local/root` (resolved against the project directory). Transitive dependencies
-resolve too.
+when the lib name is host-prefixed, e.g. `io.github.OWNER/REPO`; `:git/tag` with
+a short `:git/sha` also resolves), and `:local/root` (resolved against the
+project directory, and accepting a `.jar` path). Transitive dependencies resolve
+too, through the same expansion as the CLI — `:exclusions` are honored and
+version conflicts resolve newest-wins.
 
 A script meant to also run on babashka or the JVM can guard on the
 `jolt.version` system property — the same shape as babashka's

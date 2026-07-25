@@ -2,10 +2,10 @@ Jolt is built for the Clojure workflow: keep a process running, connect your edi
 
 ## The line REPL
 
-`bin/joltc repl` starts a plain REPL in the current directory. It resolves the `deps.edn` first, so your project's source roots and native libraries are already on the load path:
+`bin/jolt repl` starts a plain REPL in the current directory. It resolves the `deps.edn` first, so your project's source roots and native libraries are already on the load path:
 
 ```bash
-$ bin/joltc repl
+$ bin/jolt repl
 user=> (require '[myapp.core :as app])
 nil
 user=> (app/greeting "world")
@@ -16,11 +16,11 @@ This is handy for a quick poke at a namespace, but the real workflow is driving 
 
 ## Starting an nREPL server
 
-`bin/joltc nrepl-server [port]` starts an [nREPL](https://nrepl.org/) server your editor connects to. It defaults to port 7888 (override with the argument or `JOLT_NREPL_PORT`), resolves the project's `deps.edn`, loads the source roots and native libraries, and writes a `.nrepl-port` file in the project directory so editors auto-detect the port.
+`bin/jolt nrepl-server [port]` starts an [nREPL](https://nrepl.org/) server your editor connects to. It defaults to port 7888 (override with the argument or `JOLT_NREPL_PORT`), resolves the project's `deps.edn`, loads the source roots and native libraries, and writes a `.nrepl-port` file in the project directory so editors auto-detect the port.
 
 ```bash
 $ cd myapp
-$ bin/joltc nrepl-server
+$ bin/jolt nrepl-server
 nREPL server started on port 7888 (127.0.0.1) — .nrepl-port written
 ;; connect your editor; ^C to stop
 ```
@@ -120,4 +120,4 @@ Jolt composes the listed middleware over the built-in handler when the server st
 
 ## Dev mode vs a compiled binary
 
-The REPL and nREPL server are dynamic on purpose: calls go through the var, so redefinition works. A `bin/joltc build` binary is the other end of that trade — a `--direct-link` build binds calls directly and gives up runtime redefinition for speed. Develop against the REPL; ship the binary. See [Getting Started](/docs/getting-started.html#compiling_a_standalone_binary) for the build modes.
+The REPL and nREPL server are dynamic on purpose: calls go through the var, so redefinition works. A `bin/jolt build` binary is the other end of that trade — a `--direct-link` build binds calls directly and gives up runtime redefinition for speed. Develop against the REPL; ship the binary. See [Getting Started](/docs/getting-started.html#compiling_a_standalone_binary) for the build modes.

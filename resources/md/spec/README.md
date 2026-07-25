@@ -21,7 +21,7 @@ sources, and process: [`0001-language-specification.md`](/docs/rfc/0001-language
 
 Regenerate the dashboard after surface changes:
 `python3 tools/spec_coverage.py` (reads `tools/clojuredocs-export.json` and
-probes a working jolt checkout via `bin/joltc`).
+probes a working jolt checkout via `bin/jolt`).
 
 The [coverage dashboard](/docs/spec/coverage.html) is the source of truth for
 per-var status over the 694-var `clojure.core` surface: which vars are

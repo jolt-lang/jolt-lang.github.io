@@ -8,17 +8,17 @@ How to run Jolt from source and how to pull Clojure libraries into a project.
 git clone https://github.com/jolt-lang/jolt.git
 cd jolt
 git submodule update --init   # vendor/sci (used by the SCI bootstrap tests)
-bin/joltc -e '(println "hello")'
+bin/jolt -e '(println "hello")'
 ```
 
-There is **no build step**. `bin/joltc` (`host/chez/cli.ss`) loads the
+There is **no build step**. `bin/jolt` (`host/chez/cli.ss`) loads the
 checked-in bootstrap seed (`host/chez/seed/{prelude,image}.ss`) plus the spine
 and compiles+evals on Chez (read → analyze → IR → emit → eval), so a fresh
 clone runs immediately. The whole `.clj` standard library
 (`clojure.string`/`set`/`walk`/`edn`/`pprint`/…) and `clojure.core` are part of
 the overlay, so they're always available.
 
-`bin/joltc` is both the runtime (REPL, file/expr runner) and the dependency
+`bin/jolt` is both the runtime (REPL, file/expr runner) and the dependency
 front-end (`deps.edn` resolution, see below). A run with no `deps.edn` never
 touches the resolver.
 
@@ -47,24 +47,27 @@ So you can point Jolt at a directory of Clojure source with no deps machinery at
 all:
 
 ```bash
-JOLT_PATH=/path/to/lib/src bin/joltc run myfile.clj
+JOLT_PATH=/path/to/lib/src bin/jolt run myfile.clj
 ```
 
 ## Dependencies via deps.edn
 
-`bin/joltc` reads a `deps.edn` in the current directory, fetches its
+`bin/jolt` reads a `deps.edn` in the current directory, fetches its
 dependencies, and prepends the resolved source directories to the source roots
 for the run. The CLI commands (`jolt.deps` + `jolt.main`):
 
 ```bash
-bin/joltc run -m NS [args]      # resolve deps.edn, load NS, call its -main
-bin/joltc run FILE              # resolve deps.edn, load a Clojure file
-bin/joltc -M:alias [args]       # run the alias's :main-opts
-bin/joltc -A:alias [args]       # add the alias's paths/deps, then run the rest
-bin/joltc repl                  # start a line REPL (project deps + native libs loaded)
-bin/joltc nrepl-server [port]   # start an nREPL server (default 7888) for editors
-bin/joltc path                  # print the resolved source roots (':'-joined)
-bin/joltc <task>                # run a deps.edn :tasks entry
+bin/jolt run -m NS [args]      # resolve deps.edn, load NS, call its -main
+bin/jolt run FILE              # resolve deps.edn, load a Clojure file
+bin/jolt -M:alias [args]       # run the alias's :main-opts
+bin/jolt -A:alias [args]       # add the alias's paths/deps, then run the rest
+bin/jolt -X:alias [k v ...]    # call the alias's :exec-fn with :exec-args
+bin/jolt -T:alias [k v ...]    # like -X, with the project's paths/deps replaced
+bin/jolt -Sdeps '<edn>' ...    # merge an extra deps.edn map, then run the rest
+bin/jolt repl                  # start a line REPL (project deps + native libs loaded)
+bin/jolt nrepl-server [port]   # start an nREPL server (default 7888) for editors
+bin/jolt path                  # print the resolved source roots (':'-joined)
+bin/jolt <task>                # run a deps.edn :tasks entry
 ```
 
 Example `deps.edn`:
@@ -77,36 +80,76 @@ Example `deps.edn`:
 ```
 
 ```bash
-bin/joltc run -m myapp.main
+bin/jolt run -m myapp.main
 ```
 
 ### What's supported
 
-- **git deps** — `{:git/url … :git/sha …}` (use a full SHA; `git fetch` can't
-  resolve a short one), with an optional `:deps/root` for a subdirectory.
+- **git deps** — `{:git/url … :git/sha …}` with a full SHA, or `{:git/tag "v1.2"
+  :git/sha "abc1234"}` where the tag resolves to its commit and the short SHA is
+  verified as a prefix of it. An optional `:deps/root` selects a subdirectory.
+  `:git/url` may be omitted when the lib name encodes a host —
+  `io.github.OWNER/REPO`, `io.gitlab.…`, `io.bitbucket.…`, `ht.sr.~OWNER`.
   Transitive deps from each dependency's own `deps.edn` are resolved too.
-- **local deps** — `{:local/root "../path"}`.
+- **local deps** — `{:local/root "../path"}`. The path may also be a `.jar`,
+  which is extracted and used as a source root, its POM supplying transitive deps.
 - **Maven deps** — `{:mvn/version "…"}`. A Clojure library's JAR carries its
   `.clj`/`.cljc` source, so the coordinate resolves by fetching the JAR
-  (Clojars, then Maven Central) and using its extracted source as a root; the
-  POM supplies transitive deps. JARs live in the standard `~/.m2/repository`,
-  shared with the JVM toolchain in both directions (`:mvn/local-repo` in
-  `deps.edn` relocates it, `JOLT_LOCAL_REPO` overrides from the environment).
-  A pure-Java JAR has no source to run and contributes nothing.
+  (Clojars, then Maven Central, then any `:mvn/repos` you declare) and using its
+  extracted source as a root; the POM supplies transitive deps. JARs live in the
+  standard `~/.m2/repository`, shared with the JVM toolchain in both directions
+  (`:mvn/local-repo` in `deps.edn` relocates it, `JOLT_LOCAL_REPO` overrides from
+  the environment). A pure-Java JAR has no source to run and contributes nothing.
+- **exclusions and version conflicts** — `:exclusions [some/lib]` on a coordinate
+  prunes that dependency's subtree. When two dependencies want different versions
+  of the same library, the newest wins (Maven versions compare by the usual
+  ComparableVersion rules; git coordinates by commit ancestry), and a top-level
+  coordinate always pins regardless of what transitive deps ask for.
 - The project's own `:paths` (default `["src"]`) are included.
-- **aliases** — `:aliases {:dev {:extra-paths ["dev"] :extra-deps {…}
-  :main-opts ["-e" "…"]}}`, selected with `-A:dev` (or several: `-A:dev:test`).
-  `:extra-paths`/`:extra-deps` accumulate across selected aliases;
-  `:main-opts` is last-wins and runs via `-M:alias`.
+- **aliases** — selected with `-A:dev` (or several: `-A:dev:test`), combining
+  with the same rules as tools.deps:
+
+  | key | effect |
+  | --- | --- |
+  | `:extra-paths` / `:extra-deps` | added to the project's, accumulating across selected aliases |
+  | `:replace-paths` / `:replace-deps` | used *instead of* the project's (`:paths`/`:deps` are accepted as the legacy spellings) |
+  | `:override-deps` | pins a library's coordinate wherever it appears, including transitively |
+  | `:default-deps` | supplies a coordinate where a dependency left one out |
+  | `:main-opts` | last-wins across selected aliases; run with `-M:alias` |
+  | `:exec-fn` / `:exec-args` | the function `-X:alias` calls and the map it receives |
+  | `:ns-default` / `:ns-aliases` | qualify an unqualified or aliased `:exec-fn` symbol |
+
+  Selecting an alias that isn't declared is an error rather than a silent no-op.
 - **tasks** — `:tasks {clean "rm -rf target" test {:main-opts ["-m" "…"]}}`.
   A string task is a shell command; a map task runs jolt with its `:main-opts`.
-  Run one with `bin/joltc <taskname>`.
+  Run one with `bin/jolt <taskname>`.
 
-Resolution is breadth-first, so a top-level coordinate always beats a transitive
-one for the same lib.
+`deps.edn` files merge like tools.deps: a user-level file (`$CLJ_CONFIG`, else
+`$XDG_CONFIG_HOME/clojure`, else `~/.clojure`) sits under the project's, and
+`-Sdeps '{…}'` merges an extra map on top of both. Set `JOLT_NO_USER_DEPS=1` to
+ignore the user file — useful when it holds JVM-only aliases.
 
 Git clones land in a global, sha-immutable cache shared across projects —
 `$JOLT_GITLIBS`, else `~/.jolt/gitlibs`.
+
+### Running a function directly
+
+`-X` calls a function with a single map argument, like `clj -X`:
+
+```clojure
+{:aliases {:build {:ns-default myapp.build
+                   :exec-fn deploy
+                   :exec-args {:env "staging"}}}}
+```
+
+```bash
+bin/jolt -X:build                       # (myapp.build/deploy {:env "staging"})
+bin/jolt -X:build :env '"prod"' :n 3    # k v pairs merge over :exec-args
+bin/jolt -X:build myapp.build/other     # an explicit ns/fn wins over :exec-fn
+```
+
+`-T` is the same, except the project's own `:paths` and `:deps` are replaced by
+the alias's — for running a tool that shouldn't see your project's classpath.
 
 ### What's not
 
@@ -142,7 +185,7 @@ for the full API.
 `jolt build` compiles a namespace and its dependencies into a standalone binary:
 
 ```bash
-JOLT_PWD=/path/to/project bin/joltc build -m my.app
+JOLT_PWD=/path/to/project bin/jolt build -m my.app
 ```
 
 The binary contains the runtime + app forms + native launcher — no Jolt source or Chez
@@ -158,8 +201,8 @@ emitted to Scheme, the emitted Scheme is concatenated into one program, and that
 is handed to Chez's native compiler and linked into a boot file embedded in the
 executable. The result is compiled Chez native code (a fasl boot image + native
 launcher), not Clojure source — at runtime there is nothing to read or recompile, and no
-source roots are consulted. This is the same machinery `joltc` itself uses to bake its
-own runtime + compiler into the distributed binary (that is why a built `joltc` boots in
+source roots are consulted. This is the same machinery `jolt` itself uses to bake its
+own runtime + compiler into the distributed binary (that is why a built `jolt` boots in
 a fraction of a second instead of recompiling its standard library every run).
 
 The build pipeline runs four steps, in order:

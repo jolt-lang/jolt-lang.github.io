@@ -29,10 +29,21 @@ parses the EDN), then walks `:deps`:
   `io.github.OWNER/REPO` (or `com.github.`), `io.gitlab.`/`com.gitlab.`,
   `io.bitbucket.`/`org.bitbucket.`, and `ht.sr.~OWNER` — in which case the clone
   URL is derived from the name;
-- `:local/root` → the path as-is;
+- `:git/tag` + a short `:git/sha` → the tag is resolved to its commit with
+  `git ls-remote` (preferring the peeled `^{}` ref of an annotated tag) and the
+  short sha is verified as a prefix of it, exactly as tools.deps requires — a
+  tag alone never pins a commit;
+- `:local/root` → the path as-is, or, when it names a `.jar`, its extraction;
 - `:mvn/version` → fetch the JAR and use its extracted Clojure source as a
   root (see below);
-- anything else → ignored.
+- anything else → reported as an unsupported coordinate.
+
+Coordinate types are a small SPI (`jolt.deps.ext`) modelled on
+`clojure.tools.deps.extensions`: a type publishes its identifying keys and
+implements `dep-id` / `coord-deps` / `coord-info` / `compare-versions`. That is
+what lets the expansion engine below be shared across git, Maven, and local
+coordinates — and lets the test suite register a fake in-memory type to exercise
+the engine without touching the network.
 
 git resolution shells out to `git` through `jolt.host/sh` — `git init` + remote
 add + fetch + reset at the requested sha. An existing `tools.gitlibs` checkout
@@ -52,16 +63,40 @@ subtree is skipped outright. `:mvn/local-repo` in `deps.edn` relocates the
 repository like tools.deps; `JOLT_LOCAL_REPO` overrides from the environment.
 
 Each resolved dependency contributes its own `:paths` (default `["src"]`) as
-source roots; the walk is **breadth-first** so every top-level coordinate
-registers before any transitive one — a top-level pin always wins, matching
-tools.deps. The result is a de-duplicated, ordered list of directories.
+source roots. The result is a de-duplicated, ordered list of directories.
 
-Two tools.deps features are mirrored in reduced form. **Aliases**: `:aliases`
-entries supply `:extra-paths`/`:extra-deps` (accumulate across the aliases
-selected with `-A:a:b`) and `:main-opts` (last-wins, run with `-M:alias`).
-**Tasks**: the honest subset of babashka's — a string task is a shell command, a
-map task is `{:main-opts […]}`; bare Clojure expressions aren't a separate task
-form.
+### Expansion
+
+The tree expansion is tools.deps' own algorithm, ported: a **version map**
+records every version of every library seen and which one is selected, an
+**exclusion tree** scopes `:exclusions` by dependency path (narrowing to the
+intersection when the same library/version arrives by another path), and
+**orphan cutting** removes libraries whose only parent paths went away when a
+newer version displaced them. Selection follows the same rules — a top-level
+coordinate pins, otherwise the newest version wins — with `compare-versions`
+per coordinate type: Maven versions order by ComparableVersion semantics
+(reimplemented, since there is no JVM to ask), git coordinates by commit
+ancestry via `git merge-base`. Where no order exists, jolt warns and keeps the
+already-selected coordinate rather than failing the whole resolution.
+
+The alias args map is built by `jolt.deps.edn` — `merge-edns`,
+`merge-alias-maps`, `combine-aliases`, and `canonicalize` taken verbatim from
+`clojure.tools.deps.edn`, so per-key merge behavior (maps merge, paths append
+uniquely, `:main-opts` is last-wins) is the reference implementation's rather
+than a lookalike. Reading follows the same chain too: user `deps.edn`, then
+project, then an optional `-Sdeps` map.
+
+**Tasks** remain jolt's own: the honest subset of babashka's — a string task is
+a shell command, a map task is `{:main-opts […]}`; bare Clojure expressions
+aren't a separate task form.
+
+### What's still missing
+
+`:deps/prep-lib` is recognized but never run — jolt has no prep step, so a
+library needing one is named in a warning instead of silently producing a
+half-built root. Maven `:classifier`/`:extension` coordinates, `pom.xml` as a
+project manifest, `-Stree` output, and the `:deps/manifest` override are not
+implemented.
 
 ## How the CLI ties it together
 
@@ -72,7 +107,15 @@ roots, and de-sugars the argv into a run:
 - `run -m NS args` → load `NS`, call its `-main`;
 - `run FILE` → load the file;
 - `-M:alias` → run the alias's `:main-opts`;
-- `-A:alias` → add the alias's paths/deps, then run the rest;
+- `-A:alias` → add the alias's paths/deps, then run the rest (the selected
+  aliases stay in effect for whatever command follows, so `-A:x path` and
+  `-A:x -M:y` both see them);
+- `-X:alias [ns/fn] [k v …]` → call `:exec-fn` (or the given symbol, qualified
+  through `:ns-default`/`:ns-aliases`) with `:exec-args` merged under the
+  trailing key/value pairs;
+- `-T:alias …` → `-X` with the project's own paths and deps replaced by the
+  alias's, for tools that shouldn't see the project classpath;
+- `-Sdeps '<edn>'` → merge an extra `deps.edn` map, then run the rest;
 - `repl` → a line REPL;
 - `path` → print the resolved roots;
 - `build -m NS [-o OUT] [--opt|--dev]` → AOT-compile the app into a standalone binary;
@@ -98,7 +141,7 @@ project inherits its dependencies' `:jolt/native`.
 
 ### Static vs dynamic linking
 
-When you `joltc build`, a native lib is **statically linked** into the binary by
+When you `jolt build`, a native lib is **statically linked** into the binary by
 default if the spec carries a `:static` archive — so the executable calls the C
 code with no shared object present at runtime. Add `:static` alongside the runtime
 candidates:
@@ -118,7 +161,7 @@ archive form. A spec with no `:static` (or a build passed `--dynamic`, or
 startup via `load-shared-object`.
 
 Static linking needs a C compiler (`cc`) on `PATH` at build time (plus the C libs
-the Chez kernel links — lz4, zlib, ncurses). The distributed `joltc` bundles the
+the Chez kernel links — lz4, zlib, ncurses). The distributed `jolt` bundles the
 Chez kernel, so it re-links the launcher stub with the archive baked in — no
 external Chez, just `cc`. Without a `cc`, a `:static` lib fails with a message
 pointing you to install one or pass `--dynamic`. Keep a `:darwin`/`:linux`
@@ -127,7 +170,7 @@ still load it.
 
 ## Standalone binaries
 
-`joltc build -m NS` compiles the app and every library into one executable (the
+`jolt build -m NS` compiles the app and every library into one executable (the
 runtime + compiler are baked in). Resolved `:jolt/native` libs are statically
 linked in (or loaded at startup — see [Native libraries](#native-libraries)), so
 an FFI app — sockets, SQLite — runs with no jolt or Chez on the path.
@@ -136,7 +179,7 @@ Output goes under the project's `target/`, cargo-style: `target/release/<project
 by default and with `--opt`, `target/debug/<project>` with `--dev` (the
 `<name>.build` scratch dir sits beside it). `-o PATH` overrides — absolute as-is,
 relative against the project dir. Paths resolve against the project (`JOLT_PWD`),
-not the CLI's cwd, since `bin/joltc` runs from the jolt repo.
+not the CLI's cwd, since `bin/jolt` runs from the jolt repo.
 
 `:jolt/build {:embed ["resources" …]}` bakes those directories' files into the
 binary; `io/resource` serves them from the image with no files on disk. Resources

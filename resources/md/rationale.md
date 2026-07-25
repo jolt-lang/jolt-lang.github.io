@@ -4,7 +4,7 @@
 
 Jolt's main goal is a drop-in replacement for JVM Clojure with fast startup and a light memory footprint. Since both languages share the same Lisp roots, the core semantics of Clojure map seamlessly to Scheme, avoiding the impedance mismatch associated with forcing functional paradigms onto the JVM. Chez brings a mature JIT compiler that can aggressively optimize emitted code while maintaining a reasonably small runtime footprint. You also get a highly tuned generational garbage collector that is practically purpose-built to handle the rapid allocation and deallocation of immutable data structures inherent to Clojure workflows. Finally, Chez runs natively across a wide variety of operating systems, so you get lean native binaries with instant startup times rather than hauling around a heavy Java environment.
 
-Deploying or distributing a Jolt app means building a binary for the target platform. Users don't need a JVM installed, and you don't even need Chez Scheme installed to develop using Jolt, because it produces its own self-contained `joltc` binary. It's also possible to create a Jolt library that can be embedded in C, C++, or Rust projects, providing a high-level Clojure API and interactivity via nREPL on top of performant native code.
+Deploying or distributing a Jolt app means building a binary for the target platform. Users don't need a JVM installed, and you don't even need Chez Scheme installed to develop using Jolt, because it produces its own self-contained `jolt` binary. It's also possible to create a Jolt library that can be embedded in C, C++, or Rust projects, providing a high-level Clojure API and interactivity via nREPL on top of performant native code.
 
 ## The JVM Problem
 

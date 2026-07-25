@@ -28,7 +28,7 @@ In a consuming project's `deps.edn`:
 Then run it:
 
 ```bash
-bin/joltc run -m myapp.main
+bin/jolt run -m myapp.main
 ```
 
 ### Git dependencies
@@ -51,7 +51,7 @@ Aliases add extra paths, deps, and main options:
            :test {:main-opts ["-m" "my-lib.test-runner"]}}}
 ```
 
-`:extra-paths`/`:extra-deps` accumulate across selected aliases (`-A:dev:test`); `:main-opts` is last-wins and runs via `-M:alias`.
+`:extra-paths`/`:extra-deps` accumulate across selected aliases (`-A:dev:test`); `:main-opts` is last-wins and runs via `-M:alias`. The rest of the tools.deps alias keys work too — `:replace-paths`/`:replace-deps`, `:override-deps`, `:default-deps`, and `:exec-fn`/`:exec-args` for `-X:alias`. See [Building &amp; Running](/docs/building-and-deps.html) for the full table.
 
 Tasks are named shell commands or Jolt invocations:
 
@@ -60,14 +60,15 @@ Tasks are named shell commands or Jolt invocations:
          test  {:main-opts ["-m" "my-lib.test-runner"]}}}
 ```
 
-Run one with `bin/joltc <taskname>`.
+Run one with `bin/jolt <taskname>`.
 
 ## What works as a dependency
 
-- **git deps** — `{:git/url … :git/sha …}`, with optional `:deps/root`.
-- **local deps** — `{:local/root "../path"}`.
+- **git deps** — `{:git/url … :git/sha …}` (or `:git/tag` with a short `:git/sha`), with optional `:deps/root`.
+- **local deps** — `{:local/root "../path"}`, or a path to a `.jar`.
 - **Maven deps** — `{:mvn/version "…"}`. A Clojure library's JAR ships its `.clj`/`.cljc` source, so the coordinate resolves by fetching the JAR (Clojars, then Maven Central) and using that source as a load root; the POM supplies transitive deps. A jar already in `~/.m2/repository` is reused. See [tools.deps compatibility](/docs/tools-deps.html) and [dependency resolution](/docs/getting-started.html#dependencies).
-- **aliases** — `:extra-paths`, `:extra-deps`, `:main-opts`.
+- **aliases** — the tools.deps args-map keys: `:extra-paths`/`:extra-deps`, `:replace-paths`/`:replace-deps`, `:override-deps`, `:default-deps`, `:main-opts`, `:exec-fn`/`:exec-args`.
+- **exclusions** — `:exclusions [some/lib]` prunes a dependency's subtree; version conflicts resolve newest-wins with top-level pins honored.
 - **tasks** — string (shell) or map (Jolt) entries.
 
 What doesn't:
