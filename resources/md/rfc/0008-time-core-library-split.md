@@ -183,7 +183,7 @@ whose whole problem was that it duplicated the Clojure one.)
    that provides it, then retries — so date-free programs pay nothing and a
    library that touches `java.time` gets it transparently. (A boot-eager
    `require` of the base is the simpler alternative but makes every run, even
-   `joltc -e '(+ 1 2)'`, carry the base in the live heap; autoload keeps the
+   `jolt -e '(+ 1 2)'`, carry the base in the live heap; autoload keeps the
    footprint at zero until first use.)
 
 The `Date`/`FileTime` `.toInstant` bridge keeps routing through `mk-instant` and
