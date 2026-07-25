@@ -35,8 +35,8 @@ A `#inst` / `java.util.Date` converts into the base with `.toInstant`, one value
 (.toInstant #inst "2020-01-01T00:00:00Z")                 ; => a java.time.Instant
 ```
 
-Reach for a formatting or zone class without the library and the error names the
-fix rather than leaving a bare "Unknown class":
+Reach for a formatting or zone class *without* the library on your dependencies
+and the error names the fix rather than leaving a bare "Unknown class":
 
 ```
 java.time.format.DateTimeFormatter is provided by the jolt-lang/time library, not
@@ -51,13 +51,15 @@ core (RFC 0008). Add io.github.jolt-lang/time to your deps.edn.
                                   :git/sha "99414a5..."}}}
 ```
 
-Requiring `jolt.time` adds `DateTimeFormatter`, `ZoneOffset`/`ZoneId`,
-`ZonedDateTime`/`OffsetDateTime`, `Locale`, and the zone/localized layer over the
-base; require `tick.core` for the tick functions.
+Declaring the dependency is all that's needed. The library supplies
+`DateTimeFormatter`, `ZoneOffset`/`ZoneId`, `ZonedDateTime`/`OffsetDateTime`,
+`Locale`, and the zone/localized layer over the base, and its `jolt.time` install
+namespace loads automatically the first time one of those classes is referenced —
+so `tick.core` (whose `cljc.java-time` namespaces resolve them at load) works
+directly, with no `jolt.time` require of your own.
 
 ```clojure
-(require '[jolt.time]                  ; adds formatting, zones, ZonedDateTime, Locale
-         '[tick.core :as t])
+(require '[tick.core :as t])
 
 (t/now)                               ; => an Instant
 (t/date "2020-01-01")                 ; => a LocalDate
@@ -77,7 +79,12 @@ answer `instance?` exactly like the real classes — and protocols extended to a
 `java.time` class (as tick does) dispatch on them. There is one implementation of
 each class. The base value types are portable Clojure under `stdlib/jolt/time/` in
 core, autoloaded on first use; the library's `fmt`/`zones`/`zoned` namespaces
-require that base and add formatting and the zone layer. Named-zone offsets and
+require that base and add formatting and the zone layer. Both halves autoload the
+same way: on a class miss the runtime loads `jolt.time.base` from core, and — when
+the class belongs to the formatting/zone half and `jolt.time` is resolvable on the
+source roots — the library's install namespace, then retries the lookup. Each is
+attempted at most once per process, so a program that never touches a date pays
+nothing and an unresolvable class still reports the dependency to add. Named-zone offsets and
 DST come from the OS through a small libc primitive in core (`localtime`/`tzset`
 reading `/usr/share/zoneinfo`), with a built-in US/EU/AU/NZ rule table as the
 fallback; localized month and day names come from `strftime`.
