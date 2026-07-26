@@ -83,6 +83,31 @@ Example `deps.edn`:
 bin/jolt run -m myapp.main
 ```
 
+### deps.edn keys at a glance
+
+Every top-level key Jolt reads, and where each is covered in full:
+
+| key | what it does |
+| --- | --- |
+| `:paths` | source directories for the project itself (default `["src"]`) |
+| `:deps` | dependency coordinates — git, local, or Maven ([below](#what's_supported)) |
+| `:aliases` | named argument maps selected with `-A`/`-M`/`-X`/`-T` ([below](#what's_supported)) |
+| `:tasks` | named shell commands or Jolt invocations, run as `jolt <task>` ([below](#what's_supported)) |
+| `:mvn/repos` | extra Maven repositories, consulted after Clojars and Central |
+| `:mvn/local-repo` | relocate the local Maven repository (default `~/.m2/repository`) |
+| `:jolt/native` | shared libraries a project or library needs, loaded before its code ([Native interop](/docs/native-interop.html)) |
+| `:jolt/build` | `jolt build` options — `:opt`, `:direct-link`, `:tree-shake`, `:embed`, `:dynamic-natives` ([below](#deps.edn_build_options)) |
+| `:nrepl/middleware` | nREPL middleware a library contributes ([REPL-driven development](/docs/repl-driven-development.html)) |
+
+A user-level `deps.edn` (`$CLJ_CONFIG`, else `$XDG_CONFIG_HOME/clojure`, else
+`~/.clojure`) is merged underneath the project's, and `-Sdeps '{…}'` merges a map
+on top of both — the same chain tools.deps uses. `JOLT_NO_USER_DEPS=1` skips the
+user file.
+
+`:deps/prep-lib` is recognized but not run: Jolt has no prep step, so a
+dependency declaring one is named in a warning rather than silently contributing
+a half-built source root.
+
 ### What's supported
 
 - **git deps** — `{:git/url … :git/sha …}` with a full SHA, or `{:git/tag "v1.2"
