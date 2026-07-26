@@ -8,6 +8,7 @@
   ["building-and-deps.md"          "Building & Running"                "topic"]
   ["repl-driven-development.md"    "REPL-Driven Development"           "topic"]
   ["writing-libraries.md"          "Writing Libraries"                 "topic"]
+  ["testing.md"                    "Testing"                           "topic"]
   ["host-interop.md"               "Host Interop"                      "topic"]
   ["native-interop.md"             "Native Interop (FFI)"              "topic"]
   ["numeric-performance.md"        "Numeric Performance"               "topic"]
