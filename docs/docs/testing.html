@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>Testing — Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            </svg>
+          </span>
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rationale.html">Rationale</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li class="selected">
+        <a href="/docs/testing.html">Testing</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/numeric-performance.html">Numeric Performance</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/deps.html">Dependencies (jolt.deps)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (babashka.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/time.html">Date &amp; Time (jolt-lang/time)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/util.html">Utilities (jolt.util)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>Testing</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#writing_tests">Writing tests</a><ol><li><a href="#fixtures">Fixtures</a></li><li><a href="#custom_assertions">Custom assertions</a></li></ol></li><li><a href="#running_them_with_the_official_runner">Running them with the official runner</a></li><li><a href="#running_them_without_a_runner">Running them without a runner</a></li><li><a href="#notes">Notes</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <p>Jolt ships <code>clojure.test</code>, and the official <a href='https://github.com/cognitect-labs/test-runner'>Cognitect test-runner</a> runs against it unmodified — the same <code>deps.edn</code> alias you would use on the JVM.</p><h2 id="writing&#95;tests">Writing tests</h2><p>Test namespaces are ordinary Clojure. By convention they live under a <code>test/</code> directory and their names end in <code>-test</code>, which is what test runners look for by default.</p><pre><code class="clojure">;; test/my&#95;lib/core&#95;test.clj
+&#40;ns my-lib.core-test
+  &#40;:require &#91;clojure.test :refer &#91;deftest is are testing use-fixtures&#93;&#93;
+            &#91;my-lib.core :as sut&#93;&#41;&#41;
+
+&#40;deftest addition
+  &#40;testing &quot;small numbers&quot;
+    &#40;is &#40;= 3 &#40;sut/add 1 2&#41;&#41;&#41;&#41;
+  &#40;testing &quot;a table of cases&quot;
+    &#40;are &#91;x y&#93; &#40;= x y&#41;
+      2 &#40;sut/add 1 1&#41;
+      0 &#40;sut/add 0 0&#41;&#41;&#41;&#41;
+
+&#40;deftest failure-modes
+  &#40;is &#40;thrown? clojure.lang.ExceptionInfo &#40;sut/add nil 1&#41;&#41;&#41;
+  &#40;is &#40;thrown-with-msg? clojure.lang.ExceptionInfo #&quot;not a number&quot; &#40;sut/add :x 1&#41;&#41;&#41;&#41;
+</code></pre><p><code>deftest</code>, <code>is</code>, <code>are</code>, <code>testing</code>, <code>thrown?</code> and <code>thrown-with-msg?</code> all behave as they do on the JVM. <code>thrown?</code> matches subclasses, so catching <code>Exception</code> catches an <code>ExceptionInfo</code>.</p><h3 id="fixtures">Fixtures</h3><p><code>use-fixtures</code> takes <code>:each</code> (around every test) or <code>:once</code> (around the namespace's whole run):</p><pre><code class="clojure">&#40;def &#94;:dynamic &#42;db&#42; nil&#41;
+
+&#40;use-fixtures :once &#40;fn &#91;t&#93; &#40;with-open &#91;conn &#40;connect&#41;&#93; &#40;binding &#91;&#42;db&#42; conn&#93; &#40;t&#41;&#41;&#41;&#41;&#41;
+&#40;use-fixtures :each &#40;fn &#91;t&#93; &#40;reset-tables!&#41; &#40;t&#41;&#41;&#41;
+</code></pre><h3 id="custom&#95;assertions">Custom assertions</h3><p><code>clojure.test/assert-expr</code> is a multimethod, so a library can teach <code>is</code> a new form. Register the method in its own top-level form — <code>is</code> resolves it when the assertion is compiled, so the two cannot sit in the same form:</p><pre><code class="clojure">&#40;defmethod clojure.test/assert-expr 'roughly? &#91;msg form&#93;
+  `&#40;let &#91;&#91;&#95;# a# b#&#93; '&#126;form&#93;
+     &#40;clojure.test/do-report
+       {:type &#40;if &#40;&lt; &#40;abs &#40;- &#126;&#40;nth form 1&#41; &#126;&#40;nth form 2&#41;&#41;&#41; 1e-6&#41; :pass :fail&#41;
+        :message &#126;msg :expected '&#126;form :actual nil}&#41;&#41;&#41;
+
+&#40;deftest close-enough &#40;is &#40;roughly? 1.0 1.0000001&#41;&#41;&#41;
+</code></pre><p><code>clojure.test/report</code> is a multimethod too, which is how test.check hooks its <code>::trial</code> and <code>::shrunk</code> events in.</p><h2 id="running&#95;them&#95;with&#95;the&#95;official&#95;runner">Running them with the official runner</h2><p>Add the runner as a test-only dependency and give it an alias:</p><pre><code class="clojure">{:paths &#91;&quot;src&quot;&#93;
+ :deps  {}
+ :aliases
+ {:test   {:extra-paths &#91;&quot;test&quot;&#93;
+           :extra-deps  {io.github.cognitect-labs/test-runner
+                         {:git/tag &quot;v0.5.1&quot; :git/sha &quot;dfb30dd&quot;}}}
+  :runner {:main-opts &#91;&quot;-m&quot; &quot;cognitect.test-runner&quot;&#93;}}}
+</code></pre><p>Then:</p><pre><code class="bash">jolt -M:test:runner
+</code></pre><pre><code>Running tests in #{test}
+
+Ran 24 tests. 91 assertions passed, 0 failures, 0 errors.
+</code></pre><p>It exits non-zero when anything fails or errors, so it drops straight into CI.</p><p>By default it scans the <code>test</code> directory and runs every namespace whose name ends in <code>-test</code>. The options narrow that:</p><table><thead><tr><th>Option</th><th>Effect</th></tr></thead><tbody><tr><td><code>-d DIR</code></td><td>scan <code>DIR</code> instead of <code>test</code> (repeatable)</td></tr><tr><td><code>-n NS</code></td><td>run only this namespace (repeatable)</td></tr><tr><td><code>-r REGEX</code></td><td>run namespaces matching this regex (repeatable)</td></tr><tr><td><code>-v NS/VAR</code></td><td>run only this test var (repeatable)</td></tr><tr><td><code>-i KEYWORD</code></td><td>run only tests with this metadata key</td></tr><tr><td><code>-e KEYWORD</code></td><td>skip tests with this metadata key</td></tr></tbody></table><p><code>-i</code> and <code>-e</code> read metadata on the test var, so tagging works the usual way:</p><pre><code class="clojure">&#40;deftest &#94;:integration talks-to-the-database ...&#41;
+</code></pre><pre><code class="bash">jolt -M:test:runner -e :integration      # everything but those
+jolt -M:test:runner -i :integration      # only those
+jolt -M:test:runner -v my-lib.core-test/addition
+</code></pre><p>Namespace selection needs jolt <strong>0.5.4</strong> or newer — earlier versions found no namespaces at all and reported <code>Ran 0 tests</code>, and the var-level options (<code>-v</code>, <code>-i</code>, <code>-e</code>) silently selected everything.</p><h2 id="running&#95;them&#95;without&#95;a&#95;runner">Running them without a runner</h2><p>A runner namespace is enough when you would rather not take the dependency. <code>run-tests</code> takes the namespaces to run and returns that call's summary:</p><pre><code class="clojure">;; test/my&#95;lib/test&#95;runner.clj
+&#40;ns my-lib.test-runner
+  &#40;:require &#91;clojure.test :as t&#93;
+            my-lib.core-test
+            my-lib.util-test&#41;&#41;
+
+&#40;defn -main &#91;&amp; &#95;&#93;
+  &#40;let &#91;{:keys &#91;fail error&#93;} &#40;t/run-tests 'my-lib.core-test 'my-lib.util-test&#41;&#93;
+    &#40;System/exit &#40;if &#40;zero? &#40;+ fail error&#41;&#41; 0 1&#41;&#41;&#41;&#41;
+</code></pre><p>This replaces the <code>:test</code>/<code>:runner</code> pair above — one alias carries both the test path and the entry point, and the runner dependency is gone:</p><pre><code class="clojure">:aliases {:test {:extra-paths &#91;&quot;test&quot;&#93;
+                 :main-opts   &#91;&quot;-m&quot; &quot;my-lib.test-runner&quot;&#93;}}
+</code></pre><pre><code class="bash">jolt -M:test
+</code></pre><p>The trade-off is that you list the namespaces by hand; the Cognitect runner finds them for you by scanning the directory.</p><h2 id="notes">Notes</h2><ul><li>Test sources belong on <code>:extra-paths</code> in a test alias, not on the project's <code>:paths</code> — that keeps them out of what a library's consumers load.</li><li>Aliases combine, so <code>-M:test:runner</code> selects the dependencies from <code>:test</code> and the entry point from <code>:runner</code>. <code>:extra-paths</code>/<code>:extra-deps</code> accumulate; <code>:main-opts</code> is last-wins. See <a href='/docs/building-and-deps.html'>Building &amp; Running</a>.</li><li>A library whose tests reach for <code>java.time</code> needs <a href='/docs/api/time.html'>jolt-lang/time</a> as a test dependency — those classes live in that library rather than core, by <a href='/docs/rfc/0008-time-core-library-split.html'>RFC 0008</a>.</li><li><code>run-tests</code> with no arguments runs every registered test rather than the current namespace's. That is a deliberate superset of the JVM's behavior; pass namespaces explicitly if you want the narrower one.</li></ul>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>
