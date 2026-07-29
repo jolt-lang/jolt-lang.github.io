@@ -78,6 +78,7 @@ Third-party Clojure/JVM libraries confirmed to run on Jolt.
 - **[cuerdas](https://github.com/funcool/cuerdas)** — string manipulation.
 - **[camel-snake-kebab](https://github.com/clj-commons/camel-snake-kebab)** — word-case conversions.
 - **[clj-rss](https://github.com/yogthos/clj-rss)** — RSS feed generation, over [xml](https://github.com/jolt-lang/xml)'s `clojure.data.xml` emit.
+- **[text-diff](https://github.com/borkdude/text-diff)** — line-level diffing in `diff -u` unified format, with ANSI colorization.
 
 ### Date and time
 
