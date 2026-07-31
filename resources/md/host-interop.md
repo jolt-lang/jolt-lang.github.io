@@ -193,6 +193,12 @@ runtime itself — the built-in shims use exactly these registries; see
 [Writing Libraries](/docs/writing-libraries.html) and Jolt's `host/chez/java`
 sources.
 
+These registries add a **class**. If instead you want to supply **data** to
+something Jolt already implements — per-locale currency symbols, month names,
+number separators — that is an
+[extension point](/docs/extension-points.html): core declares the contract and
+answers for one root key, and your library registers the rest.
+
 ## Running work on the main thread
 
 Some native calls must run on the process's **main** (primordial) thread. A GUI
