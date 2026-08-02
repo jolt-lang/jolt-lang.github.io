@@ -251,27 +251,54 @@ a root, transitively.
 
 ## Stack traces
 
-An uncaught error prints the message, the top-level source location, and — when
-frames are available — a `trace:` backtrace. In an AOT `jolt build --direct-link`
-binary the frames map to `ns/name (file:line)`; on the runtime eval path they are
-the surviving fn names. Tail-call optimization erases tail-called frames, so the
-default trace shows only the non-tail spine.
+An uncaught error prints the message, the top-level source location, and a
+`trace:` backtrace whose frames map to `ns/name (file:line)`:
 
-A fuller **tail-frame history** recovers the frames TCO erases: each compiled fn
-records itself on entry into a bounded ring-of-rings buffer, so the trace shows
-TCO-elided frames (including the immediate error site) while a tight tail loop
-stays bounded and its non-tail caller context is preserved.
+```
+Unhandled exception: Divide by zero
+  trace:
+    app.core/boom (src/app/core.clj:3)
+    app.core/-main (src/app/core.clj:6)
+```
 
-It is **on by default in REPL-driven development** — a `repl` or nREPL session
-turns it on, so an error in code you evaluate or reload shows a tail-frame trace
-with no setup. Because the recording is baked in at compile time, only code
-compiled while a session is live is traced; reload a namespace to trace code that
-was already loaded (e.g. an app's initial `-M:run` load before its nREPL started).
+`.printStackTrace` on a caught exception prints the same backtrace, under a
+`class: message` header — to stderr, or to a `PrintWriter`/`PrintStream` given as
+its argument.
 
-Elsewhere it is off (a small per-call cost, and never emitted into a `jolt build`
-binary). Override with the environment: `JOLT_TRACE=1` forces it on for a whole
-run — including a plain `-M:run`, so the app's own load is traced — and
-`JOLT_TRACE=0` forces it off, even in a REPL/nREPL session.
+Each line is the one **reached inside that frame** — where the innermost function
+threw, and where every frame above it made its call — the same thing a JVM stack
+trace reports per frame.
+
+Two sources of frames sit behind this. Chez's live continuation gives the exact
+call spine, but tail-call optimization erases tail-called frames from it — and
+`-main` tail-calling a function that throws is the ordinary shape, which leaves
+nothing at all. So a **tail-frame history** recovers them: each compiled function
+records itself on entry into a bounded ring-of-rings buffer, which keeps the
+TCO-erased frames (including the immediate error site) while a tight tail loop
+stays bounded and its non-tail caller context survives.
+
+The per-frame line rides along with it: the compiler sets the current line before
+each call, and a function's entry records whatever line its *caller* was on. A
+frame's own line is therefore the one recorded by the frame below it, and the
+innermost frame's is the live line at the throw. Because the buffer is a history
+rather than a stack, frames from an earlier call that already returned can still
+appear below the current ones; the innermost frames are the accurate part.
+
+The history is **on by default when running from source** — `jolt run`, `-m`,
+`-M`, `-e`, and a `repl` or nREPL session. Set `JOLT_TRACE=0` to opt out.
+
+Because the recording is baked in when a function is compiled, it covers code
+compiled at runtime, which is your own namespaces; `clojure.core` ships
+precompiled and carries none. That is also why a workload doing real work per call
+measures the same either way, while code that is almost nothing but user-level
+calls pays for it — a `fib` microbenchmark runs about 7x slower, and that is the
+case to set `JOLT_TRACE=0` for. In a live REPL session only code compiled *since*
+the session started is traced, so reload a namespace to trace code loaded before
+it (an app's initial `-M:run` load, say, before its nREPL started).
+
+A `jolt build` binary is never traced this way: its prologues are decided at build
+time, so it carries no per-call cost, and its traces come from the live
+continuation and the AOT source map alone.
 
 ## Conformance
 

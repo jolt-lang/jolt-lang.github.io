@@ -42,6 +42,16 @@ This is the surface today, not the whole JVM. Methods not listed generally aren'
 - **`java.util.Base64`**, **`java.nio.charset.Charset`**.
 - **Exceptions** — `Throwable` `Exception` `RuntimeException` `IllegalArgumentException` `IllegalStateException` `IOException` `NumberFormatException` `ArithmeticException` `NullPointerException` and friends, each with the `(E.)` / `(E. msg)` / `(E. msg cause)` constructors.
 
+  Every exception class inherits the `java.lang.Throwable` methods, as it does on
+  the JVM: `.getMessage` `.getLocalizedMessage` `.getCause` `.toString`
+  `.printStackTrace` (both overloads) `.getStackTrace` `.getSuppressed`
+  `.fillInStackTrace`. This holds equally for an `ex-info`, a constructed
+  `(Exception. "…")`, and an error the host itself raised — the value a `catch`
+  binds answers the same set whichever it is. `.printStackTrace` prints a real
+  backtrace (see [Stack traces](/docs/tools-deps.html#stack-traces)).
+  `.getStackTrace` is empty: Jolt reifies no `StackTraceElement` array, because
+  tail-call optimization means there is no faithful per-frame array to hand back.
+
 What's deliberately absent: STM, reflection, `gen-class`/`proxy` of Java classes, and `BigDecimal`.
 
 ## Using a JVM library that needs a class Jolt doesn't ship
