@@ -8,24 +8,35 @@
 `jolt.image` writes a program's state to a file and reads it back in another
 process — on another machine, and on another CPU architecture.
 
-What travels is **state, not execution**. You hand `dump!` the value that is your
-state, and you get that value back. What does not travel is in-flight
+There are two ways in. `dump-world!` saves the *program*: it walks the var table
+and writes every var's root, so nothing in an application has to list what its
+state consists of. That is the Smalltalk image / Common Lisp `save-lisp-and-die`
+shape, and it is what you usually want. `dump!` saves a single value you name,
+for when you want a file with exactly one thing in it.
+
+What travels is **state, not execution**. What does not travel is in-flight
 computation: no thread stacks, no continuations, no suspended calls. This is a
 state image, not a process image, and the distinction is load-bearing — it is
 what makes the feature implementable on Chez at all, and what users have to
 expect.
-
-In practice an application keeps its state in one atom, so an image is that
-atom's value, and restoring it is a `reset!`.
 
 ## API
 
 ```clojure
 (require '[jolt.image :as image])
 
-(image/dump! "app.jimg" @state)              ; write
-(reset! state (image/read-image "app.jimg")) ; read back
+;; the whole program
+(image/dump-world! "app.jimg")             ; every var root, every namespace
+(image/dump-world! "app.jimg" ["app.core"]) ; or name the namespaces
+(image/restore-world! "app.jimg")           ; => number of vars rebound
+
+;; or a single value
+(image/dump! "app.jimg" @state)
+(reset! state (image/read-image "app.jimg"))
 ```
+
+The two are not interchangeable: `restore-world!` refuses a value image and
+`read-image` refuses a world image, each saying so.
 
 `dump!` fails rather than writing a subtly incomplete image, and names the route
 through the object graph to whatever it choked on:
@@ -52,7 +63,17 @@ the data is not its own:
 (image/register-handler! pred dump-fn restore-fn)
 ```
 
-`(image/runtime-version)` reports the runtime an image is pinned to.
+Hooks bracket a world dump and restore — the same pair as Common Lisp's
+`*save-hooks*` and `*init-hooks*`. `before-dump` is where an application
+quiesces; `after-restore` is where it rebuilds what could not travel.
+
+```clojure
+(image/add-before-dump-hook! stop-workers!)
+(image/add-after-restore-hook! rebuild-derived-cells!)
+```
+
+`(image/scan-world)` is `scan` for the world, and `(image/runtime-version)`
+reports the runtime an image is pinned to.
 
 ## How it works
 
@@ -97,7 +118,43 @@ ride on the object. It travels in the same stream as an association list; becaus
 sharing is preserved within one stream, those objects come back identical to the
 ones in the graph and their metadata is re-attached.
 
-### What to hand it
+### Saving the world
+
+`dump-world!` walks the var table and writes every var's root. Two things make
+that affordable on a runtime with no heap dump.
+
+**Code does not travel.** A var whose root is a function is skipped outright: the
+process reading the image is the same build, so it already has every `defn`,
+protocol impl and multimethod before the image is opened. Only data moves. This
+is also why an image is pinned to its build.
+
+**The language's own namespaces are left alone.** `clojure.*` and `jolt.*` are
+skipped, because their vars — `*ns*`, printer and reader settings — belong to the
+process being restored *into*. Carrying them across would quietly reconfigure the
+reader and printer of the program you just restored. `user` is deliberately kept:
+at a REPL that is where the work lives, and an image that dropped it would lose
+exactly what you typed.
+
+### Teaching it about your own types
+
+A handler is claimed at the **var root** and its payload is substituted before
+the write, which is what lets the payload be ordinary application state — a map
+holding functions and keywords behaves there exactly as it would anywhere else in
+your program.
+
+This is how a UI toolkit's reactive cells travel. A cell typically holds watch
+closures and, for a derived cell, its body function; none of those have names to
+write. So the handler writes the cell as its current value, and an after-restore
+hook re-derives the live graph from the restored root:
+
+```clojure
+(image/register-handler! reactive-cell?
+                         (fn [c] {:kind (:kind c) :value @c})
+                         (fn [d] (make-cell (:value d))))
+(image/add-after-restore-hook! rebuild-derived-cells!)
+```
+
+### What to hand `dump!`
 
 Hand it the value, not the container. Dumping an atom drags in whatever watches
 are attached to it, and a watch is usually an anonymous function with no name to
@@ -134,5 +191,8 @@ silent misbinding.
   is not encodable in this format version. Ordinary maps and sets are fine.
 - **Images do not survive a Chez upgrade.** They do survive a change of machine
   and architecture.
-- **Unwritable objects fail the dump**, by default and on purpose. `scan` finds
-  them first.
+- **Unwritable objects fail the dump**, by default and on purpose. `scan` and
+  `scan-world` find them first, and name the route through the graph to each one.
+- **A handler is claimed at the var root.** A world dump substitutes a handled
+  value when it is what a var holds; one buried inside another structure is not
+  detected, and the closures it contains are reported instead.
