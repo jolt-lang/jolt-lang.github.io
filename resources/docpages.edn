@@ -18,6 +18,7 @@
   ["api/deps.md"                   "Dependencies (jolt.deps)"          "api"]
   ["api/infix.md"                  "Infix Notation"                    "api"]
   ["api/fs.md"                     "File System (babashka.fs)"             "api"]
+  ["api/image.md"                  "Program Images (jolt.image)"       "api"]
   ["api/time.md"                   "Date & Time (jolt-lang/time)"      "api"]
   ["api/ffi.md"                    "Foreign Functions (jolt.ffi)"      "api"]
   ["api/parser.md"                 "Parser Combinators (jolt.parser)"  "api"]
