@@ -12,3 +12,4 @@ a thing is built the way it is; the code is the source of truth for *how*.
 | [0006](/docs/rfc/0006-success-type-checking.html) | Success typing (provably-wrong-code detection) | Implemented | The error-domain checker in `passes/types`. |
 | [0007](/docs/rfc/0007-compilation-modes-and-binary-output.html) | Compilation modes + binary output | Implemented | `release`/`--opt`/`--dev`, `--direct-link`, `--tree-shake`, numeric lowering, inlining. |
 | [0008](/docs/rfc/0008-time-core-library-split.html) | Splitting time between core and the library | Implemented | The base `java.time` value types are in core; formatting and zones are jolt-lang/time. |
+| [0009](/docs/rfc/0009-program-image-dump-restore.html) | Program image dump and restore | Implemented | `jolt.image` — writing program state to a file and restoring it on another machine or architecture. |
