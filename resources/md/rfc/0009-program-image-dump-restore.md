@@ -1,6 +1,6 @@
 # RFC 0009 — Program image dump and restore
 
-- **Status**: Implemented (v1)
+- **Status**: Implemented (v2)
 - **Champions**: jolt maintainers
 
 ## Summary
@@ -39,12 +39,8 @@ The two are not interchangeable: `restore-world!` refuses a value image and
 `read-image` refuses a world image, each saying so.
 
 `dump!` fails rather than writing a subtly incomplete image, and names the route
-through the object graph to whatever it choked on:
-
-```clojure
-(image/dump! "app.jimg" {:handlers {:go (fn [x] x)}})
-;; ExceptionInfo: image: cannot write #<procedure> at :handlers -> :go
-```
+through the object graph to whatever it choked on; `{:unwritable :stub}` dumps
+such objects as resolvable placeholders instead (see Stubs).
 
 `scan` answers the same question without writing anything, which is the better
 habit — it returns one `{:path :object}` map per offending value, and an empty
@@ -79,11 +75,19 @@ reports the runtime an image is pinned to.
 
 ### The body is pure data
 
-Code never enters an image as code. A function is written as a reference: if it
-is some var's root, the image records that var's `"ns/name"` and resolves it
-through the var table on the way back in, so the restored function is the live
-one and stays callable. An anonymous closure has no name to record, so it is
-refused rather than guessed at — see Limits.
+Code never enters an image as compiled code. A function that is some var's
+root is written as a reference — the var's `"ns/name"`, resolved on the way
+back in, so the restored function IS the live one. An anonymous closure
+travels as its **source**: the compiler gives every function literal a stable
+name and records its `fn*` form, defining namespace, and free-variable names;
+the dump recovers the captured values from the live closure, and restore
+compiles `(fn* [free-names…] form)` back in that namespace and applies it to
+the restored values. Shared captures restore to one object, and a closure
+that captures the atom containing it comes back still holding itself.
+
+Because restore evaluates fn sources, **an image is code**: load images with
+exactly the trust you would give a source file. (An image already rebinds
+your vars, so this was never a data-only trust boundary.)
 
 Because the body contains no code objects, it serializes as a
 machine-independent Chez fasl stream. That is precisely what makes
@@ -179,20 +183,37 @@ with it.
 A function whose var does not exist in the restoring build is an error, never a
 silent misbinding.
 
+### Sorted collections
+
+A sorted map or set travels as its kind, its ORIGINAL comparator, and its
+entries in order; restore rebuilds through the public constructors. A named
+comparator rides as a var reference, an anonymous one as source — the same
+machinery as any other function.
+
+### Stubs
+
+An open resource with neither a handler nor any encoding — a port, a thread —
+can dump as a **stub**: a placeholder recording its kind, a description, and
+the route to it. `dump-world!` stubs by default (a whole-program capture
+should not die on a logger's file port) and reports what it stubbed;
+`dump!` requires `{:unwritable :stub}`. Registered **describers** add
+per-kind detail on the way out; registered **resolvers** replace matching
+stubs with live values during restore; whatever neither claims comes back as
+an inert value that prints as `#image/stub{...}`. After a world restore,
+`(image/stubs)` lists the unresolved ones with their owning vars and
+`(image/resolve-stub! id value)` swaps a live value in.
+
 ## Limits
 
 - **State, not execution.** Nothing suspended mid-call is preserved.
-- **Anonymous closures cannot be written.** A function travels as the name of the
-  var it is bound to, so a named `defn` round-trips and stays callable while a
-  bare `(fn [x] ...)` sitting in your state is refused. Store a named function,
-  or the data you would rebuild one from. Giving closures stable identities needs
-  the compiler to assign every function literal a durable id; that is future work.
-- **Sorted maps and sorted sets cannot be written.** Their comparator machinery
-  is not encodable in this format version. Ordinary maps and sets are fine.
-- **Images do not survive a Chez upgrade.** They do survive a change of machine
-  and architecture.
-- **Unwritable objects fail the dump**, by default and on purpose. `scan` and
-  `scan-world` find them first, and name the route through the graph to each one.
-- **A handler is claimed at the var root.** A world dump substitutes a handled
-  value when it is what a var holds; one buried inside another structure is not
-  detected, and the closures it contains are reported instead.
+- **A closure over compile-time constants refuses to dump.** Constant folding
+  bakes such captures into the compiled code, so their values cannot be
+  recovered from the live closure while the stored source still needs them.
+  The error names the capture. Closures over runtime-computed values travel.
+- **Closures made by `partial`, `comp`, `memoize` and friends refuse.** Their
+  literals live in `clojure.core`, whose forms are not registered in this
+  version. The refusal names the path; store what you composed instead.
+- **Restoring closures needs the compiler.** A tree-shaken build that dropped
+  it refuses a closure-bearing image up front, by name.
+- **Images do not survive a Chez upgrade.** They do survive a change of
+  machine and architecture.

@@ -1,6 +1,8 @@
 `jolt.image` writes a running program's state to a file and reads it back in another process — later, on another machine, or on a different CPU architecture. An image written on an arm64 Mac restores on an x86-64 Linux box.
 
-What travels is **state, not execution**: the values your vars hold, with cycles, shared structure, records and metadata intact. There are no thread stacks or suspended calls, and code never enters the image — a named function is written as its var's name and resolved on the way back in, so the process reading an image must be the same build of your application. Think Smalltalk image or Common Lisp `save-lisp-and-die`, scoped to data.
+What travels is **state, not execution**: the values your vars hold, with cycles, shared structure, records and metadata intact — including functions. A named function is written as its var's name and resolves to the live one; an anonymous closure travels as its **source form plus captured values** and is compiled back on restore, captured environment intact. Sorted maps and sets travel with their comparators. There are no thread stacks or suspended calls, and the process reading an image must be the same build of your application. Think Smalltalk image or Common Lisp `save-lisp-and-die`, scoped to state.
+
+Because restore compiles the fn sources an image carries, **treat an image like code**: load ones you trust, the way you would load a source file.
 
 ```clojure
 (require '[jolt.image :as image])
@@ -34,7 +36,7 @@ Hooks bracket the cycle — quiesce in `before-dump`, rebuild what could not tra
 (reset! state (image/read-image "state.jimg"))
 ```
 
-Hand it the value, not the container: `@state`, not the atom. An atom drags its watches along, and a watch is usually an anonymous function with no name to write.
+Hand it the value, not the container: `@state`, not the atom. An atom drags its watches and validator along — usually UI wiring you want rebuilt fresh, not carried.
 
 ## Post-mortem debugging
 
@@ -65,22 +67,21 @@ user=> (filter #(nil? (:price %)) (:batch crash))
 
 The restored value is ordinary data — keywords look up, `=` holds, records are their types — so everything you normally do at a REPL applies. To capture the entire program instead of an enumerated payload, call `(image/dump-world! "crash.jimg")` in the catch and `restore-world!` at the REPL; your application's vars are then live in the REPL process for inspection.
 
-## What can't be written
+## Resources and stubs
 
-`dump!` refuses rather than write a subtly incomplete image, and names the path through your data to the offending object:
+An open resource — a port, a thread — cannot travel as itself. Three ways to handle one:
 
-```clojure
-(image/dump! "app.jimg" {:handlers {:go (fn [x] x)}})
-;; ExceptionInfo: image: cannot write #<procedure> at :handlers -> :go
-```
+- **A handler** (full fidelity, both directions known up front): `(image/register-handler! pred dump-fn restore-fn)` turns yours into plain data and back.
+- **Stubs**: `dump-world!` dumps unhandled resources as placeholder records **by default** — a whole-program capture shouldn't die on a logger's file port — and reports what it stubbed; `dump!` does so with `{:unwritable :stub}`. A stub carries its kind, a description, and the route to it (file ports record direction and path). On restore, a registered resolver `(image/register-stub-resolver! kind-or-pred f)` replaces matching stubs with live values; the rest come back inert, printing as `#image/stub{...}`. After a world restore, `(image/stubs)` lists them with their owning vars and `(image/resolve-stub! id value)` swaps a live value in — reopen the log, reattach the connection, from the REPL.
+- **After-restore hooks** for anything derived: rebuild what could not travel.
 
-`scan` (and `scan-world`) answer the same question without writing anything — one `{:path :object}` map per refusal, an empty vector when the value is clean. `dumpable?` is the boolean form.
+## What still refuses
 
-Refused, by design:
+`dump!` (strict by default) refuses rather than write a subtly incomplete image, naming the path through your data to each offending object; `scan` answers without writing — one `{:path :object :disposition}` map per finding, where `:would-stub` marks what stub mode would carry.
 
-- **Anonymous functions.** A function travels as the name of its var, so a `defn` round-trips and stays callable; a bare `(fn [x] ...)` sitting in your state has no name to write. Store a named function, or the data you would rebuild one from.
-- **Sorted maps and sorted sets.** Ordinary maps and sets are fine.
-- **Open resources** — ports, threads — unless you register a handler that turns yours into plain data and back: `(image/register-handler! pred dump-fn restore-fn)`.
+- **A closure over compile-time constants.** `(let [a 5] (fn [x] (+ a x)))` folds `a` into the compiled code, so its value cannot be recovered from the live closure while the stored source still needs it. The message names the capture. Closures over runtime-computed values travel fine.
+- **Closures made by `partial`, `comp`, `memoize` and friends** — their literals live in `clojure.core`, which is not source-registered. Store what you composed instead.
+- **Restoring closures needs the compiler**: a tree-shaken build that dropped it refuses closure-bearing images up front.
 
 An image survives a change of machine and architecture, but not a Chez upgrade or an incompatible rebuild of your application — `read-image` and `restore-world!` check the header and refuse with the reason, rather than reading stale data.
 
