@@ -20,7 +20,7 @@ With Homebrew:
 brew install jolt-lang/jolt/jolt
 ```
 
-Or with the install script — it installs to `/usr/local/bin` by default; `--dir <dir>` and `--version <version>` override that:
+Or with the install script — it installs to `~/.local/bin` (or `/usr/local/bin` when run as root); `PREFIX=<dir>` puts the binary in `<dir>/bin`, and `--dir <dir>` / `--version <version>` override everything:
 
 ```bash
 curl -sL https://raw.githubusercontent.com/jolt-lang/jolt/main/install | bash
