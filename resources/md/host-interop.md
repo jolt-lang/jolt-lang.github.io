@@ -53,7 +53,7 @@ This is the surface today, not the whole JVM. Methods not listed generally aren'
   `.getStackTrace` is empty: Jolt reifies no `StackTraceElement` array, because
   tail-call optimization means there is no faithful per-frame array to hand back.
 
-What's deliberately absent: STM, reflection, `gen-class`/`proxy` of Java classes, and `BigDecimal`.
+What's deliberately absent: reflection, `gen-class`/`proxy` of Java classes, and `BigDecimal`. (STM — `ref`/`dosync`/`alter`/`commute`/`ref-set`/`ensure` — is present, with commit-log transactions.)
 
 ## Using a JVM library that needs a class Jolt doesn't ship
 
