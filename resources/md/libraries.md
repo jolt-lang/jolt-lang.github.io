@@ -64,6 +64,7 @@ Third-party Clojure/JVM libraries confirmed to run on Jolt.
 - **[ordered](https://github.com/clj-commons/ordered)** — insertion-ordered map and set (`ordered-map`/`ordered-set`), with transients and `#ordered/map` / `#ordered/set` reader tags.
 - **[config](https://github.com/yogthos/config)** — environment configuration.
 - **[aero](https://github.com/juxt/aero)** — EDN configuration with tag literals (`#ref`/`#env`/`#or`/`#profile`/`#long`/…).
+- **[mount](https://github.com/tolitius/mount)** — application state lifecycle (`defstate`, start/stop/swap, restart-on-recompile).
 
 ### Databases
 
