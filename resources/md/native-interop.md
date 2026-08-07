@@ -80,6 +80,19 @@ A trailing `:blocking` marks a call that may wait — network I/O, a lock, a sle
 
 This matters for correctness, not just speed: without `:blocking`, a thread parked inside a foreign call pins the garbage collector for every thread. With it, Jolt releases the collector while the call waits. Mark anything that can block; leave pure, fast calls unmarked.
 
+### `:varargs`
+
+A `:varargs` marker inside the argtype vector declares a **variadic** C function — `fcntl`, `ioctl`, `open` — and marks the boundary: the types before it are the fixed (named) parameters, the types after it are the concrete variadic arguments the binding always passes. `fcntl` is `int fcntl(int fd, int cmd, ...)`, so a binding that passes flags to `F_SETFL` is:
+
+```clojure
+(ffi/defcfn c-fcntl "fcntl" [:int :int :varargs :int] :int)
+(c-fcntl fd F-SETFL O-NONBLOCK)
+```
+
+This is not optional decoration. On Apple arm64 variadic arguments are passed on the stack, not in registers — a fixed-arity binding to a variadic function compiles, runs, and silently hands the callee garbage for every argument after the named ones. The marker makes Jolt emit the variadic calling convention so the arguments land where the callee's `va_list` reads them.
+
+Two shapes are rejected at compile time with an error naming the rule: `:varargs` first (C requires at least one named parameter) and `:varargs` last (nothing would be variadic). `:varargs` does not combine with `:blocking`. A call that passes **no** variadic arguments — `fcntl(fd, F_GETFL)` — may use a plain fixed-arity binding: named arguments travel identically in both conventions.
+
 ## Types at the boundary
 
 The argument and return types are keywords. The full set:
