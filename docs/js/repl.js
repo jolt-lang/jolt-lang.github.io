@@ -94,12 +94,24 @@
   // ~26 MB bundle during initial load froze the page for seconds; starting it
   // post-load leaves rendering and interaction untouched (the preload link in
   // the page head has usually fetched it by then).
-  window.addEventListener('load', function () {
+  function loadRuntime() {
     var runtime = document.createElement('script');
     runtime.src = '/js/jolt-web.js';
     runtime.onerror = function () {
       status.textContent = 'runtime failed to load';
     };
+    // Gambit's web runtime doesn't run main directly: it parks it on a
+    // DOMContentLoaded listener. That already fired long before we injected
+    // the script, so the listener would never run and the REPL would sit at
+    // 'loading runtime…' forever. Re-dispatch the event once the bundle has
+    // evaluated. It doesn't bubble, so only document-level listeners see it —
+    // the runtime's is the only one.
+    runtime.onload = function () {
+      document.dispatchEvent(new Event('DOMContentLoaded'));
+    };
     document.body.appendChild(runtime);
-  });
+  }
+
+  if (document.readyState === 'complete') loadRuntime();
+  else window.addEventListener('load', loadRuntime);
 })();
