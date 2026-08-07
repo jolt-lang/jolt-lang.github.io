@@ -5,10 +5,10 @@
  * source strings onto joltQueue; a Scheme green thread inside the bundle
  * polls it and calls joltOut with results. JS never calls into Scheme.
  *
- * The bundle is large (~32 MB raw, ~3.8 MB gzipped) and is injected only
- * after the page has loaded — a preload link in the page head starts the
- * download early without blocking rendering. Until it's ready the terminal
- * shows the static example.
+ * The bundle is large (~28 MB raw, ~3 MB gzipped) and booting it takes
+ * seconds of uninterrupted work, so it runs in a worker (see repl-worker.js)
+ * and the two globals above become postMessage in each direction. Until it's
+ * ready the terminal shows the static example.
  */
 (function () {
   var out = document.getElementById('jolt-repl-out');
@@ -22,6 +22,7 @@
   var demoDone = false;
   var history = [];
   var histPos = -1; // -1 = not browsing history
+  var send; // hands a source string to the runtime
 
   function line(text, cls) {
     var el = document.createElement('div');
@@ -31,8 +32,7 @@
     out.scrollTop = out.scrollHeight;
   }
 
-  globalThis.joltQueue = [];
-  globalThis.joltOut = function (kind, text) {
+  function receive(kind, text) {
     if (kind === 'ready') {
       out.textContent = '';
       status.textContent = 'ready';
@@ -41,7 +41,7 @@
       input.placeholder = 'type an expression';
       // replay the static example live, then hand the prompt over
       line('user=> ' + DEMO, 'repl-in');
-      globalThis.joltQueue.push(DEMO);
+      send(DEMO);
       return;
     }
     if (kind === 'out') { line(text.replace(/\n+$/, ''), 'repl-stdout'); return; }
@@ -51,7 +51,36 @@
       line('Tab fills an example · ↑ recalls history', 'repl-hint');
       input.focus({ preventScroll: true });
     }
-  };
+  }
+
+  function failed() {
+    status.textContent = 'runtime failed to load';
+  }
+
+  function startWorker() {
+    var worker = new Worker('/js/repl-worker.js');
+    worker.onmessage = function (ev) { receive(ev.data.kind, ev.data.text); };
+    worker.onerror = failed;
+    send = function (src) { worker.postMessage(src); };
+  }
+
+  // No worker: run the bundle inline instead. Same REPL, but the page locks
+  // up for a few seconds while it boots, so hold it until everything else has
+  // loaded. Gambit parks main on DOMContentLoaded, which has long since fired
+  // by then, so re-dispatch it once the bundle has evaluated.
+  function startInline() {
+    globalThis.joltQueue = [];
+    globalThis.joltOut = receive;
+    send = function (src) { globalThis.joltQueue.push(src); };
+
+    var runtime = document.createElement('script');
+    runtime.src = '/js/jolt-web.js';
+    runtime.onerror = failed;
+    runtime.onload = function () {
+      document.dispatchEvent(new Event('DOMContentLoaded'));
+    };
+    document.body.appendChild(runtime);
+  }
 
   input.addEventListener('keydown', function (ev) {
     if (ev.key === 'Tab' && !input.value) {
@@ -82,7 +111,7 @@
     var src = input.value.trim();
     if (!src) return;
     line('user=> ' + src, 'repl-in');
-    globalThis.joltQueue.push(src);
+    send(src);
     history.push(src);
     histPos = -1;
     input.value = '';
@@ -90,28 +119,11 @@
 
   status.textContent = 'loading runtime…';
 
-  // Inject jolt-web.js only after the page has fully loaded. Executing the
-  // ~26 MB bundle during initial load froze the page for seconds; starting it
-  // post-load leaves rendering and interaction untouched (the preload link in
-  // the page head has usually fetched it by then).
-  function loadRuntime() {
-    var runtime = document.createElement('script');
-    runtime.src = '/js/jolt-web.js';
-    runtime.onerror = function () {
-      status.textContent = 'runtime failed to load';
-    };
-    // Gambit's web runtime doesn't run main directly: it parks it on a
-    // DOMContentLoaded listener. That already fired long before we injected
-    // the script, so the listener would never run and the REPL would sit at
-    // 'loading runtime…' forever. Re-dispatch the event once the bundle has
-    // evaluated. It doesn't bubble, so only document-level listeners see it —
-    // the runtime's is the only one.
-    runtime.onload = function () {
-      document.dispatchEvent(new Event('DOMContentLoaded'));
-    };
-    document.body.appendChild(runtime);
+  try {
+    if (typeof Worker !== 'function') throw new Error('workers unsupported');
+    startWorker();
+  } catch (e) {
+    if (document.readyState === 'complete') startInline();
+    else window.addEventListener('load', startInline);
   }
-
-  if (document.readyState === 'complete') loadRuntime();
-  else window.addEventListener('load', loadRuntime);
 })();
