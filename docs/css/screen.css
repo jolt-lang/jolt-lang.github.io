@@ -143,6 +143,9 @@ a { color: var(--orange); }
 .hero-repl-out .repl-in  { color: var(--muted); }
 .hero-repl-out .repl-out { color: var(--text); margin-bottom: 6px; }
 .hero-repl-out .repl-err { color: var(--red, #ff5f56); margin-bottom: 6px; }
+.hero-repl-out .repl-hint {
+  color: var(--muted); opacity: 0.7; font-size: 0.78rem; margin: 8px 0 2px;
+}
 .hero-repl-form {
   display: flex; align-items: center; gap: 8px;
   padding: 10px 20px; border-top: 1px solid var(--border);

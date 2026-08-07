@@ -5,7 +5,7 @@
  * source strings onto joltQueue; a Scheme green thread inside the bundle
  * polls it and calls joltOut with results. JS never calls into Scheme.
  *
- * The bundle is large (~32 MB, ~5 MB compressed) and loads as a deferred
+ * The bundle is large (~32 MB raw, ~3.8 MB gzipped) and loads as a deferred
  * script; until it's ready the terminal shows the static example.
  */
 (function () {
@@ -16,7 +16,10 @@
   if (!out || !input || !form) return;
 
   var DEMO = '(->> (range 10) (filter even?) (map #(* % %)) (reduce +))';
+  var EXAMPLE = '(+ 1 2)';
   var demoDone = false;
+  var history = [];
+  var histPos = -1; // -1 = not browsing history
 
   function line(text, cls) {
     var el = document.createElement('div');
@@ -33,16 +36,43 @@
       status.textContent = 'ready';
       status.className = 'repl-ready';
       input.disabled = false;
-      input.placeholder = '(+ 1 2)';
+      input.placeholder = 'type an expression';
       // replay the static example live, then hand the prompt over
       line('user=> ' + DEMO, 'repl-in');
       globalThis.joltQueue.push(DEMO);
       return;
     }
-    if (kind === 'result') { line(text, 'repl-out'); }
-    else { line(text, 'repl-err'); }
-    if (!demoDone) { demoDone = true; input.focus({ preventScroll: true }); }
+    line(text, kind === 'result' ? 'repl-out' : 'repl-err');
+    if (!demoDone) {
+      demoDone = true;
+      line('Tab fills an example · ↑ recalls history', 'repl-hint');
+      input.focus({ preventScroll: true });
+    }
   };
+
+  input.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Tab' && !input.value) {
+      ev.preventDefault();
+      input.value = EXAMPLE;
+      return;
+    }
+    if (ev.key === 'ArrowUp' && history.length) {
+      ev.preventDefault();
+      histPos = histPos < 0 ? history.length - 1 : Math.max(0, histPos - 1);
+      input.value = history[histPos];
+      return;
+    }
+    if (ev.key === 'ArrowDown' && histPos >= 0) {
+      ev.preventDefault();
+      histPos += 1;
+      if (histPos >= history.length) {
+        histPos = -1;
+        input.value = '';
+      } else {
+        input.value = history[histPos];
+      }
+    }
+  });
 
   form.addEventListener('submit', function (ev) {
     ev.preventDefault();
@@ -50,6 +80,8 @@
     if (!src) return;
     line('user=> ' + src, 'repl-in');
     globalThis.joltQueue.push(src);
+    history.push(src);
+    histPos = -1;
     input.value = '';
   });
 

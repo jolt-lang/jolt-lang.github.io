@@ -159,7 +159,7 @@
     
     <nav class="toc">
       <h2>Contents</h2>
-      <ol class="contents"><li><a href="#the_&lt;code&gt;infix&lt;/code&gt;_macro">The </a></li><li><a href="#parsing_strings_at_runtime:_&lt;code&gt;from-string&lt;/code&gt;">Parsing strings at runtime: </a><ol><li><a href="#the_environment">The environment</a></li><li><a href="#errors">Errors</a></li><li><a href="#performance">Performance</a></li></ol></li><li><a href="#aliased_operators_and_functions">Aliased operators and functions</a></li><li><a href="#precedence_and_associativity">Precedence and associativity</a></li><li><a href="#the_default_environment">The default environment</a></li><li><a href="#extending_and_overriding">Extending and overriding</a></li><li><a href="#grammar">Grammar</a></li></ol>
+      <ol class="contents"><li><a href="#the_95_infix_95_macro">The infix macro</a></li><li><a href="#parsing_95_strings_95_at_95_runtime_95_from_string">Parsing strings at runtime: from-string</a><ol><li><a href="#the_environment">The environment</a></li><li><a href="#errors">Errors</a></li><li><a href="#performance">Performance</a></li></ol></li><li><a href="#aliased_operators_and_functions">Aliased operators and functions</a></li><li><a href="#precedence_and_associativity">Precedence and associativity</a></li><li><a href="#the_default_environment">The default environment</a></li><li><a href="#extending_and_overriding">Extending and overriding</a></li><li><a href="#grammar">Grammar</a></li></ol>
     </nav>
     
     <div id="content">
@@ -172,7 +172,7 @@
   &#40;infix x &#42;&#42; y&#41;&#41;            ; =&gt; 64.0  &#40;&#42;&#42; is right-associative pow&#41;
 
 &#40;&#40;from-string &#91;x&#93; &quot;x + 3 &#42; y&quot; ...&#41;&#41;   ; see from-string below
-</code></pre><h2 id="the&#95;<code>infix</code>&#95;macro">The <code>infix</code> macro</h2><pre><code class="clojure">&#40;infix &amp; expr&#41;
+</code></pre><h2 id="the_95_infix_95_macro">The <code>infix</code> macro</h2><pre><code class="clojure">&#40;infix &amp; expr&#41;
 &#40;$=   &amp; expr&#41;        ; alias, identical behavior
 </code></pre><p><code>infix</code> takes alternating operands and operators and rewrites them to prefix Clojure at macroexpansion time, applying <a href='#precedence-and-associativity'>operator precedence</a> and resolving <a href='#aliased-operators-and-functions'>aliases</a>. Bare names resolve as ordinary Clojure locals or vars; the standard math operators (<code>+ - &#42; /</code> etc.) pass straight through to <code>clojure.core</code>.</p><pre><code class="clojure">&#40;infix 3 + 4&#41;                ; =&gt; &#40;+ 3 4&#41;  =&gt; 7
 &#40;infix 1 - 2 + 3&#41;            ; =&gt; 2  &#40;left-associative: &#40;&#40;1 - 2&#41; + 3&#41;&#41;
@@ -185,7 +185,7 @@
 &#40;let &#91;t 0.324&#93;
   &#40;infix sin &#40;2 &#42; t&#41; + 3 &#42; cos &#40;4 &#42; t&#41;&#41;&#41;   ; =&gt; 1.4176457261295824
 &#40;infix √ &#40;5 &#42; 5&#41;&#41;            ; =&gt; 5.0      &#40;√ is an alias for sqrt&#41;
-</code></pre><p>Note the two equality operators: <code>==</code> is Clojure's numeric equality (<code>5 == 5.0</code> is true); <code>=</code> is strict value equality (<code>5 = 5.0</code> is false).</p><h2 id="parsing&#95;strings&#95;at&#95;runtime:&#95;<code>from-string</code>">Parsing strings at runtime: <code>from-string</code></h2><pre><code class="clojure">&#40;from-string expr&#41;                          ; expr :: String
+</code></pre><p>Note the two equality operators: <code>==</code> is Clojure's numeric equality (<code>5 == 5.0</code> is true); <code>=</code> is strict value equality (<code>5 = 5.0</code> is false).</p><h2 id="parsing_95_strings_95_at_95_runtime_95_from_string">Parsing strings at runtime: <code>from-string</code></h2><pre><code class="clojure">&#40;from-string expr&#41;                          ; expr :: String
 &#40;from-string &#91;bindings...&#93; expr&#41;
 &#40;from-string &#91;bindings...&#93; env expr&#41;        ; env :: {keyword fn}
 </code></pre><p><code>from-string</code> parses <code>expr</code> according to the <a href='#grammar'>grammar</a> and returns a <strong>function</strong>. Call that function with values for the declared bindings to evaluate the expression:</p><pre><code class="clojure">&#40;&#40;from-string &quot;5 &#42; 2&quot;&#41;&#41;                     ; =&gt; 10

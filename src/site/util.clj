@@ -32,12 +32,41 @@
 (defn load-doc-pages []
   (edn/read-string (slurp (resource "docpages.edn"))))
 
+(defn node-text
+  "plain text of a parsed HTML node. A heading may contain inline markup
+   (`code`), whose child nodes must not reach the table of contents raw."
+  [node]
+  (cond
+    (string? node)     node
+    (map? node)        (apply str (map node-text (:content node)))
+    (sequential? node) (apply str (map node-text node))
+    :else              ""))
+
+(defn slugify [text]
+  (-> text
+      s/lower-case
+      (s/replace #"[^a-z0-9]+" "_")
+      (s/replace #"^_+|_+$" "")))
+
+(defn fix-heading-ids
+  "markdown-clj derives a heading's id from its RENDERED text, so a heading
+   holding inline markup gets the tags in its id (id=\"<code>:varargs</code>\").
+   Rewrite those to a slug of the text. The table of contents reads ids back
+   out of this HTML, so both sides stay in agreement."
+  [html]
+  (s/replace html #"<h([123]) id=\"([^\"]*)\">"
+             (fn [[whole level id]]
+               (if (s/includes? id "<")
+                 (str "<h" level " id=\"" (slugify (s/replace id #"<[^>]*>" "")) "\">")
+                 whole))))
+
 (defn parse-doc [name]
-  (md/md-to-html-string
-   (slurp-resource (str "md/" name))
-   :heading-anchors true
-   :code-style #(str "class=\"" % "\"")
-   :replacement-transformers (conj markdown.transformers/transformer-vector remove-div-spans)))
+  (-> (md/md-to-html-string
+       (slurp-resource (str "md/" name))
+       :heading-anchors true
+       :code-style #(str "class=\"" % "\"")
+       :replacement-transformers (conj markdown.transformers/transformer-vector remove-div-spans))
+      fix-heading-ids))
 
 (defn get-headings [content]
   (reduce
@@ -56,14 +85,14 @@
                  result    []]
             (if (empty? remaining)
               result
-              (let [{:keys [tag attrs content]} (first remaining)
+              (let [{:keys [tag attrs] :as elm} (first remaining)
                     {id :id} attrs
-                    [title]  content]
+                    title    (node-text elm)]
                 (if (= tag :h3)
                   (let [sub-items  (take-while #(= :h3 (:tag %)) remaining)
                         rest-items (drop (count sub-items) remaining)
-                        sub-links  (for [{{sid :id} :attrs [stitle] :content} sub-items]
-                                     [:li [:a {:href (str "#" sid)} stitle]])]
+                        sub-links  (for [{{sid :id} :attrs :as sub} sub-items]
+                                     [:li [:a {:href (str "#" sid)} (node-text sub)]])]
                     (if (seq result)
                       (recur rest-items
                              (update result (dec (count result))

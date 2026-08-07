@@ -159,11 +159,11 @@
     
     <nav class="toc">
       <h2>Contents</h2>
-      <ol class="contents"><li><a href="#&lt;code&gt;import-vars&lt;/code&gt;">{:tag :code, :attrs nil, :content ["import-vars"]}</a></li><li><a href="#why_not_&lt;code&gt;intern&lt;/code&gt;?">Why not </a></li></ol>
+      <ol class="contents"><li><a href="#import_vars">import-vars</a></li><li><a href="#why_95_not_95_intern">Why not intern?</a></li></ol>
     </nav>
     
     <div id="content">
-      <p><code>jolt.util</code> collects small general-purpose helpers. The main one is <code>import-vars</code>, for putting a public face on another namespace — the tool for wrapping a vendored library.</p><h2 id="<code>import-vars</code>"><code>import-vars</code></h2><pre><code class="clojure">&#40;require '&#91;jolt.util :refer &#91;import-vars&#93;&#93;&#41;
+      <p><code>jolt.util</code> collects small general-purpose helpers. The main one is <code>import-vars</code>, for putting a public face on another namespace — the tool for wrapping a vendored library.</p><h2 id="import_vars"><code>import-vars</code></h2><pre><code class="clojure">&#40;require '&#91;jolt.util :refer &#91;import-vars&#93;&#93;&#41;
 &#40;import-vars from-ns &amp; {:keys &#91;exclude&#93;}&#41;
 </code></pre><p>Re-export the public vars of <code>from-ns</code> into the current namespace as thin delegating definitions. A <strong>function</strong> becomes a fn that applies the source var; a <strong>macro</strong> becomes a macro that expands to a call of the source macro. Pass <code>:exclude</code> a set of symbols to leave out.</p><p><code>from-ns</code> must already be required.</p><pre><code class="clojure">&#40;ns my.fs
   &#40;:require &#91;babashka.fs&#93;
@@ -173,7 +173,7 @@
 &#40;import-vars babashka.fs :exclude #{zip unzip gzip gunzip}&#41;
 
 &#40;my.fs/exists? &quot;deps.edn&quot;&#41;     ; =&gt; true  &#40;delegates to babashka.fs/exists?&#41;
-</code></pre><h2 id="why&#95;not&#95;<code>intern</code>?">Why not <code>intern</code>?</h2><p>The obvious way to mirror a namespace is to walk <code>ns-publics</code> at load time and <code>intern</code> each var:</p><pre><code class="clojure">&#40;doseq &#91;&#91;sym v&#93; &#40;ns-publics 'babashka.fs&#41;&#93;     ; DON'T — breaks in a built binary
+</code></pre><h2 id="why_95_not_95_intern">Why not <code>intern</code>?</h2><p>The obvious way to mirror a namespace is to walk <code>ns-publics</code> at load time and <code>intern</code> each var:</p><pre><code class="clojure">&#40;doseq &#91;&#91;sym v&#93; &#40;ns-publics 'babashka.fs&#41;&#93;     ; DON'T — breaks in a built binary
   &#40;intern &#42;ns&#42; sym @v&#41;&#41;
 </code></pre><p>That works in the REPL but <strong>cannot be reproduced by an AOT build</strong>: the <code>intern</code>s run as a runtime side effect over reflective state, so <code>jolt build</code> emits nothing for them and the wrapper's vars are unbound in the binary. <code>import-vars</code> instead emits static <code>def</code>/<code>defmacro</code> forms that resolve the source at call time — they bake into a binary and do not depend on load order.</p><p>This is how <a href='/docs/api/fs.html'><code>jolt.fs</code></a> wraps the vendored babashka.fs, and it is the pattern to use when you vendor a library and want to present it under your own namespace.</p>
     </div>
