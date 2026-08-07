@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 {% block body-class %}home{% endblock %}
 
+{% block head %}
+<link rel="preload" href="/js/jolt-web.js" as="script">
+{% endblock %}
+
 {% block content %}
 <header class="hero">
   <div class="hero-inner">
@@ -188,5 +192,4 @@ bin/jolt path                <span class="syn-comment"># print the resolved sour
 
 {% block page-scripts %}
 {% script "/js/repl.js" %}
-<script src="/js/jolt-web.js" defer></script>
 {% endblock %}

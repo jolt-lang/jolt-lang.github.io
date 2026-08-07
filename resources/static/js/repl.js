@@ -5,8 +5,10 @@
  * source strings onto joltQueue; a Scheme green thread inside the bundle
  * polls it and calls joltOut with results. JS never calls into Scheme.
  *
- * The bundle is large (~32 MB raw, ~3.8 MB gzipped) and loads as a deferred
- * script; until it's ready the terminal shows the static example.
+ * The bundle is large (~32 MB raw, ~3.8 MB gzipped) and is injected only
+ * after the page has loaded — a preload link in the page head starts the
+ * download early without blocking rendering. Until it's ready the terminal
+ * shows the static example.
  */
 (function () {
   var out = document.getElementById('jolt-repl-out');
@@ -86,6 +88,18 @@
     input.value = '';
   });
 
-  // the bundle itself loads via a defer tag after this script
   status.textContent = 'loading runtime…';
+
+  // Inject jolt-web.js only after the page has fully loaded. Executing the
+  // ~26 MB bundle during initial load froze the page for seconds; starting it
+  // post-load leaves rendering and interaction untouched (the preload link in
+  // the page head has usually fetched it by then).
+  window.addEventListener('load', function () {
+    var runtime = document.createElement('script');
+    runtime.src = '/js/jolt-web.js';
+    runtime.onerror = function () {
+      status.textContent = 'runtime failed to load';
+    };
+    document.body.appendChild(runtime);
+  });
 })();
