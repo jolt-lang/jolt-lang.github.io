@@ -110,6 +110,37 @@ which the majority is generated or mechanical:
   (the booted kernel, 113 checks), `make gambiteval` (jolt source through
   the compiler, renders pinned to Chez captures).
 
+### Choosing how much of the language to build
+
+A backend that exists to be small needs a way to say what it leaves out.
+`host/gambit/profiles.ss` names optional **feature groups** — regex, the
+compiler, `clojure.core` itself — and profiles built from them; a generator
+writes the boot file for a profile on Chez, because Gambit resolves its
+includes at expansion time and the choice cannot be made at runtime.
+
+```bash
+make gambitweb PROFILE=repl    # clojure.core + compiler, no regex
+```
+
+Excluding a group leaves its files out **and binds every name it owned to a
+raise that names the group**, derived by scanning the excluded files rather
+than from a hand-kept list, so the error surface cannot drift from the code:
+
+```
+user=> (re-seq #"[a-z]+" "ab cd")
+java.lang.UnsupportedOperationException: jolt-re-pattern is not in this build:
+the regex feature group was excluded
+```
+
+A predicate over a type the build cannot hold answers `false` instead of
+raising — a value simply is not a regex — while anything that would produce or
+consume that type raises. This is the same rule the capability tiers follow one
+level down, and it is why a reduced build is diagnosable rather than mysterious.
+
+The measured cost of each group is in the repo's README. The short version: the
+Gambit runtime plus jolt's kernel is about two thirds of the bundle and cannot
+be dropped, so profiles trade features for the remaining third.
+
 ### Limitations of the Gambit backend
 
 - **Demo-grade, not production.** The Chez backend is where jolt is
