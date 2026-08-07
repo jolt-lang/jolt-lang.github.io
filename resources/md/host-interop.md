@@ -1,4 +1,4 @@
-Jolt runs on Chez Scheme, not the JVM, so there are no real Java classes behind interop forms. Instead the runtime ships shims for the slice of the JVM standard library that portable Clojure code reaches for, so libraries written against `clojure.core` and common `java.*` classes run unchanged. The Clojure interop syntax works against these shims:
+Jolt runs on Scheme, not the JVM, so there are no real Java classes behind interop forms. Instead the runtime ships shims for the slice of the JVM standard library that portable Clojure code reaches for, so libraries written against `clojure.core` and common `java.*` classes run unchanged. The Clojure interop syntax works against these shims:
 
 ```clojure
 (Math/sqrt 2)                  ; static call

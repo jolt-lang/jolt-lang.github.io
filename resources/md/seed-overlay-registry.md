@@ -1,6 +1,6 @@
 # Seed ↔ Overlay Registry
 
-Jolt is Clojure on Chez Scheme. `clojure.core` is built from two tiers that both
+Jolt is Clojure on Scheme. `clojure.core` is built from two tiers that both
 define `clojure.core`-facing vars, and for a handful of names *both* tiers carry
 a definition. This document records how the two tiers relate and which copy is
 authoritative.

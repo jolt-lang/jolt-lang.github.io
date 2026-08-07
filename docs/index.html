@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
-    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="description" content="Jolt is a Clojure implementation on Scheme — Chez natively, Gambit for JavaScript. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
     <meta name="canonical" content="https://jolt-lang.github.io">
-    <title>Jolt — Clojure on Chez Scheme</title>
+    <title>Jolt — Clojure on Scheme</title>
     <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
     <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
     <link href="/css/screen.css" rel="stylesheet" type="text/css" />
@@ -33,33 +33,41 @@
 <header class="hero">
   <div class="hero-inner">
     <div class="hero-copy">
-      <h1>Clojure on Chez Scheme</h1>
+      <h1>Clojure on Scheme</h1>
       <p class="tagline">
-        Jolt is a self-hosted Clojure implementation that runs on Chez.
+        Jolt is a self-hosted Clojure implementation that runs on Scheme —
+        Chez natively, Gambit for JavaScript.
         No JVM, no build step — most portable Clojure runs unchanged.
       </p>
       <ul class="hero-points">
         <li>The compiler is written in Clojure and compiles itself</li>
         <li>Persistent data, lazy seqs, transducers, multimethods, protocols — full Clojure semantics</li>
         <li>Real concurrency: <code>future</code>, <code>agent</code>, <code>pmap</code>, and <code>core.async</code> on OS threads</li>
-        <li><code>jolt build</code> emits a single standalone binary — no Chez or JVM needed to run it</li>
+        <li><code>jolt build</code> emits a single standalone binary — no Scheme or JVM needed to run it</li>
       </ul>
       <div class="hero-actions">
         <a class="btn btn-primary" href="/docs/getting-started.html">Get Started</a>
         <a class="btn" href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a>
       </div>
+      <p class="hero-note">The terminal on the right is jolt itself — compiled to
+        JavaScript by the <a href="/docs/scheme-backends.html">Gambit backend</a> —
+        evaluating live in your browser.</p>
     </div>
-    <div class="hero-code" role="img" aria-label="Jolt code example">
+    <div class="hero-code">
       <div class="hero-code-bar">
         <span class="dot"></span><span class="dot"></span><span class="dot"></span>
-        <span class="hero-code-name">core.clj</span>
+        <span id="jolt-repl-status" class="repl-loading">jolt via Gambit → JS</span>
+        <span class="hero-code-name">repl</span>
       </div>
-      <pre><code><span class="syn-comment">;; clojure on chez — no JVM</span>
-(->&gt; (range 10)
-     (filter even?)
-     (map #(* % %))
-     (reduce +))
-<span class="syn-comment">;; =&gt; 120</span></code></pre>
+      <div id="jolt-repl-out" class="hero-repl-out"><div class="repl-in">user=&gt; (-&gt;&gt; (range 10)
+         (filter even?)
+         (map #(* % %))
+         (reduce +))</div><div class="repl-out">120</div></div>
+      <form id="jolt-repl-form" class="hero-repl-form" autocomplete="off">
+        <span class="repl-prompt">user=&gt;</span>
+        <input id="jolt-repl-in" type="text" spellcheck="false"
+               placeholder="loading…" aria-label="jolt expression" disabled>
+      </form>
     </div>
   </div>
 </header>
@@ -75,7 +83,7 @@
           </svg>
         </div>
         <h4>Self-Hosted Compiler</h4>
-        <p>Reads Clojure, analyzes it to a host-neutral IR, emits Scheme, and runs it on Chez. The compiler is written in Clojure and compiles itself.</p>
+        <p>Reads Clojure, analyzes it to a host-neutral IR, emits Scheme, and runs it — on Chez natively, or on Gambit compiled to JavaScript. The compiler is written in Clojure and compiles itself.</p>
       </div>
       <div class="feat">
         <div class="icon">
@@ -188,7 +196,7 @@ bin/jolt path                <span class="syn-comment"># print the resolved sour
 <section id="differences" class="surface">
   <div class="inner">
     <h2>Differences from Clojure</h2>
-    <p style="margin-bottom:16px;">Jolt targets Clojure semantics but runs on Chez, not the JVM. Most portable Clojure runs unchanged — persistent collections, the numeric tower, lazy seqs, transducers, multimethods, protocols/records, atoms, <code>future</code>/<code>agent</code>/<code>pmap</code>, <code>core.async</code>, runtime <code>eval</code>, and the full reader all behave as on the JVM. The genuine divergences:</p>
+    <p style="margin-bottom:16px;">Jolt targets Clojure semantics but runs on Scheme, not the JVM. Most portable Clojure runs unchanged — persistent collections, the numeric tower, lazy seqs, transducers, multimethods, protocols/records, atoms, <code>future</code>/<code>agent</code>/<code>pmap</code>, <code>core.async</code>, runtime <code>eval</code>, and the full reader all behave as on the JVM. The genuine divergences:</p>
     <table class="diff-table">
       <thead>
         <tr><th>Aspect</th><th>Difference</th></tr>
@@ -214,5 +222,8 @@ bin/jolt path                <span class="syn-comment"># print the resolved sour
     <script src="/js/highlight.pack.js" type="application/javascript"></script>
     <script src="/js/site.js" type="application/javascript"></script>
     
+<script src="/js/repl.js" type="application/javascript"></script>
+<script src="/js/jolt-web.js" defer></script>
+
   </body>
 </html>

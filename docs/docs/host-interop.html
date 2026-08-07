@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
-    <meta name="description" content="Jolt is a Clojure implementation on Chez Scheme. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="description" content="Jolt is a Clojure implementation on Scheme — Chez natively, Gambit for JavaScript. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
     <meta name="canonical" content="https://jolt-lang.github.io">
     <title>Host Interop — Jolt</title>
     <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
@@ -69,6 +69,10 @@
       
       <li >
         <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/scheme-backends.html">Scheme Backends</a>
       </li>
       
       <li >
@@ -159,7 +163,7 @@
     </nav>
     
     <div id="content">
-      <p>Jolt runs on Chez Scheme, not the JVM, so there are no real Java classes behind interop forms. Instead the runtime ships shims for the slice of the JVM standard library that portable Clojure code reaches for, so libraries written against <code>clojure.core</code> and common <code>java.&#42;</code> classes run unchanged. The Clojure interop syntax works against these shims:</p><pre><code class="clojure">&#40;Math/sqrt 2&#41;                  ; static call
+      <p>Jolt runs on Scheme, not the JVM, so there are no real Java classes behind interop forms. Instead the runtime ships shims for the slice of the JVM standard library that portable Clojure code reaches for, so libraries written against <code>clojure.core</code> and common <code>java.&#42;</code> classes run unchanged. The Clojure interop syntax works against these shims:</p><pre><code class="clojure">&#40;Math/sqrt 2&#41;                  ; static call
 Math/PI                        ; static field
 &#40;StringBuilder.&#41;               ; constructor
 &#40;.append sb &quot;x&quot;&#41;               ; instance method
