@@ -42,6 +42,7 @@
       globalThis.joltQueue.push(DEMO);
       return;
     }
+    if (kind === 'out') { line(text.replace(/\n+$/, ''), 'repl-stdout'); return; }
     line(text, kind === 'result' ? 'repl-out' : 'repl-err');
     if (!demoDone) {
       demoDone = true;
