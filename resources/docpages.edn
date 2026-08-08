@@ -12,6 +12,7 @@
   ["host-interop.md"               "Host Interop"                      "topic"]
   ["native-interop.md"             "Native Interop (FFI)"              "topic"]
   ["scheme-backends.md"            "Scheme Backends"                   "topic"]
+  ["fibers.md"                     "Fibers"                            "topic"]
   ["extension-points.md"           "Extension Points"                  "topic"]
   ["numeric-performance.md"        "Numeric Performance"               "topic"]
   ["libraries.md"                  "Libraries"                          "topic"]
