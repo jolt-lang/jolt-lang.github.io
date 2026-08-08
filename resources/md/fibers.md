@@ -42,6 +42,33 @@ Jolt's fibers capture a continuation, so there is no such restriction:
 This is the main thing fibers buy you beyond cost, and it means ordinary
 functions can do channel work without being written specially.
 
+## Two ways to park, picked for you
+
+Capturing a continuation costs a stack segment, held for as long as the process
+is parked. Jolt avoids it where it can see how: when a parking operation appears
+directly in the `go` body, the compiler rewrites the rest of the body into a
+closure, and the channel operation stores that closure instead of capturing
+anything. Such a process is about **5.5x smaller while parked** (measured below).
+
+The choice is made per parking site, not per body, and it never changes what your
+code does:
+
+```clojure
+(binding [a/*go-backend* :fiber]
+  (a/go (let [v (a/<! in)]      ; rewritten — no continuation captured
+          (a/>! out (f v)))))   ; rewritten
+
+  (a/go (read-two ch)))         ; parks inside a call: captures, as before
+```
+
+A body can mix the two freely — the parks it can see get the cheap form, the rest
+keep working exactly as they do today. Nothing needs annotating, and there is no
+case where you have to know which one you got.
+
+Parking still captures when it happens inside a called function, inside a `try`,
+inside a nested `fn`, through `eval`, or in an `alts!`. Those are the cases the
+rewrite does not cover yet; they cost memory, not correctness.
+
 ## The one rule that matters: blocking work belongs on `thread`
 
 A fiber runs on a **carrier**, an OS thread shared by many fibers. Channel
@@ -99,6 +126,21 @@ collection, with peak RSS as a cross-check:
 | fiber | 3,995 B | 5,961 B |
 | fiber parked on a channel | 4,129 B | 6,403 B |
 | OS thread | 68,720 B | 290,365 B |
+
+The two ways to park, measured against each other in one run — same process
+shape, same channel, same retention, so the only difference is the mechanism:
+
+| parked process | live bytes | peak RSS |
+| --- | --- | --- |
+| rewritten body (no continuation) | 864 B | 1,244 B |
+| captured continuation | 4,762 B | 7,368 B |
+
+That is **5.5x by live bytes and 5.9x by RSS**. Both figures include the fiber's
+own record and its result channel, which is why the cheap form is a few hundred
+bytes rather than the size of the closure alone. Time per park-and-resume round
+trip is the same either way as far as this can be measured: 903 ns for the
+rewritten form against 858 ns for the capture, over three runs each whose own
+spread is 38 and 75 ns.
 
 A fiber is roughly **17x smaller in live bytes and 45x smaller in RSS** than an
 OS thread. A million parked fibers is a few GiB, which is the same order as the
