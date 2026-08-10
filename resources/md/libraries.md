@@ -17,12 +17,15 @@ First-party libraries from the jolt-lang org.
 - **[jolt-crypto](https://github.com/jolt-lang/jolt-crypto)** — OpenSSL FFI (hashing, HMAC, ciphers); backs ring-defaults' session/CSRF crypto.
 - **[time](https://github.com/jolt-lang/time)** — the formatting and zone layer of `java.time` (`DateTimeFormatter`, `ZoneOffset`/`ZoneId`, `ZonedDateTime`/`OffsetDateTime`, named-zone offsets and DST, localized formatting, `java.util.Locale`), plus [tick](https://github.com/juxt/tick)'s idiomatic API. The base value types (`Instant`, `LocalDate`, `Duration`, `Period`, `Year`/`YearMonth`, …) are in core with no dependency; this library adds the rest (RFC 0008).
 - **[transit-jolt](https://github.com/jolt-lang/transit-jolt)** — Transit (JSON) read/write.
+- **[instaparse](https://github.com/jolt-lang/instaparse)** — context-free grammars (EBNF/ABNF) turned into parsers: left-recursive and ambiguous grammars, PEG-style lookahead, hiccup and enlive output, detailed error reporting. A port of [Engelberg/instaparse](https://github.com/Engelberg/instaparse).
 - **[router](https://github.com/jolt-lang/router)** — routing trie that mirrors `reitit.Trie`, so reitit runs on Jolt.
 - **[logging](https://github.com/jolt-lang/logging)** — logging API with a native backend (drives `clojure.tools.logging`).
+- **[otel](https://github.com/jolt-lang/otel)** — OpenTelemetry SDK: tracing (`with-span`, W3C Trace Context propagation) and metrics (counters, histograms), exported over OTLP via [http-client](https://github.com/jolt-lang/http-client). Reads the standard `OTEL_*` environment variables; every API has a no-op fallback.
 - **[nrepl](https://github.com/jolt-lang/nrepl)** — nREPL server and client for editor connections.
 - **[glimmer](https://github.com/jolt-lang/glimmer)** — GTK-based reactive UI toolkit.
 - **[glimmer-gl](https://github.com/jolt-lang/glimmer-gl)** — OpenGL primitives for Glimmer.
 - **[ring-chez-adapter](https://github.com/jolt-lang/ring-chez-adapter)** — Ring adapter for serving HTTP.
+- **[multipart](https://github.com/jolt-lang/multipart)** — RFC 7578 `multipart/form-data` parser (incremental push parser and `parse-form-data`), ported from [defnull/multipart](https://github.com/defnull/multipart); splits request bodies into `:params` and `:files` for ring.
 
 ## JVM libraries
 
