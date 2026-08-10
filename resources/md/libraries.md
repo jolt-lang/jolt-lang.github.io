@@ -48,7 +48,7 @@ Third-party Clojure/JVM libraries confirmed to run on Jolt.
 - **[core.match](https://github.com/clojure/core.match)** — pattern matching.
 - **[core.cache](https://github.com/clojure/core.cache)** — caching (Basic/FIFO/LRU/LU/TTL/Soft + wrapped), over [data.priority-map](https://github.com/clojure/data.priority-map).
 - **[core.memoize](https://github.com/clojure/core.memoize)** — function memoization over [core.cache](https://github.com/clojure/core.cache).
-- **[core.async](https://github.com/clojure/core.async)** — CSP channels and `go` blocks (`<!`/`>!`/`alts!`, `pipeline`, `mult`/`mix`/`pub`/`sub`) on real OS threads.
+- **[core.async](https://github.com/clojure/core.async)** — CSP channels and `go` blocks (`<!`/`>!`/`alts!`, `pipeline`, `mult`/`mix`/`pub`/`sub`), on real OS threads or on [fibers](/docs/fibers.html).
 - **[core.logic](https://github.com/clojure/core.logic)** — relational logic programming (unification, `run`/`fresh`/`conde`, finite domains).
 - **[math.combinatorics](https://github.com/clojure/math.combinatorics)** — permutations, combinations, subsets, selections, cartesian products, partitions.
 - **[core.contracts](https://github.com/clojure/core.contracts)** — programming by contract (`contract`/`with-constraints`/`provide`), over [core.unify](https://github.com/clojure/core.unify).
