@@ -14,7 +14,7 @@ First-party libraries from the jolt-lang org.
 - **[http-client](https://github.com/jolt-lang/http-client)** — HTTP client over POSIX sockets, OpenSSL (TLS), and zlib.
 - **[xml](https://github.com/jolt-lang/xml)** — XML: `clojure.xml/parse` (libxml2) plus a `clojure.data.xml` emit API.
 - **[yaml](https://github.com/jolt-lang/yaml)** — YAML load/dump over the system libyaml (`jolt.yaml`, `clj-yaml.core` compat).
-- **[jolt-crypto](https://github.com/jolt-lang/jolt-crypto)** — OpenSSL FFI (hashing, HMAC, ciphers); backs ring-defaults' session/CSRF crypto.
+- **[crypto](https://github.com/jolt-lang/crypto)** — OpenSSL FFI (hashing, HMAC, ciphers); backs ring-defaults' session/CSRF crypto.
 - **[time](https://github.com/jolt-lang/time)** — the formatting and zone layer of `java.time` (`DateTimeFormatter`, `ZoneOffset`/`ZoneId`, `ZonedDateTime`/`OffsetDateTime`, named-zone offsets and DST, localized formatting, `java.util.Locale`), plus [tick](https://github.com/juxt/tick)'s idiomatic API. The base value types (`Instant`, `LocalDate`, `Duration`, `Period`, `Year`/`YearMonth`, …) are in core with no dependency; this library adds the rest (RFC 0008).
 - **[transit-jolt](https://github.com/jolt-lang/transit-jolt)** — Transit (JSON) read/write.
 - **[instaparse](https://github.com/jolt-lang/instaparse)** — context-free grammars (EBNF/ABNF) turned into parsers: left-recursive and ambiguous grammars, PEG-style lookahead, hiccup and enlive output, detailed error reporting. A port of [Engelberg/instaparse](https://github.com/Engelberg/instaparse).
@@ -35,7 +35,7 @@ Third-party Clojure/JVM libraries confirmed to run on Jolt.
 
 - **[ring-core](https://github.com/ring-clojure/ring)** — via `:deps/root "ring-core"`, on the [ring-app example](https://github.com/jolt-lang/examples/tree/main/ring-app).
 - **[ring-codec](https://github.com/ring-clojure/ring-codec)** — URL/form encoding.
-- **[ring-defaults](https://github.com/ring-clojure/ring-defaults)** — the standard middleware stack (params, static resources + content-type, session, security headers); session/CSRF crypto via [jolt-crypto](https://github.com/jolt-lang/jolt-crypto).
+- **[ring-defaults](https://github.com/ring-clojure/ring-defaults)** — the standard middleware stack (params, static resources + content-type, session, security headers); session/CSRF crypto via [crypto](https://github.com/jolt-lang/crypto).
 - **[reitit-core](https://github.com/metosin/reitit)** — data-driven routing; the `reitit.Trie` Java class is mirrored by [router](https://github.com/jolt-lang/router).
 - **[integrant](https://github.com/weavejester/integrant)** — data-driven system configuration (`#ig/ref`), with its [dependency](https://github.com/weavejester/dependency) and [meta-merge](https://github.com/weavejester/meta-merge) deps.
 
