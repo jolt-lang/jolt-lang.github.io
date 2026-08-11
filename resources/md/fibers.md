@@ -89,8 +89,8 @@ tell it apart from one that returned nil. `fiber-monitor` can:
   (a/<!! (a/fiber-monitor g)))                 ;=> the throwable, or nil if it lived
 ```
 
-It answers the same way on either backend. Monitoring a channel that is not a
-`go` channel gives nil rather than an error.
+It answers the same way on either backend, and on a `thread` block's channel too.
+Monitoring any other channel gives nil rather than an error.
 
 `(timeout ms)` is served by one shared timer thread, so `(<! (timeout 100))`
 parks the fiber and costs no thread. `(Thread/sleep 100)` does not — see
