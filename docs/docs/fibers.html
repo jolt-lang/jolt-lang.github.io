@@ -209,9 +209,9 @@
     &#40;a/go &#40;a/&gt;! src {:topic :even :n 2}&#41;
           &#40;a/&gt;! src {:topic :odd  :n 3}&#41;&#41;
     &#40;a/&lt;!! evens&#41;&#41;&#41;                              ;=&gt; {:topic :even :n 2}
-</code></pre><p>A <code>go</code> body that throws closes its channel like any other, so the reader cannot tell it apart from one that returned nil. <code>fiber-monitor</code> can:</p><pre><code class="clojure">&#40;let &#91;g &#40;a/go &#40;throw &#40;ex-info &quot;boom&quot; {}&#41;&#41;&#41;&#93;
+</code></pre><p>A <code>go</code> body that throws closes its channel like any other, so the reader cannot tell it apart from one that returned nil. <code>go-monitor</code> can:</p><pre><code class="clojure">&#40;let &#91;g &#40;a/go &#40;throw &#40;ex-info &quot;boom&quot; {}&#41;&#41;&#41;&#93;
   &#40;a/&lt;!! g&#41;                                    ;=&gt; nil, like a body that returned nil
-  &#40;a/&lt;!! &#40;a/fiber-monitor g&#41;&#41;&#41;                 ;=&gt; the throwable, or nil if it lived
+  &#40;a/&lt;!! &#40;a/go-monitor g&#41;&#41;&#41;                    ;=&gt; the throwable, or nil if it lived
 </code></pre><p>It answers the same way on either backend, and on a <code>thread</code> block's channel too. Monitoring any other channel gives nil rather than an error.</p><p><code>&#40;timeout ms&#41;</code> is served by one shared timer thread, so <code>&#40;&lt;! &#40;timeout 100&#41;&#41;</code> parks the fiber and costs no thread. <code>&#40;Thread/sleep 100&#41;</code> does not — see <a href='#what_parks_and_what_pins'>what parks and what pins</a> below.</p><h2 id="parking&#95;works&#95;through&#95;function&#95;calls">Parking works through function calls</h2><p>On the JVM, <code>go</code> is a macro that rewrites its body into a state machine, and a parking operation has to appear <strong>lexically</strong> inside the body. You cannot put <code>&lt;!</code> in a helper function and call it from a <code>go</code> block.</p><p>Jolt's fibers capture a continuation, so there is no such restriction:</p><pre><code class="clojure">&#40;defn read-one &#91;ch&#93; &#40;a/&lt;! ch&#41;&#41;          ; parks, several frames deep
 &#40;defn read-two &#91;ch&#93; &#91;&#40;read-one ch&#41; &#40;read-one ch&#41;&#93;&#41;
 

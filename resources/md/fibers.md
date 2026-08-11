@@ -81,12 +81,12 @@ A parallel transform, fan-out to two consumers, and topic routing:
 ```
 
 A `go` body that throws closes its channel like any other, so the reader cannot
-tell it apart from one that returned nil. `fiber-monitor` can:
+tell it apart from one that returned nil. `go-monitor` can:
 
 ```clojure
 (let [g (a/go (throw (ex-info "boom" {})))]
   (a/<!! g)                                    ;=> nil, like a body that returned nil
-  (a/<!! (a/fiber-monitor g)))                 ;=> the throwable, or nil if it lived
+  (a/<!! (a/go-monitor g)))                    ;=> the throwable, or nil if it lived
 ```
 
 It answers the same way on either backend, and on a `thread` block's channel too.
