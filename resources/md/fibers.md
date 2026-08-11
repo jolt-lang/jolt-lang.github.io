@@ -81,16 +81,16 @@ A parallel transform, fan-out to two consumers, and topic routing:
 ```
 
 A `go` body that throws closes its channel like any other, so the reader cannot
-tell it apart from one that returned nil. On a fiber, `fiber-monitor` can:
+tell it apart from one that returned nil. `fiber-monitor` can:
 
 ```clojure
-(binding [a/*go-backend* :fiber]
-  (let [g (a/go (throw (ex-info "boom" {})))]
-    (a/<!! (a/fiber-monitor g))))                ;=> the throwable, or nil if it lived
+(let [g (a/go (throw (ex-info "boom" {})))]
+  (a/<!! g)                                    ;=> nil, like a body that returned nil
+  (a/<!! (a/fiber-monitor g)))                 ;=> the throwable, or nil if it lived
 ```
 
-It is the fiber backend only — a monitor on a thread-backed `go` closes whether
-or not the body threw.
+It answers the same way on either backend. Monitoring a channel that is not a
+`go` channel gives nil rather than an error.
 
 `(timeout ms)` is served by one shared timer thread, so `(<! (timeout 100))`
 parks the fiber and costs no thread. `(Thread/sleep 100)` does not — see
