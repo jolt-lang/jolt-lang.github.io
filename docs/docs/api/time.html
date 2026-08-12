@@ -180,7 +180,7 @@
 core &#40;RFC 0008&#41;. Add io.github.jolt-lang/time to your deps.edn.
 </code></pre><h2 id="formatting,&#95;zones,&#95;and&#95;tick">Formatting, zones, and tick</h2><pre><code class="clojure">;; deps.edn
 {:deps {io.github.jolt-lang/time {:git/url &quot;https://github.com/jolt-lang/time.git&quot;
-                                  :git/sha &quot;99414a5...&quot;}}}
+                                  :git/sha &quot;2738160a958345a927e83cdb8f5a80a2c47f0aa0&quot;}}}
 </code></pre><p>Declaring the dependency is all that's needed. The library supplies <code>DateTimeFormatter</code>, <code>ZoneOffset</code>/<code>ZoneId</code>, <code>ZonedDateTime</code>/<code>OffsetDateTime</code>, <code>Locale</code>, and the zone/localized layer over the base, and its <code>jolt.time</code> install namespace loads automatically the first time one of those classes is referenced — so <code>tick.core</code> (whose <code>cljc.java-time</code> namespaces resolve them at load) works directly, with no <code>jolt.time</code> require of your own.</p><pre><code class="clojure">&#40;require '&#91;tick.core :as t&#93;&#41;
 
 &#40;t/now&#41;                               ; =&gt; an Instant
