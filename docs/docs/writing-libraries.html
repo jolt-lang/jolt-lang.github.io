@@ -69,6 +69,10 @@
       </li>
       
       <li >
+        <a href="/docs/cljc-interop.html">Cljc Interop</a>
+      </li>
+      
+      <li >
         <a href="/docs/native-interop.html">Native Interop (FFI)</a>
       </li>
       
@@ -173,7 +177,7 @@
   src/
     my&#95;lib/
       core.clj
-</code></pre><p>Namespaces map to files the usual way: dots become directories and dashes become underscores, so <code>my-lib.core</code> lives at <code>src/my&#95;lib/core.clj</code>. Jolt tries <code>&lt;ns&gt;.clj</code> then <code>&lt;ns&gt;.cljc</code>.</p><h2 id="depending&#95;on&#95;a&#95;library">Depending on a library</h2><p>In a consuming project's <code>deps.edn</code>:</p><pre><code class="clojure">{:paths &#91;&quot;src&quot;&#93;
+</code></pre><p>Namespaces map to files the usual way: dots become directories and dashes become underscores, so <code>my-lib.core</code> lives at <code>src/my&#95;lib/core.clj</code>. Jolt tries <code>&lt;ns&gt;.jolt</code> then <code>&lt;ns&gt;.clj</code> then <code>&lt;ns&gt;.cljc</code> (a <code>.jolt</code> file shadows its portable sibling — see <a href='/docs/cljc-interop.html'>Cljc Interop</a>).</p><h2 id="depending&#95;on&#95;a&#95;library">Depending on a library</h2><p>In a consuming project's <code>deps.edn</code>:</p><pre><code class="clojure">{:paths &#91;&quot;src&quot;&#93;
  :deps {weavejester/medley {:git/url &quot;https://github.com/weavejester/medley&quot;
                             :git/sha &quot;&lt;full-sha&gt;&quot;}
         my/helpers          {:local/root &quot;../helpers&quot;}}}
