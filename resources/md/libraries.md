@@ -22,8 +22,9 @@ First-party libraries from the jolt-lang org.
 - **[logging](https://github.com/jolt-lang/logging)** — logging API with a native backend (drives `clojure.tools.logging`).
 - **[otel](https://github.com/jolt-lang/otel)** — OpenTelemetry SDK: tracing (`with-span`, W3C Trace Context propagation) and metrics (counters, histograms), exported over OTLP via [http-client](https://github.com/jolt-lang/http-client). Reads the standard `OTEL_*` environment variables; every API has a no-op fallback.
 - **[nrepl](https://github.com/jolt-lang/nrepl)** — nREPL server and client for editor connections.
-- **[glimmer](https://github.com/jolt-lang/glimmer)** — GTK-based reactive UI toolkit.
-- **[glimmer-gl](https://github.com/jolt-lang/glimmer-gl)** — OpenGL primitives for Glimmer.
+- **[glimmer](https://github.com/jolt-lang/glimmer)** — reactive UI toolkit: Reagent-style reactive atoms, components that return hiccup, and a reconciler that patches the live widget tree in place (positional and keyed). Toolkit-independent — widgets come from a backend, so the same components can render through GTK today and another toolkit later.
+- **[glimmer-gtk](https://github.com/jolt-lang/glimmer-gtk)** — the GTK4 backend for glimmer: widget constructors, prop setters and `:on-*` signals bound through the FFI, Pango markup from hiccup, and the `g_application_run` app loop (including the main-thread marshalling that keeps nREPL-driven UI development safe).
+- **[glimmer-gl](https://github.com/jolt-lang/glimmer-gl)** — OpenGL primitives for glimmer: composable 3D geometry and shaders-as-data, plus `:gl-area` and `:scale` widgets registered into glimmer-gtk so a GL pane lives in the same reactive tree.
 - **[ring-chez-adapter](https://github.com/jolt-lang/ring-chez-adapter)** — Ring adapter for serving HTTP.
 - **[multipart](https://github.com/jolt-lang/multipart)** — RFC 7578 `multipart/form-data` parser (incremental push parser and `parse-form-data`), ported from [defnull/multipart](https://github.com/defnull/multipart); splits request bodies into `:params` and `:files` for ring.
 
