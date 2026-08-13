@@ -65,6 +65,15 @@ Foreign memory is manual — allocate, use, free. There is no finalizer.
 
 - `load-library` `[spec]` — load a shared object. With no spec, binds symbols already in the running process (libc, POSIX). With a spec, a per-OS map (`{:darwin "libsqlite3.0.dylib" :linux "libsqlite3.so.0"}`) or a bare path. Inside a `deps.edn` project you usually declare natives under `:jolt/native` instead (see the guide).
 - `loaded?` `name` — was a library loaded?
+
+**Symbol resolution.** A library loaded through `load-library` or a `:jolt/native`
+declaration is loaded privately and registered: a `defcfn` resolves its C symbol
+against the registered libraries first (in load order), and only falls back to
+the process-global namespace when none of them export it (libc calls, `:process`
+natives). The OS's own libraries can therefore never shadow a declared native,
+even when they export the same symbol names — macOS ships BoringSSL system-wide
+with the full `EVP_*` set, and before this rule an OpenSSL-backed library's
+digest calls could silently land there and abort the process.
 - `alloc` `nbytes` — allocate `nbytes`; returns a pointer (address). You must `free` it.
 - `free` `ptr` — release memory from `alloc` / `string->ptr`.
 - `sizeof` `type` — byte size of a type, for laying out structs and out-parameters.

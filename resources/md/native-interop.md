@@ -31,6 +31,18 @@ Each entry is a map:
 
 If you're binding outside a `deps.edn` project, call `(jolt.ffi/load-library "libsqlite3.dylib")` (or `(jolt.ffi/load-library)` with no argument for the process's own symbols) before the first call.
 
+### Which library serves a symbol
+
+Declared natives are loaded privately and registered; a `defcfn` looks its C
+symbol up in the registered libraries first (in load order) and falls back to
+the process-global namespace only when none of them export it. Two properties
+follow. A system library that happens to export the same names as your declared
+native — macOS ships BoringSSL system-wide with OpenSSL's `EVP_*` symbol set —
+can never intercept your bindings. And a library may bind symbols that another
+*declared* dependency's native provides (glimmer-gl binds GTK symbols declared
+by glimmer-gtk), since every declared native participates in the lookup. Plain
+libc symbols need no declaration; they resolve through the process fallback.
+
 ### Static vs dynamic linking in a built binary
 
 When you `run`/`repl`, the candidates above are loaded dynamically — the `.so`/`.dylib` has to be present on the machine. When you `jolt build`, you can instead **link the library statically into the binary**, so the executable calls the C code with no shared object present at runtime. Add a `:static` archive to the spec:
