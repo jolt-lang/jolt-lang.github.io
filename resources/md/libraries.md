@@ -62,6 +62,7 @@ Third-party Clojure/JVM libraries confirmed to run on Jolt.
 - **[tools.cli](https://github.com/clojure/tools.cli)** — command-line argument parsing.
 - **[tools.reader](https://github.com/clojure/tools.reader)** — a Clojure reader in Clojure (edn + full reader, indexing/pushback reader types).
 - **[rewrite-clj](https://github.com/clj-commons/rewrite-clj)** — parse/rewrite Clojure source while preserving whitespace and comments (nodes + zipper), over [tools.reader](https://github.com/clojure/tools.reader).
+- **[edamame](https://github.com/borkdude/edamame)** — configurable EDN/Clojure parser with source locations (`parse-string`, `parse-next`, syntax quote, reader conditionals, auto-resolve).
 - **[yamlstar](https://github.com/yaml/yamlstar)** — YAML load/dump (pure-Clojure parser, JSON-safe integer policy).
 - **[medley](https://github.com/weavejester/medley)** — collection utilities.
 - **[ordered](https://github.com/clj-commons/ordered)** — insertion-ordered map and set (`ordered-map`/`ordered-set`), with transients and `#ordered/map` / `#ordered/set` reader tags.
