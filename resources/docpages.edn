@@ -10,6 +10,7 @@
   ["writing-libraries.md"          "Writing Libraries"                 "topic"]
   ["testing.md"                    "Testing"                           "topic"]
   ["host-interop.md"               "Host Interop"                      "topic"]
+  ["cljc-interop.md"               "Cljc Interop"                      "topic"]
   ["native-interop.md"             "Native Interop (FFI)"              "topic"]
   ["scheme-backends.md"            "Scheme Backends"                   "topic"]
   ["fibers.md"                     "Fibers"                            "topic"]

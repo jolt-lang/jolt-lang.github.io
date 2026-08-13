@@ -12,7 +12,7 @@ my-lib/
       core.clj
 ```
 
-Namespaces map to files the usual way: dots become directories and dashes become underscores, so `my-lib.core` lives at `src/my_lib/core.clj`. Jolt tries `<ns>.clj` then `<ns>.cljc`.
+Namespaces map to files the usual way: dots become directories and dashes become underscores, so `my-lib.core` lives at `src/my_lib/core.clj`. Jolt tries `<ns>.jolt` then `<ns>.clj` then `<ns>.cljc` (a `.jolt` file shadows its portable sibling — see [Cljc Interop](/docs/cljc-interop.html)).
 
 ## Depending on a library
 
