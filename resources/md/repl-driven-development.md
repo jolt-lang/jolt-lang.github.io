@@ -118,6 +118,31 @@ The core server is intentionally small. A library can add the heavier nREPL ops 
 
 Jolt composes the listed middleware over the built-in handler when the server starts, so completion, interruptible eval, and lookup are opt-in per project rather than baked into every server.
 
+## Editor linting: clj-kondo and clojure-lsp
+
+clj-kondo (and clojure-lsp, which runs it) analyzes sources from the JVM
+classpath, and Jolt's stdlib isn't on one — so it flags two things that are
+tooling noise, not errors: vars introduced by `jolt.ffi/defcfn` show as
+*unresolved symbol* (every `c-socket`-style binding in an FFI block), and
+`jolt.*` requires show as *unresolved namespace*. Teach it otherwise in your
+project's `.clj-kondo/config.edn`:
+
+```clojure
+{:lint-as {jolt.ffi/defcfn    clojure.core/def
+           jolt.scheme/defsfn clojure.core/def}
+ :linters {:unresolved-namespace
+           {:exclude [jolt.host jolt.ffi jolt.fibers jolt.scheme jolt.fs
+                      jolt.image jolt.infix jolt.io-poller jolt.nrepl
+                      jolt.parser jolt.process jolt.socket jolt.time
+                      jolt.util]}}}
+```
+
+`:lint-as` tells the analyzer that `defcfn`'s first argument introduces a var,
+which resolves every use of the binding; the namespace excludes silence the
+requires it cannot find sources for. A library that defines its own macros can
+ship this the usual way — a `clj-kondo.exports/<org>/<lib>/config.edn` in its
+resources — and clj-kondo picks it up from the dependency.
+
 ## Dev mode vs a compiled binary
 
 The REPL and nREPL server are dynamic on purpose: calls go through the var, so redefinition works. A `bin/jolt build` binary is the other end of that trade — a `--direct-link` build binds calls directly and gives up runtime redefinition for speed. Develop against the REPL; ship the binary. See [Getting Started](/docs/getting-started.html#compiling_a_standalone_binary) for the build modes.

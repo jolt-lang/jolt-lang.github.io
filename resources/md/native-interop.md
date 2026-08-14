@@ -202,12 +202,35 @@ For bytes that aren't text, use the array helpers — they don't touch encoding.
   (ffi/free buf))
 ```
 
+## errno
+
+A syscall that fails reports *how* through `errno`, and `errno` is not a
+global: every modern libc keeps a per-thread slot behind a function
+(`__error` on macOS, `__errno_location` on Linux, `_errno` on Windows).
+`jolt.ffi/errno` reads the calling thread's slot through the right one, so
+it is correct under threads — and under fibers, whose syscall and errno read
+both run on the fiber's carrier thread. `errno-message` renders a code (or
+the current errno) through `strerror`:
+
+```clojure
+(ffi/defcfn c-open "open" [:string :int :varargs :int] :int)
+
+(let [fd (c-open path 0 0)]
+  (when (neg? fd)
+    (throw (ex-info (str "open " path ": " (ffi/errno-message))
+                    {:path path :errno (ffi/errno)}))))
+```
+
+Read it **immediately** after the failing call. Anything that can enter the
+runtime between the call and the read — an allocation, a park, another FFI
+call — may make a syscall of its own and overwrite the slot.
+
 ## Checklist for a binding
 
 - Declare the library in `deps.edn` `:jolt/native` with per-OS candidates; mark optional drivers `:optional`, process symbols `:process`. Add a `:static` archive to link it into a built binary (keep the dynamic candidates for `run`/`repl`).
 - Bind each C function with `defcfn`, exact argument/return types, and `:blocking` on anything that waits.
 - Free every `ffi/alloc` and `ffi/string->ptr` — wrap allocation in `try`/`finally`. Leaked foreign memory is never reclaimed.
-- Check C return codes and null pointers explicitly, and `throw` an `ex-info` on failure.
+- Check C return codes and null pointers explicitly, and `throw` an `ex-info` on failure — `(ffi/errno-message)` makes the message say what went wrong.
 - Keep struct offsets and type widths LP64-correct, and branch on `os.name` where macOS and Linux differ.
 
 ## Calling into Jolt from C

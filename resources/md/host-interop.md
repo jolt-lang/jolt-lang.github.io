@@ -8,7 +8,7 @@ Math/PI                        ; static field
 (instance? String "hi")        ; class token
 ```
 
-A class token (`String`, `java.util.UUID`, …) resolves to a name; there is no reflection and no class hierarchy. `(class x)` returns the JVM class name for the scalar and collection types Clojure programs compare against.
+A class token (`String`, `java.util.UUID`, …) evaluates to a `java.lang.Class` object, and `(class x)` returns one for the scalar and collection types Clojure programs compare against. The modeled class hierarchy answers a minimal reflective surface: `.getSuperclass` (nil for `Object` and for interfaces, as on the JVM), `.getInterfaces`, `.isAssignableFrom`, `.isInterface`, `.isInstance`, plus the naming trio `.getName`/`.getSimpleName`/`.getCanonicalName`. `isa?`, `supers`, `ancestors` and `bases` derive from the same graph, and a class a library registers (`jolt.host/register-class-supers!`) reflects like a built-in. There is no method/field enumeration and no `clojure.reflect` — the hierarchy is modeled, the members are not.
 
 ## What's shimmed
 
@@ -22,7 +22,7 @@ This is the surface today, not the whole JVM. Methods not listed generally aren'
 - **`Boolean`** — `parseBoolean`, `TRUE`, `FALSE`.
 - **`Character`** — `isUpperCase` `isLowerCase` `isDigit` `isWhitespace` (ASCII).
 - **Boxed-number methods** — every number answers `.intValue` `.longValue` `.doubleValue` `.byteValue` `.shortValue` `.toString` `.hashCode`.
-- **`java.lang.System`** — `currentTimeMillis` `nanoTime` `exit` `getProperty` `setProperty` `getProperties` `getenv`.
+- **`java.lang.System`** — `currentTimeMillis` `nanoTime` `exit` `getProperty` `setProperty` `getProperties` `getenv`. The built-in property keys: `os.name` (`"Mac OS X"`/`"Linux"`/`"Windows"`), `os.arch` in the JVM's spelling (`aarch64`/`amd64`), `os.version` (macOS product version / kernel release), `user.name`, `user.dir`, `user.home`, `java.io.tmpdir`, `java.class.path`, `line.separator`, `file.separator`, `path.separator`, and `jolt.version`. `java.version` is nil **deliberately** — jolt has no JDK to report, and claiming one would flip JVM-only code paths in libraries that parse it; branch on `jolt.version` (or a `:jolt` reader conditional) instead.
 - **`java.lang.Thread`** — `sleep` (real), `yield`/`interrupted` (no-ops), `currentThread`.
 
 ### Strings, collections, I/O
@@ -53,7 +53,7 @@ This is the surface today, not the whole JVM. Methods not listed generally aren'
   `.getStackTrace` is empty: Jolt reifies no `StackTraceElement` array, because
   tail-call optimization means there is no faithful per-frame array to hand back.
 
-What's deliberately absent: reflection, `gen-class`/`proxy` of Java classes, and `BigDecimal`. (STM — `ref`/`dosync`/`alter`/`commute`/`ref-set`/`ensure` — is present, with commit-log transactions.)
+What's deliberately absent: member-level reflection (method/field enumeration, `clojure.reflect` — the hierarchy half is modeled, see above), `gen-class`/`proxy` of Java classes, and `BigDecimal`. (STM — `ref`/`dosync`/`alter`/`commute`/`ref-set`/`ensure` — is present, with commit-log transactions.)
 
 ## Using a JVM library that needs a class Jolt doesn't ship
 
@@ -250,3 +250,43 @@ Because both blocking and async calls fall back to running inline when no pump i
 active, code written against this API also works in a plain `-M:run` launch,
 where the main thread is already the caller — the library resolves the seam at
 call time and needs no separate non-GUI path.
+
+## Calling Scheme directly: `jolt.scheme`
+
+The layers above — the Java-shaped shims, `jolt.ffi` for C, the `jolt.host`
+seams — are the portable interop story. `jolt.scheme` is the escape hatch
+under them: call a host Scheme procedure by name, or evaluate Scheme text,
+from any Jolt program.
+
+```clojure
+(require '[jolt.scheme :as scheme])
+
+(scheme/call "expt" 2 10)                        ;=> 1024
+(scheme/eval-string "(let ((x 3)) (* x 14))")    ;=> 42
+
+(scheme/defsfn fx+ "fx+")                        ; def a named binding
+(fx+ 1 2)                                        ;=> 3
+
+(let [v (scheme/call "vector" 1 2 3)]            ; a host value, opaque to jolt
+  (scheme/call "vector-ref" v 0))                ;=> 1
+```
+
+`call` resolves the top-level procedure at run time and applies it; `proc`
+returns it as a value (usable with `map`, stored in a var by `defsfn`);
+`eval-string` evaluates Scheme text and returns the last form's value, with
+definitions persisting. An unbound name or a Scheme error surfaces as a
+catchable exception.
+
+The contract is **raw**: numbers, strings, booleans and characters are the
+same representations on both sides and cross untouched; everything else
+crosses as whatever it is on the other side. A Scheme vector arriving in Jolt
+is an opaque host value — hand it back to Scheme to use it; a Jolt collection
+handed to Scheme is Jolt's representation, not a Scheme list. `nil` is Jolt's
+nil, not `'()` and not `#f`.
+
+Two caveats worth their weight. This is **host-specific by design**: code
+using `jolt.scheme` is tied to the Chez runtime and its primitives, unlike
+everything else on this page. And names resolve at **run time**, so a
+tree-shaken binary (`--tree-shake`) only finds what the kept runtime still
+carries — an exotic primitive a build shook out is an unbound-name error, not
+a silent nil.

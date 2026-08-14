@@ -233,6 +233,52 @@ with a per-process poller, so a socket read parks the fiber when there is one an
 does a plain blocking wait when there is not. The same socket code works either
 way.
 
+## `jolt.fibers`: the fiber itself
+
+Everything above reaches fibers through core.async. `jolt.fibers` is the same
+runtime one level down: spawn a body on a fiber directly, join its value, watch
+its completion. No channel involved unless you bring one.
+
+```clojure
+(require '[jolt.fibers :as fib])
+
+(fib/join (fib/spawn (fn [] (+ 1 2))))         ;=> 3
+```
+
+`spawn` returns the fiber handle immediately; the body runs on the carrier
+pool, with the caller's dynamic bindings conveyed (`*txn*` never is). `join`
+waits — parking when called on a fiber, blocking on a thread — and returns the
+body's value; with a timeout, `(fib/join f 100 :not-yet)` gives up. A body
+that throws kills its fiber, and `join` rethrows the original error:
+
+```clojure
+(def dead (fib/spawn (fn [] (throw (ex-info "boom" {:why :demo})))))
+(try (fib/join dead)
+     (catch clojure.lang.ExceptionInfo e (ex-data e)))    ;=> {:why :demo}
+(fib/state dead)                                          ;=> :dead
+```
+
+`monitor!` observes a completion without waiting for it: the callback runs
+exactly once with `nil` for a clean finish or the error for a death, and a
+fiber that already finished fires it inline — registering can never race the
+completion. It runs on the fiber's carrier, so keep it short and never block
+in it.
+
+```clojure
+(fib/monitor! (fib/spawn work) (fn [err] (when err (log-error err))))
+```
+
+The rest of the surface: `fiber?` (is this value a fiber handle),
+`current-fiber` / `in-fiber?` (where am I), `state`
+(`:ready`/`:running`/`:parked`/`:done`/`:dead`), and `yield` (reschedule
+behind the other fibers on this carrier — rarely needed, since preemption
+already time-slices).
+
+Everything on the core.async page applies to a spawned body: channel ops and
+`deref` park it, `alts!` works, blocking IO pins its carrier, `jolt.socket`
+parks. The two APIs share the one pool, so fibers and `go` blocks interleave
+freely.
+
 ## Tuning
 
 Both knobs are read **once, when the carrier pool starts** — set them before the
@@ -248,6 +294,12 @@ another thread.
 ```clojure
 (alter-var-root #'a/*fiber-carrier-count* (constantly 1))
 ```
+
+`jolt.fibers` mirrors the knobs as functions — `set-carrier-count!` /
+`carrier-count` and `set-preempt-ticks!` / `preempt-ticks` — writing the same
+settings, so either spelling works and they never disagree. There is no value
+that turns preemption off: cooperative-only is an unbounded starvation window,
+so effectively-cooperative wants a very large quantum instead.
 
 Pinning the pool to one carrier is worth knowing about: two fibers ping-ponging
 on the same carrier never leave the thread, which is the fastest channel handoff
