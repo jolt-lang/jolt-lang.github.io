@@ -2,11 +2,13 @@ Jolt is a Clojure-compatible host that runs on Scheme, not the JVM. Portable `.c
 
 The thread running through all of them is the reader-conditional feature set.
 
-## Reader conditionals: `:jolt`, `:clj`, `:default`
+## Reader conditionals: `:jolt`, `:bb`, `:clj`, `:default`
 
-Jolt's reader-conditional feature set is `#{:jolt :clj :default}`. As on Clojure, the **first clause whose feature key the platform satisfies wins — matching is by clause order, not key priority.**
+Jolt's reader-conditional feature set is `#{:jolt :bb :clj :default}`. As on Clojure, the **first clause whose feature key the platform satisfies wins — matching is by clause order, not key priority.**
 
-Because Jolt emulates `clojure.lang.*` and `java.*`, it satisfies `:clj`, so it reads the `:clj` branch of a `.cljc` library by default — the JVM code path its host shims target — and never the `:cljs` one. To give Jolt its own branch, place `:jolt` **before** `:clj`:
+Because Jolt emulates `clojure.lang.*` and `java.*`, it satisfies `:clj`, so it reads the `:clj` branch of a `.cljc` library by default — the JVM code path its host shims target — and never the `:cljs` one.
+
+Jolt also satisfies `:bb`, exactly as babashka does (`#{:bb :clj}`): a library's `:bb` branch solves the same non-JVM problems Jolt has — no reflection, no JVM-only classes — and libraries list it ahead of `:clj` precisely so a bb-like host takes it. Code written for babashka usually does the right thing on Jolt through those branches. To give Jolt its own branch, place `:jolt` **before** `:bb` and `:clj`:
 
 ```clojure
 (def backend
