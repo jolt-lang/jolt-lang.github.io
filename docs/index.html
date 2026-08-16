@@ -34,17 +34,18 @@
 <header class="hero">
   <div class="hero-inner">
     <div class="hero-copy">
-      <h1>Clojure on Scheme</h1>
+      <h1>Clojure that speaks C</h1>
       <p class="tagline">
-        Jolt is a self-hosted Clojure implementation that runs on Scheme —
-        Chez natively, Gambit for JavaScript.
-        No JVM, no build step — most portable Clojure runs unchanged.
+        Jolt is a self-hosted Clojure implementation that runs on Scheme:
+        Chez natively, Gambit for JavaScript, no JVM. Most portable Clojure
+        runs unchanged, any C library binds natively, and <code>jolt build</code>
+        ships a single standalone binary.
       </p>
       <ul class="hero-points">
-        <li>The compiler is written in Clojure and compiles itself</li>
-        <li>Persistent data, lazy seqs, transducers, multimethods, protocols — full Clojure semantics</li>
+        <li>Native C interop: <code>defcfn</code> turns C functions into ordinary Clojure fns</li>
+        <li><code>jolt build</code> emits a single standalone binary with C dependencies linked in statically</li>
+        <li>Persistent data structures, lazy seqs, transducers, multimethods, and protocols with full Clojure semantics</li>
         <li>Real concurrency: <code>future</code>, <code>agent</code>, <code>pmap</code>, and <code>core.async</code> on OS threads</li>
-        <li><code>jolt build</code> emits a single standalone binary — no Scheme or JVM needed to run it</li>
       </ul>
       <div class="hero-actions">
         <a class="btn btn-primary" href="/docs/getting-started.html">Get Started</a>
@@ -83,11 +84,20 @@
       <div class="feat">
         <div class="icon">
           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+            <rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect>
+            <rect x="9" y="9" width="6" height="6"></rect>
+            <line x1="9" y1="1" x2="9" y2="4"></line>
+            <line x1="15" y1="1" x2="15" y2="4"></line>
+            <line x1="9" y1="20" x2="9" y2="23"></line>
+            <line x1="15" y1="20" x2="15" y2="23"></line>
+            <line x1="20" y1="9" x2="23" y2="9"></line>
+            <line x1="20" y1="14" x2="23" y2="14"></line>
+            <line x1="1" y1="9" x2="4" y2="9"></line>
+            <line x1="1" y1="14" x2="4" y2="14"></line>
           </svg>
         </div>
-        <h4>Self-Hosted Compiler</h4>
-        <p>Reads Clojure, analyzes it to a host-neutral IR, emits Scheme, and runs it — on Chez natively, or on Gambit compiled to JavaScript. The compiler is written in Clojure and compiles itself.</p>
+        <h4>Native C FFI</h4>
+        <p>Bind any C shared library: declare it, wrap functions with <code>defcfn</code>, call them with Clojure values. The db library reaches SQLite and Postgres this way; http-client binds OpenSSL and zlib.</p>
       </div>
       <div class="feat">
         <div class="icon">
@@ -98,7 +108,16 @@
           </svg>
         </div>
         <h4>Standalone Binaries</h4>
-        <p><code>jolt build</code> ahead-of-time compiles a project — runtime, standard library, app, and its deps — into a single self-contained executable. No Chez, no JVM, no source needed to run it.</p>
+        <p><code>jolt build</code> ahead-of-time compiles a project — runtime, standard library, app, and its deps — into a single self-contained executable, with C dependencies linked statically. No Chez, no JVM, no source needed to run it.</p>
+      </div>
+      <div class="feat">
+        <div class="icon">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+          </svg>
+        </div>
+        <h4>Self-Hosted Compiler</h4>
+        <p>Reads Clojure, analyzes it to a host-neutral IR, emits Scheme, and runs it — on Chez natively, or on Gambit compiled to JavaScript. The compiler is written in Clojure and compiles itself; Chez runs interpreted and compiled code identically, so the REPL and a built binary behave the same.</p>
       </div>
       <div class="feat">
         <div class="icon">
@@ -115,24 +134,12 @@
       <div class="feat">
         <div class="icon">
           <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-            <line x1="4" y1="9" x2="20" y2="9"></line>
-            <line x1="4" y1="15" x2="20" y2="15"></line>
-            <line x1="10" y1="3" x2="8" y2="21"></line>
-            <line x1="16" y1="3" x2="14" y2="21"></line>
-          </svg>
-        </div>
-        <h4>Full Numeric Tower</h4>
-        <p>Exact integers and bignums, exact ratios (<code>(/ 1 2)</code> ⇒ <code>1/2</code>), and flonum doubles. <code>=</code> is category-aware; <code>==</code> is value-equality.</p>
-      </div>
-      <div class="feat">
-        <div class="icon">
-          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
             <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
             <polyline points="2 12 12 17 22 12"></polyline>
             <polyline points="2 17 12 22 22 17"></polyline>
           </svg>
         </div>
-        <h4>Persistent Data</h4>
+        <h4>Persistent Data Structures</h4>
         <p>Immutable vectors (32-way tries), cons lists, and HAMT maps/sets with Clojure value semantics. Transients are real mutable scratch collections.</p>
       </div>
       <div class="feat">
@@ -187,13 +194,21 @@ bin/jolt path                <span class="syn-comment"># print the resolved sour
 ./myapp arg1 arg2                        <span class="syn-comment"># runs anywhere; args reach -main</span>
 <span class="syn-comment"># --opt for the optimized build, --dev for an unoptimized one</span></code></pre>
 
+    <h3>Bind a C library</h3>
+    <pre><code>(require '[jolt.ffi :as ffi])
+(ffi/load-library <span class="syn-str">"libsqlite3.dylib"</span>)  <span class="syn-comment">; or declare :jolt/native in deps.edn</span>
+
+(ffi/defcfn sqlite3-libversion <span class="syn-str">"sqlite3_libversion"</span> [] :string)
+(sqlite3-libversion)             <span class="syn-comment">; => "3.51.0"</span></code></pre>
+    <p style="margin-top:12px;">Any C library binds the same way — the <a href="/docs/native-interop.html">native interop guide</a> covers types, memory, structs, and static linking.</p>
+
     <h3>nREPL</h3>
     <pre><code>bin/jolt --nrepl-server      <span class="syn-comment"># auto-resolves deps.edn, writes .nrepl-port</span>
 <span class="syn-comment"># connect CIDER / Calva / Cursive via the .nrepl-port file, then</span>
 <span class="syn-comment"># redefine a var and the next call sees it — no restart</span></code></pre>
     <p style="margin-top:12px;">Develop against a live process: see <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>.</p>
 
-    <p class="cta">Read the <a href="/docs/getting-started.html">documentation</a> for installation, writing libraries, and host interop.</p>
+    <p class="cta">Read the <a href="/docs/getting-started.html">documentation</a> for installation, writing libraries, and C interop.</p>
   </div>
 </section>
 
@@ -206,7 +221,7 @@ bin/jolt path                <span class="syn-comment"># print the resolved sour
         <tr><th>Aspect</th><th>Difference</th></tr>
       </thead>
       <tbody>
-        <tr><td>Java interop</td><td>No JVM, so no general Java interop, reflection, or <code>gen-class</code>/<code>proxy</code> — a shimmed subset of <code>java.*</code> is available, plus a C <a href="/docs/native-interop.html">FFI</a></td></tr>
+        <tr><td>Java interop</td><td>No JVM, so no general Java interop, reflection, or <code>gen-class</code>/<code>proxy</code> — a native C <a href="/docs/native-interop.html">FFI</a> takes its place, plus a shimmed subset of <code>java.*</code></td></tr>
         <tr><td>BigDecimal</td><td>Not available (<code>decimal?</code> is always false); the rest of the numeric tower matches</td></tr>
         <tr><td>Regex</td><td>Compiled by <a href="https://github.com/ashinn/irregex" target="_blank" rel="noopener">irregex</a>, not <code>java.util.regex</code> — common patterns work, some Java-specific features differ</td></tr>
       </tbody>
