@@ -1,0 +1,64 @@
+# Jolt
+
+> Jolt is a Clojure implementation on Scheme. It reads Clojure source, analyzes
+> it to a host-neutral IR, emits Scheme, and runs it — on Chez by default, or on
+> Gambit compiled to JavaScript for the browser. The compiler is self-hosted,
+> written in Clojure and compiling itself, and ships a Clojure-compatible
+> standard library. Programs compile to single self-contained native binaries
+> with no JVM and no runtime install.
+
+Important: there is no JVM underneath Jolt, so JVM reasoning does not carry
+over. Most portable Clojure runs unchanged — persistent collections, the numeric
+tower (including `BigDecimal`), lazy seqs, transducers, protocols/records,
+multimethods, metadata, atoms, refs/STM, `future`/`promise`/`agent`/`pmap`,
+`core.async`, runtime `eval`, and the full reader. What differs: there is no Java
+interop (no reflection, no `gen-class`/`proxy`; `Class.`/`Class/static`/`.method`
+resolve only against a shimmed subset of `java.*` written in Scheme, and a class
+token is a name, not a loaded class); those shims implement their JVM
+counterparts' API but not the JVM's runtime, so classloaders, JVM GC behaviour,
+and JVM thread-lifetime rules do not apply; strings are codepoint-indexed rather
+than UTF-16, so `(count "😀")` is 1; regexes compile through irregex, not
+`java.util.regex`; and `clojure.core` coverage is broad but not total. C
+libraries are reached through the `jolt.ffi` foreign-function interface.
+Read the Differences page before assuming a JVM behaviour holds.
+
+## Start here
+
+- [Getting Started](https://jolt-lang.github.io/docs/getting-started.html): install, evaluate, run a project, dependency requirements per platform.
+- [Differences from Clojure](https://jolt-lang.github.io/docs/differences.html): the divergences from JVM Clojure. Read this first when porting code.
+- [Rationale](https://jolt-lang.github.io/docs/rationale.html): why a Clojure on Scheme, and what it is for.
+- [Source repository](https://github.com/jolt-lang/jolt): the compiler, runtime, and standard library.
+
+## Guides
+
+- [Building & Running](https://jolt-lang.github.io/docs/building-and-deps.html): `deps.edn` projects, AOT compilation to a native binary, typed arithmetic and inference.
+- [REPL-Driven Development](https://jolt-lang.github.io/docs/repl-driven-development.html): the nREPL server and editor setup (CIDER, Calva, Cursive).
+- [Writing Libraries](https://jolt-lang.github.io/docs/writing-libraries.html): publishing a jolt library, the `.jolt`/`.cljc` extension rules.
+- [Testing](https://jolt-lang.github.io/docs/testing.html): `clojure.test` on jolt and how the conformance corpus works.
+- [Host Interop](https://jolt-lang.github.io/docs/host-interop.html): which `java.*` classes are shimmed, and how to register your own host classes.
+- [Native Interop (FFI)](https://jolt-lang.github.io/docs/native-interop.html): binding C shared libraries with `jolt.ffi`, and exporting jolt code behind a C ABI.
+- [Cljc Interop](https://jolt-lang.github.io/docs/cljc-interop.html): sharing source with JVM Clojure and ClojureScript.
+- [Fibers](https://jolt-lang.github.io/docs/fibers.html): lightweight concurrency.
+- [Extension Points](https://jolt-lang.github.io/docs/extension-points.html): the registries jolt exposes for libraries to extend.
+- [Numeric Performance](https://jolt-lang.github.io/docs/numeric-performance.html): unboxed flonum/fixnum arithmetic and type hints.
+- [Scheme Backends](https://jolt-lang.github.io/docs/scheme-backends.html): Chez versus Gambit, and the browser build.
+- [Libraries](https://jolt-lang.github.io/docs/libraries.html): the ported and native library ecosystem.
+
+## API reference
+
+- [Dependencies (jolt.deps)](https://jolt-lang.github.io/docs/api/deps.html)
+- [Foreign Functions (jolt.ffi)](https://jolt-lang.github.io/docs/api/ffi.html)
+- [File System (babashka.fs)](https://jolt-lang.github.io/docs/api/fs.html)
+- [Program Images (jolt.image)](https://jolt-lang.github.io/docs/api/image.html)
+- [Date & Time (jolt-lang/time)](https://jolt-lang.github.io/docs/api/time.html)
+- [Parser Combinators (jolt.parser)](https://jolt-lang.github.io/docs/api/parser.html)
+- [Infix Notation (jolt.infix)](https://jolt-lang.github.io/docs/api/infix.html)
+- [Utilities (jolt.util)](https://jolt-lang.github.io/docs/api/util.html)
+
+## Reference and internals
+
+- [Language Specification](https://jolt-lang.github.io/docs/spec/README.html): the reader, special forms, and per-function `clojure.core` coverage.
+- [deps.edn Internals](https://jolt-lang.github.io/docs/tools-deps.html): how dependency resolution works without Java.
+- [RFCs](https://jolt-lang.github.io/docs/rfc/README.html): design notes — transients, type hints, structural inference, success-type checking, compilation modes, program images, the portable Scheme layer.
+- [Module Map](https://jolt-lang.github.io/docs/MODULES.html): what each runtime and compiler file does.
+- [Seed & Overlay Registry](https://jolt-lang.github.io/docs/seed-overlay-registry.html): what is baked into the bootstrap seed versus loaded at runtime.

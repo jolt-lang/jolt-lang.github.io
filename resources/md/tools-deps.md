@@ -10,9 +10,10 @@ Scope, decided up front:
 - **pure `clj`/`cljc`** — anything needing the JVM won't load or run; expected.
 - **no classpath abstraction** — `require` just needs to find a dep's namespaces;
   "the classpath" is an ordered list of source directories.
-- **own resolver, own reader** — `deps.edn` is read by jolt's own reader, and
-  fetching is a thin shell-out to `git`/`curl`/`unzip`; no external package
-  manager.
+- **own resolver, own reader** — `deps.edn` is read by jolt's own reader. Git
+  deps shell out to `git`; Maven artifacts are fetched over HTTPS by jolt itself
+  (system OpenSSL via FFI, no `curl`) and unpacked with `unzip`. No external
+  package manager, and no Java.
 - **deps-agnostic runtime core** — resolution is a CLI front-end concern, not a
   runtime one. The runtime knows nothing about `deps.edn`; it only consumes a
   list of source roots. The CLI resolves a `deps.edn` into those roots before
