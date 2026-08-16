@@ -36,8 +36,9 @@
     <div class="hero-copy">
       <h1>Clojure that speaks C</h1>
       <p class="tagline">
-        Jolt is a self-hosted Clojure implementation that runs on Scheme:
-        Chez natively, Gambit for JavaScript, no JVM. Most portable Clojure
+        Jolt is a self-hosted Clojure implementation that runs on
+        a portable Scheme layer that supports multiple backends.
+        Chez natively, Gambit for JavaScript, no JVM. Most Clojure
         runs unchanged, any C library binds natively, and <code>jolt build</code>
         ships a single standalone binary.
       </p>
@@ -170,7 +171,7 @@ jolt -e <span class="syn-str">'(+ 1 2)'</span>        <span class="syn-comment">
     <p>Or run from a clone (needs <a href="https://cisco.github.io/ChezScheme/">Chez Scheme</a>) — no build step, the bootstrap seed is checked in:</p>
     <pre><code>git clone --recurse-submodules https://github.com/jolt-lang/jolt.git
 <span class="syn-kw">cd</span> jolt
-bin/jolt -e <span class="syn-str">'(+ 1 2)'</span>        <span class="syn-comment"># => 3</span></code></pre>
+jolt -e <span class="syn-str">'(+ 1 2)'</span>        <span class="syn-comment"># => 3</span></code></pre>
   </div>
 </section>
 
@@ -179,18 +180,18 @@ bin/jolt -e <span class="syn-str">'(+ 1 2)'</span>        <span class="syn-comme
     <h2>Usage</h2>
 
     <h3>Evaluate an expression</h3>
-    <pre><code>$ bin/jolt -e <span class="syn-str">'(->> (range 10) (filter even?) (map (fn [x] (* x x))) (reduce +))'</span>
+    <pre><code>$ jolt -e <span class="syn-str">'(->> (range 10) (filter even?) (map (fn [x] (* x x))) (reduce +))'</span>
 <span class="syn-comment"># 120</span>
-$ bin/jolt -e <span class="syn-str">'(/ 1 2)'</span>
+$ jolt -e <span class="syn-str">'(/ 1 2)'</span>
 <span class="syn-comment"># 1/2</span></code></pre>
 
     <h3>Run a project</h3>
-    <pre><code>bin/jolt run -m myapp.core   <span class="syn-comment"># resolve deps.edn, then run -main</span>
-bin/jolt -M:test [args]      <span class="syn-comment"># run an alias's :main-opts</span>
-bin/jolt path                <span class="syn-comment"># print the resolved source roots</span></code></pre>
+    <pre><code>jolt run -m myapp.core   <span class="syn-comment"># resolve deps.edn, then run -main</span>
+jolt -M:test [args]      <span class="syn-comment"># run an alias's :main-opts</span>
+jolt path                <span class="syn-comment"># print the resolved source roots</span></code></pre>
 
     <h3>Compile a standalone binary</h3>
-    <pre><code>bin/jolt build -m myapp.core -o myapp   <span class="syn-comment"># single self-contained executable</span>
+    <pre><code>jolt build -m myapp.core -o myapp   <span class="syn-comment"># single self-contained executable</span>
 ./myapp arg1 arg2                        <span class="syn-comment"># runs anywhere; args reach -main</span>
 <span class="syn-comment"># --opt for the optimized build, --dev for an unoptimized one</span></code></pre>
 
@@ -203,7 +204,7 @@ bin/jolt path                <span class="syn-comment"># print the resolved sour
     <p style="margin-top:12px;">Any C library binds the same way — the <a href="/docs/native-interop.html">native interop guide</a> covers types, memory, structs, and static linking.</p>
 
     <h3>nREPL</h3>
-    <pre><code>bin/jolt --nrepl-server      <span class="syn-comment"># auto-resolves deps.edn, writes .nrepl-port</span>
+    <pre><code>jolt --nrepl-server      <span class="syn-comment"># auto-resolves deps.edn, writes .nrepl-port</span>
 <span class="syn-comment"># connect CIDER / Calva / Cursive via the .nrepl-port file, then</span>
 <span class="syn-comment"># redefine a var and the next call sees it — no restart</span></code></pre>
     <p style="margin-top:12px;">Develop against a live process: see <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>.</p>
