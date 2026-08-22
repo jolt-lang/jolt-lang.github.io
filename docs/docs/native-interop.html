@@ -168,7 +168,7 @@
     
     <nav class="toc">
       <h2>Contents</h2>
-      <ol class="contents"><li><a href="#declaring_the_native_library">Declaring the native library</a><ol><li><a href="#which_library_serves_a_symbol">Which library serves a symbol</a></li><li><a href="#static_vs_dynamic_linking_in_a_built_binary">Static vs dynamic linking in a built binary</a></li></ol></li><li><a href="#binding_a_function">Binding a function</a><ol><li><a href="#blocking">:blocking</a></li><li><a href="#varargs">:varargs</a></li></ol></li><li><a href="#types_at_the_boundary">Types at the boundary</a></li><li><a href="#memory_and_strings">Memory and strings</a><ol><li><a href="#out-parameters">Out-parameters</a></li><li><a href="#structs_by_offset">Structs by offset</a></li><li><a href="#binary_data">Binary data</a></li></ol></li><li><a href="#errno">errno</a></li><li><a href="#checklist_for_a_binding">Checklist for a binding</a></li><li><a href="#calling_into_jolt_from_c">Calling into Jolt from C</a></li></ol>
+      <ol class="contents"><li><a href="#declaring_the_native_library">Declaring the native library</a><ol><li><a href="#which_library_serves_a_symbol">Which library serves a symbol</a></li><li><a href="#static_vs_dynamic_linking_in_a_built_binary">Static vs dynamic linking in a built binary</a></li></ol></li><li><a href="#binding_a_function">Binding a function</a><ol><li><a href="#blocking">:blocking</a></li><li><a href="#varargs">:varargs</a></li></ol></li><li><a href="#types_at_the_boundary">Types at the boundary</a></li><li><a href="#memory_and_strings">Memory and strings</a><ol><li><a href="#out-parameters">Out-parameters</a></li><li><a href="#structs_by_layout">Structs by layout</a></li><li><a href="#structs_by_offset">Structs by offset</a></li><li><a href="#binary_data">Binary data</a></li></ol></li><li><a href="#errno">errno</a></li><li><a href="#checklist_for_a_binding">Checklist for a binding</a></li><li><a href="#calling_into_jolt_from_c">Calling into Jolt from C</a></li></ol>
     </nav>
     
     <div id="content">
@@ -216,7 +216,12 @@
 
 &#40;ffi/null&#41;  &#40;ffi/null? p&#41;   ; the null pointer, and the test
 &#40;ffi/loaded? name&#41;          ; was a library loaded?
-</code></pre><h3 id="out-parameters">Out-parameters</h3><p>C functions that "return" through a pointer argument are the common case. Allocate a cell, pass its address, read it back. From the db library opening a connection (<code>sqlite3&#95;open&#40;path, &amp;db&#41;</code>):</p><pre><code class="clojure">&#40;defn open &#91;path&#93;
+</code></pre><p>Rather than pairing each <code>alloc</code> with a <code>free</code> on every path out — including the one an exception takes — bind it for a scope:</p><pre><code class="clojure">&#40;ffi/with-alloc &#91;p 64&#93; ...&#41;             ; freed however the body ends
+&#40;ffi/with-out &#91;pp :pointer&#93; ...&#41;        ; one scalar, for an out-parameter
+&#40;ffi/with-layout &#91;p a-layout&#93; ...&#41;      ; one instance of a layout
+&#40;ffi/with-c-string &#91;s &quot;SELECT 1&quot;&#93; ...&#41;  ; a NUL-terminated UTF-8 copy
+&#40;ffi/with-c-string-array &#91;argv 2&#93; &#91;&quot;a&quot; &quot;b&quot;&#93; ...&#41;
+</code></pre><p>Each returns the body's value, and frees exactly what it allocated — a handle C gave you is still yours to close. The pointer is valid only inside the body.</p><h3 id="out-parameters">Out-parameters</h3><p>C functions that "return" through a pointer argument are the common case. Allocate a cell, pass its address, read it back. From the db library opening a connection (<code>sqlite3&#95;open&#40;path, &amp;db&#41;</code>):</p><pre><code class="clojure">&#40;defn open &#91;path&#93;
   &#40;let &#91;pp &#40;ffi/alloc &#40;ffi/sizeof :pointer&#41;&#41;&#93;   ; space for a db&#42;
     &#40;try
       &#40;let &#91;rc &#40;sqlite3-open path pp&#41;            ; C writes the handle into pp
@@ -225,7 +230,31 @@
           &#40;throw &#40;ex-info &#40;str &quot;sqlite open failed: &quot; path&#41; {:rc rc}&#41;&#41;&#41;
         db&#41;
       &#40;finally &#40;ffi/free pp&#41;&#41;&#41;&#41;&#41;
-</code></pre><h3 id="structs&#95;by&#95;offset">Structs by offset</h3><p>There is no struct introspection — you write the layout out as byte offsets and use <code>ffi/read</code>/<code>ffi/write</code>. The http-client's zlib binding lays out <code>z&#95;stream</code> by hand:</p><pre><code class="clojure">&#40;def &#94;:private ZS 112&#41;            ; sizeof&#40;z&#95;stream&#41;, LP64
+</code></pre><p>or, with the allocation scoped:</p><pre><code class="clojure">&#40;defn open &#91;path&#93;
+  &#40;ffi/with-out &#91;pp :pointer&#93;
+    &#40;let &#91;rc &#40;sqlite3-open path pp&#41;&#93;
+      &#40;when-not &#40;= rc SQLITE-OK&#41;
+        &#40;throw &#40;ex-info &#40;str &quot;sqlite open failed: &quot; path&#41; {:rc rc}&#41;&#41;&#41;
+      &#40;ffi/read pp :pointer&#41;&#41;&#41;&#41;
+</code></pre><h3 id="structs&#95;by&#95;layout">Structs by layout</h3><p>Declare the struct and let Chez work out the ABI — size, alignment and every field offset — instead of counting bytes:</p><pre><code class="clojure">&#40;def date &#40;ffi/layout &#91;:struct &#91;&#91;:year :int32&#93; &#91;:month :uint8&#93; &#91;:day :uint8&#93;&#93;&#93;&#41;&#41;
+
+&#40;ffi/layout-size date&#41;          ; =&gt; 8, the padding included
+&#40;ffi/field-offset date :month&#41;  ; =&gt; 4
+
+&#40;ffi/with-layout &#91;p date&#93;                  ; allocated and freed for the body
+  &#40;ffi/write-field p date :year 2026&#41;
+  &#40;ffi/read-field p date :year&#41;&#41;
+</code></pre><p>Fields nest, and a nested field is reached by path:</p><pre><code class="clojure">&#40;def event &#40;ffi/layout &#91;:struct &#91;&#91;:tag :uint8&#93;
+                                 &#91;:when &#91;:struct &#91;&#91;:year :int32&#93; &#91;:month :uint8&#93;&#93;&#93;&#93;
+                                 &#91;:seq :uint16&#93;&#93;&#93;&#41;&#41;
+&#40;ffi/read-field p event &#91;:when :year&#93;&#41;
+</code></pre><p>A struct passed or returned <strong>by value</strong> uses the same descriptor, wrapped in <code>&#91;:by-value ...&#93;</code>. An argument is a pointer to storage you own; an aggregate-returning call takes a destination pointer first, writes the result there and returns it:</p><pre><code class="clojure">;; the descriptor is read at compile time, so write it out at the call
+&#40;ffi/defcfn score &quot;date&#95;score&quot;
+  &#91;&#91;:by-value &#91;:struct &#91;&#91;:year :int32&#93; &#91;:month :uint8&#93; &#91;:day :uint8&#93;&#93;&#93;&#93;&#93; :int64&#41;
+
+&#40;ffi/defcfn make-date &quot;make&#95;date&quot; &#91;:int32 :uint8 :uint8&#93;
+  &#91;:by-value &#91;:struct &#91;&#91;:year :int32&#93; &#91;:month :uint8&#93; &#91;:day :uint8&#93;&#93;&#93;&#93;&#41;
+</code></pre><p>Layouts cover fixed-size scalars and nested structs. Arrays, unions, bitfields and explicit packing are not modelled — for those, and for any struct whose shape you cannot state literally, lay it out by offset as below.</p><h3 id="structs&#95;by&#95;offset">Structs by offset</h3><p>Written out as byte offsets, using <code>ffi/read</code>/<code>ffi/write</code> directly. The http-client's zlib binding lays out <code>z&#95;stream</code> by hand:</p><pre><code class="clojure">&#40;def &#94;:private ZS 112&#41;            ; sizeof&#40;z&#95;stream&#41;, LP64
 &#40;def &#94;:private O-next-in 0&#41;
 &#40;def &#94;:private O-avail-in 8&#41;
 &#40;def &#94;:private O-next-out 24&#41;
