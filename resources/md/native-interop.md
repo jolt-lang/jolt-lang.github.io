@@ -149,6 +149,20 @@ Foreign memory is manual. Allocate, use, free — there is no finalizer:
 (ffi/loaded? name)          ; was a library loaded?
 ```
 
+Rather than pairing each `alloc` with a `free` on every path out — including the
+one an exception takes — bind it for a scope:
+
+```clojure
+(ffi/with-alloc [p 64] ...)             ; freed however the body ends
+(ffi/with-out [pp :pointer] ...)        ; one scalar, for an out-parameter
+(ffi/with-layout [p a-layout] ...)      ; one instance of a layout
+(ffi/with-c-string [s "SELECT 1"] ...)  ; a NUL-terminated UTF-8 copy
+(ffi/with-c-string-array [argv 2] ["a" "b"] ...)
+```
+
+Each returns the body's value, and frees exactly what it allocated — a handle C
+gave you is still yours to close. The pointer is valid only inside the body.
+
 ### Out-parameters
 
 C functions that "return" through a pointer argument are the common case. Allocate a cell, pass its address, read it back. From the db library opening a connection (`sqlite3_open(path, &db)`):
@@ -165,9 +179,63 @@ C functions that "return" through a pointer argument are the common case. Alloca
       (finally (ffi/free pp)))))
 ```
 
+or, with the allocation scoped:
+
+```clojure
+(defn open [path]
+  (ffi/with-out [pp :pointer]
+    (let [rc (sqlite3-open path pp)]
+      (when-not (= rc SQLITE-OK)
+        (throw (ex-info (str "sqlite open failed: " path) {:rc rc})))
+      (ffi/read pp :pointer))))
+```
+
+### Structs by layout
+
+Declare the struct and let Chez work out the ABI — size, alignment and every
+field offset — instead of counting bytes:
+
+```clojure
+(def date (ffi/layout [:struct [[:year :int32] [:month :uint8] [:day :uint8]]]))
+
+(ffi/layout-size date)          ; => 8, the padding included
+(ffi/field-offset date :month)  ; => 4
+
+(ffi/with-layout [p date]                  ; allocated and freed for the body
+  (ffi/write-field p date :year 2026)
+  (ffi/read-field p date :year))
+```
+
+Fields nest, and a nested field is reached by path:
+
+```clojure
+(def event (ffi/layout [:struct [[:tag :uint8]
+                                 [:when [:struct [[:year :int32] [:month :uint8]]]]
+                                 [:seq :uint16]]]))
+(ffi/read-field p event [:when :year])
+```
+
+A struct passed or returned **by value** uses the same descriptor, wrapped in
+`[:by-value ...]`. An argument is a pointer to storage you own; an
+aggregate-returning call takes a destination pointer first, writes the result
+there and returns it:
+
+```clojure
+;; the descriptor is read at compile time, so write it out at the call
+(ffi/defcfn score "date_score"
+  [[:by-value [:struct [[:year :int32] [:month :uint8] [:day :uint8]]]]] :int64)
+
+(ffi/defcfn make-date "make_date" [:int32 :uint8 :uint8]
+  [:by-value [:struct [[:year :int32] [:month :uint8] [:day :uint8]]]])
+```
+
+Layouts cover fixed-size scalars and nested structs. Arrays, unions, bitfields
+and explicit packing are not modelled — for those, and for any struct whose
+shape you cannot state literally, lay it out by offset as below.
+
 ### Structs by offset
 
-There is no struct introspection — you write the layout out as byte offsets and use `ffi/read`/`ffi/write`. The http-client's zlib binding lays out `z_stream` by hand:
+Written out as byte offsets, using `ffi/read`/`ffi/write` directly. The http-client's zlib binding lays out `z_stream` by hand:
 
 ```clojure
 (def ^:private ZS 112)            ; sizeof(z_stream), LP64

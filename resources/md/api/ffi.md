@@ -26,6 +26,94 @@ For the end-to-end guide to writing a binding — declaring the library in `deps
 (ffi/defcfn c-strlen  "strlen"  [:string] :size_t)
 ```
 
+## Struct layouts
+
+A layout compiles a literal, data-only descriptor into the ABI metadata for a C
+struct: its size, its alignment, and the byte offset of every field. Chez derives
+those from the same declarations the C compiler would, so a padded or nested
+struct comes out right without you counting bytes.
+
+- `layout` `descriptor` — compile `[:struct [[field type] ...]]`. Field names are
+  unqualified keywords and must be unique; a field is a fixed-size scalar or a
+  nested `[:struct ...]`. The descriptor must be a literal — it is read at compile
+  time, not evaluated.
+- `layout-size` `layout` — `sizeof` the struct, padding included.
+- `layout-alignment` `layout` — its alignment requirement.
+- `field-offset` `layout path` — the byte offset of a field. `path` is a keyword,
+  or a vector of them to reach into a nested struct.
+- `read-field` `ptr layout path` / `write-field` `ptr layout path value` — read or
+  write a scalar field by name, at the offset the layout knows.
+
+```clojure
+(def date (ffi/layout [:struct [[:year :int32] [:month :uint8] [:day :uint8]]]))
+
+(ffi/layout-size date)                ; => 8  (6 bytes, padded to int32 alignment)
+(ffi/field-offset date :month)        ; => 4
+
+(ffi/with-layout [p date]
+  (ffi/write-field p date :year 2026)
+  (ffi/write-field p date :month 8)
+  (ffi/read-field p date :year))       ; => 2026
+```
+
+A nested struct is addressed by path:
+
+```clojure
+(def event (ffi/layout [:struct [[:tag :uint8]
+                                 [:when [:struct [[:year :int32] [:month :uint8]]]]
+                                 [:seq :uint16]]]))
+(ffi/field-offset event [:when :year])
+(ffi/read-field p event [:when :month])
+```
+
+Layouts cover fixed-size scalar fields and nested structs. Arrays, unions,
+bitfields, explicit packing, and self-referential descriptors are not supported;
+lay those out by offset as before.
+
+## Structs by value
+
+A C function that takes or returns a struct *by value* — not a pointer to one —
+is declared with `[:by-value descriptor]` in place of a type keyword, using the
+same descriptor `layout` takes.
+
+An argument is a **non-null pointer to caller-owned storage** holding the struct's
+bytes; Jolt passes what it points at. An aggregate-returning function takes a
+**destination pointer as its first Jolt argument**, writes the returned struct
+there, and hands that pointer back. The buffer is always yours, so nothing
+allocates behind your back and the ownership is visible at the call site.
+
+The descriptor is read at compile time, so it has to be written out literally at
+the call — a `def` holding one will not do, in a signature any more than in
+`layout`.
+
+```clojure
+(def date (ffi/layout [:struct [[:year :int32] [:month :uint8] [:day :uint8]]]))
+
+;; int64_t date_score(struct date d);
+(ffi/defcfn score "date_score"
+  [[:by-value [:struct [[:year :int32] [:month :uint8] [:day :uint8]]]]] :int64)
+
+;; struct date make_date(int32_t y, uint8_t m, uint8_t d);
+(ffi/defcfn make-date "make_date" [:int32 :uint8 :uint8]
+  [:by-value [:struct [[:year :int32] [:month :uint8] [:day :uint8]]]])
+
+(ffi/with-layout [d date]
+  (ffi/write-field d date :year 2026)
+  (ffi/write-field d date :month 8)
+  (ffi/write-field d date :day 22)
+  (score d))                           ; => 20260822
+
+(ffi/with-layout [out date]
+  (make-date out 2026 8 22)            ; writes into `out`, returns it
+  (ffi/read-field out date :year))     ; => 2026
+```
+
+Nested structs, several aggregate arguments, a fixed aggregate before `:varargs`,
+and `:blocking` all work. A null aggregate pointer raises `NullPointerException` before the
+native call rather than faulting. Not supported: aggregate *variadic* arguments, an
+aggregate return combined with `:varargs`, and aggregates in `foreign-callable` /
+`export!` — those are rejected at compile time.
+
 ## Calling back into Jolt
 
 - `foreign-callable` `f argtypes rettype [:collect-safe]` — wrap a Jolt fn `f` as a C-callable function pointer: the inverse of `defcfn`, so C can call back *into* Jolt (a `qsort` comparator, a GTK signal handler, any C API that takes a callback). The args C passes arrive as Jolt values; the Jolt return is marshaled back per `rettype`. The callback stays live until `free-callable` releases it. Pass a trailing `:collect-safe` when C invokes the callback from a thread parked in a `:blocking` foreign call (e.g. a GUI main loop).
@@ -86,3 +174,35 @@ digest calls could silently land there and abort the process.
 - `string->ptr` `s` — allocate a NUL-terminated C string from `s` (free it yourself).
 - `ptr->string` `ptr` — read a NUL-terminated C string back.
 - `null` — the null pointer; `null?` `p` — the test.
+
+### Scoped allocation
+
+Every `alloc` needs a matching `free` on every path out, including the one an
+exception takes. These macros bind a pointer for the body and release it exactly
+once when the body ends, however it ends.
+
+- `with-alloc` `[ptr byte-count] & body` — allocate `byte-count` bytes.
+- `with-out` `[ptr scalar-type] & body` — allocate one scalar, for an out-parameter.
+- `with-layout` `[ptr layout] & body` — allocate one instance of a layout.
+- `with-c-string` `[ptr value] & body` — a NUL-terminated UTF-8 copy of `value`.
+- `with-c-string-array` `[ptr count] values & body` — an array of `count` C
+  strings. `values` is evaluated once, and if a conversion fails partway the
+  strings already built are freed before the error propagates.
+
+Each returns the body's value. The pointers are valid only inside the body — do
+not let one escape, since it is freed on the way out.
+
+```clojure
+(defn open [path]
+  (ffi/with-out [pp :pointer]                  ; freed on both paths
+    (let [rc (sqlite3-open path pp)]
+      (when-not (= rc SQLITE-OK)
+        (throw (ex-info (str "sqlite open failed: " path) {:rc rc})))
+      (ffi/read pp :pointer))))
+
+(ffi/with-c-string [s "SELECT 1"]
+  (sqlite3-prepare db s -1 stmt ffi/null))
+```
+
+These own only what they allocate. A handle C hands you — a `FILE*`, a
+connection, anything with its own `close` — is still yours to release.
