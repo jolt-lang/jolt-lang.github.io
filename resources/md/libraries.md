@@ -26,8 +26,7 @@ First-party libraries from the jolt-lang org.
 - **[glimmer-gtk](https://github.com/jolt-lang/glimmer-gtk)** — the GTK4 backend for glimmer: widget constructors, prop setters and `:on-*` signals bound through the FFI, Pango markup from hiccup, and the `g_application_run` app loop (including the main-thread marshalling that keeps nREPL-driven UI development safe).
 - **[glimmer-tui](https://github.com/jolt-lang/glimmer-tui)** — the terminal backend for glimmer, over ncursesw: a widget set, box layout, painting, and an input loop with keyboard focus and mouse support. Binds only the ncurses 6.0 API, which macOS and every Linux already ship, so a terminal UI needs nothing installed. Rendering goes through a screen abstraction with an in-memory implementation, so an interactive app can be mounted, typed into and asserted on with no tty.
 - **[glimmer-gl](https://github.com/jolt-lang/glimmer-gl)** — OpenGL primitives for glimmer: composable 3D geometry and shaders-as-data, plus `:gl-area` and `:scale` widgets registered into glimmer-gtk so a GL pane lives in the same reactive tree.
-- **[ring-chez-adapter](https://github.com/jolt-lang/ring-chez-adapter)** — Ring adapter for serving HTTP.
-- **[multipart](https://github.com/jolt-lang/multipart)** — RFC 7578 `multipart/form-data` parser (incremental push parser and `parse-form-data`), ported from [defnull/multipart](https://github.com/defnull/multipart); splits request bodies into `:params` and `:files` for ring.
+- **[ring-chez-adapter](https://github.com/jolt-lang/ring-chez-adapter)** — Ring adapter for serving HTTP, with the middleware whose Ring originals need a JVM library: file uploads (an RFC 7578 `multipart/form-data` parser ported from [defnull/multipart](https://github.com/defnull/multipart), incremental or all at once), gzip, and static files.
 
 ## JVM libraries
 
