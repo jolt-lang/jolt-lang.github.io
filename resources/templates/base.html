@@ -20,8 +20,9 @@
           <span class="brand-name">Jolt</span>
         </a>
         <ul class="links">
-          <li {% ifequal page "home.html" %}class="selected"{% endifequal %}><a href="/">Home</a></li>
-          <li {% ifequal page "docs.html" %}class="selected"{% endifequal %}><a href="/docs/getting-started.html">Docs</a></li>
+          <li {% ifequal nav "home" %}class="selected"{% endifequal %}><a href="/">Home</a></li>
+          <li {% ifequal nav "docs" %}class="selected"{% endifequal %}><a href="/docs/getting-started.html">Docs</a></li>
+          <li {% ifequal nav "get-involved" %}class="selected"{% endifequal %}><a href="/docs/get-involved.html">Get Involved</a></li>
           <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
         </ul>
         <a class="btn btn-primary nav-cta" href="/docs/getting-started.html">Get Started</a>

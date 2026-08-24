@@ -6,7 +6,7 @@
     <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
     <meta name="description" content="Jolt is a Clojure implementation on Scheme — Chez natively, Gambit for JavaScript. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
     <meta name="canonical" content="https://jolt-lang.github.io">
-    <title>Language Specification — Jolt</title>
+    <title>Get Involved — Jolt</title>
     <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
     <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
     <link href="/css/screen.css" rel="stylesheet" type="text/css" />
@@ -21,8 +21,8 @@
         </a>
         <ul class="links">
           <li ><a href="/">Home</a></li>
-          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
-          <li ><a href="/docs/get-involved.html">Get Involved</a></li>
+          <li ><a href="/docs/getting-started.html">Docs</a></li>
+          <li class="selected"><a href="/docs/get-involved.html">Get Involved</a></li>
           <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
         </ul>
         <a class="btn btn-primary nav-cta" href="/docs/getting-started.html">Get Started</a>
@@ -140,7 +140,7 @@
     <h3>Reference &amp; Internals</h3>
     <ul>
       
-      <li class="selected">
+      <li >
         <a href="/docs/spec/README.html">Language Specification</a>
       </li>
       
@@ -165,15 +165,15 @@
   </aside>
 
   <main class="docs-main">
-    <h1>Language Specification</h1>
+    <h1>Get Involved</h1>
     
     <nav class="toc">
       <h2>Contents</h2>
-      <ol class="contents"><li><a href="#the_clojure_language_specification_(draft)">The Clojure Language Specification (Draft)</a></li><li><a href="#documents">Documents</a></li><li><a href="#how_this_connects_to_the_test_suites">How this connects to the test suites</a></li></ol>
+      <ol class="contents"><li><a href="#join_the_conversation">Join the conversation</a></li><li><a href="#report_bugs_and_request_features">Report bugs and request features</a></li><li><a href="#contribute_code">Contribute code</a></li><li><a href="#improve_the_documentation">Improve the documentation</a></li></ol>
     </nav>
     
     <div id="content">
-      <h1 id="the&#95;clojure&#95;language&#95;specification&#95;(draft)">The Clojure Language Specification (Draft)</h1><p>A normative, implementation-independent specification of the Clojure language, developed alongside jolt's self-hosted compiler and validated by its executable conformance suites. <strong>Why</strong>: Clojure has no spec — every alternative implementation re-derives semantics from the reference implementation and folklore. See the RFC for motivation, scope, evidence sources, and process: <a href='/docs/rfc/0001-language-specification.html'><code>0001-language-specification.md</code></a>.</p><h2 id="documents">Documents</h2><table><thead><tr><th>Doc</th><th>Content</th><th>Status</th></tr></thead><tbody><tr><td><a href='/docs/spec/00-front-matter.html'><code>00-front-matter.md</code></a></td><td>conformance terms, entry format, host classification</td><td>drafted</td></tr><tr><td><a href='/docs/spec/02-reader.html'><code>02-reader.md</code></a></td><td>token grammar + reader-macro catalog</td><td>drafted</td></tr><tr><td><code>01</code>, <code>04</code>–<code>08</code></td><td>see chapter plan in front matter</td><td>planned</td></tr><tr><td><a href='/docs/spec/03-special-forms.html'><code>03-special-forms.md</code></a></td><td>special-form catalog + normative exemplars (<code>if</code>, <code>let&#42;</code>)</td><td>exemplars</td></tr><tr><td><a href='/docs/spec/09-core-library.html'><code>09-core-library.md</code></a></td><td>per-var entry format + exemplars (<code>first</code>, <code>reduce</code>, <code>parse-uuid</code>)</td><td>exemplars</td></tr><tr><td><a href='/docs/spec/coverage.html'><code>coverage.md</code></a></td><td>generated dashboard over the 694-var surface</td><td>generated</td></tr><tr><td><a href='/grammar.ebnf'>grammar.ebnf</a></td><td>reader surface syntax (EBNF), companion to <code>02-reader.md</code></td><td>reference</td></tr></tbody></table><p>Regenerate the dashboard after surface changes: <code>python3 tools/spec&#95;coverage.py</code> (reads <code>tools/clojuredocs-export.json</code> and probes a working jolt checkout via <code>bin/jolt</code>).</p><p>The <a href='/docs/spec/coverage.html'>coverage dashboard</a> is the source of truth for per-var status over the 694-var <code>clojure.core</code> surface: which vars are implemented, tested, and how each is classified (portable / host-dependent / JVM-specific).</p><h2 id="how&#95;this&#95;connects&#95;to&#95;the&#95;test&#95;suites">How this connects to the test suites</h2><ul><li><code>test/chez/corpus.edn</code> — the host-neutral behavioral corpus, one row per  case (<code>{:suite :label :expected :actual}</code>). The Chez compiler evaluates each  case via <code>host/chez/run-corpus.ss</code> (run with <code>make corpus</code>), and  <code>test/conformance/certify.clj</code> certifies every <code>:expected</code> against reference  JVM Clojure (run with <code>make certify</code>). Spec entries cite these cases.</li><li><code>test/conformance/</code> — the certification tooling and classified divergences  (<code>certify.clj</code>, <code>known-divergences.edn</code>); see its <code>README.md</code> and <code>SPEC.md</code>.</li><li><code>vendor/clojure-test-suite</code> — the cross-dialect suite; dialect splits there  are classification evidence.</li><li>jank's per-construct corpus (<code>&#126;/src/jank/compiler+runtime/test/jank</code>) is  the granularity model for §2/§3 conformance.</li></ul><p>The invariant: **every numbered normative statement names its conformance test**, or is marked UNVERIFIED. The spec cannot drift from the implementations that check it.</p>
+      <p>Jolt is developed in the open, and there are many ways to get involved.</p><h2 id="join&#95;the&#95;conversation">Join the conversation</h2><p>The easiest way to participate in development is the <strong>#jolt</strong> channel on <a href='https://clojurians.net'>Clojurians Slack</a> — that's where all the discussion happens. Sign up at <a href='https://clojurians.net'>clojurians.net</a>, join <strong>#jolt</strong>, and say hello.</p><p>It's the place to ask questions, share what you're building, get help with anything that isn't working, and follow — or weigh in on — design decisions as they happen.</p><h2 id="report&#95;bugs&#95;and&#95;request&#95;features">Report bugs and request features</h2><p>If something doesn't behave the way you expect, or you have an idea for an improvement, open an issue in the <a href='https://github.com/jolt-lang/jolt/issues'>jolt-lang/jolt</a> tracker. Steps to reproduce and the error output go a long way.</p><h2 id="contribute&#95;code">Contribute code</h2><p>Pull requests are welcome. The <a href='/docs/MODULES.html'>Module Map</a> is a contributor-oriented tour of the codebase, and the <a href='/docs/rfc/README.html'>RFCs</a> describe ongoing design work — pick something that interests you, and ask in <strong>#jolt</strong> if you're unsure where to start.</p><h2 id="improve&#95;the&#95;documentation">Improve the documentation</h2><p>The source for this site lives in the <a href='https://github.com/jolt-lang/jolt-lang.github.io'>jolt-lang/jolt-lang.github.io</a> repository. To update a page, edit the Markdown file under <code>resources/md</code>; to add one, create the file and register it in <code>resources/docpages.edn</code>.</p>
     </div>
   </main>
 </div>

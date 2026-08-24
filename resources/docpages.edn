@@ -31,9 +31,11 @@
   ["tools-deps.md"                "deps.edn Internals"                 "reference"]
   ["MODULES.md"                   "Module Map (Contributors)"          "reference"]
   ["seed-overlay-registry.md"     "Seed & Overlay Registry"            "reference"]
-  ["rfc/README.md"                "RFCs (Design Notes)"                "reference"]
+  ["rfc/README.md"                "RFCs (Design Notes)"              "reference"]
 
-  ["spec/00-front-matter.md"      "Spec: Front Matter"                 "page"]
+  ["get-involved.md"              "Get Involved"                     "page"]
+
+  ["spec/00-front-matter.md"      "Spec: Front Matter"                "page"]
   ["spec/02-reader.md"            "Spec: Reader"                       "page"]
   ["spec/03-special-forms.md"     "Spec: Special Forms"                "page"]
   ["spec/09-core-library.md"      "Spec: Core Library"                 "page"]

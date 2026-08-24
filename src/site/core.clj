@@ -42,11 +42,12 @@
 (defn doc-page [docs doc-id]
   [(str "/docs/" (string/replace doc-id #".md$" ".html"))
    "docs.html"
-   (render-doc docs doc-id)])
+   (assoc (render-doc docs doc-id)
+          :nav (if (= doc-id "get-involved.md") "get-involved" "docs"))])
 
 (defn pages [docs]
   (into
-    [["/index.html" "home.html"]
+    [["/index.html" "home.html" {:nav "home"}]
      ["/404.html" "404.html"]]
     (map (partial doc-page docs) (keys (dissoc docs :docs-by-topic :topics)))))
 
