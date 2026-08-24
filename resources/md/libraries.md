@@ -17,6 +17,7 @@ First-party libraries from the jolt-lang org.
 - **[crypto](https://github.com/jolt-lang/crypto)** — OpenSSL FFI (hashing, HMAC, ciphers); backs ring-defaults' session/CSRF crypto.
 - **[time](https://github.com/jolt-lang/time)** — the formatting and zone layer of `java.time` (`DateTimeFormatter`, `ZoneOffset`/`ZoneId`, `ZonedDateTime`/`OffsetDateTime`, named-zone offsets and DST, localized formatting, `java.util.Locale`), plus [tick](https://github.com/juxt/tick)'s idiomatic API. The base value types (`Instant`, `LocalDate`, `Duration`, `Period`, `Year`/`YearMonth`, …) are in core with no dependency; this library adds the rest (RFC 0008).
 - **[transit-jolt](https://github.com/jolt-lang/transit-jolt)** — Transit (JSON) read/write.
+- **[jolt-fressian](https://github.com/jolt-lang/jolt-fressian)** — [Fressian](https://github.com/Datomic/fressian) binary serialization, the format Datomic and `clojure.data.fressian` use. Wire-compatible both ways, gated against a real JVM Fressian reader and writer.
 - **[instaparse](https://github.com/jolt-lang/instaparse)** — context-free grammars (EBNF/ABNF) turned into parsers: left-recursive and ambiguous grammars, PEG-style lookahead, hiccup and enlive output, detailed error reporting. A port of [Engelberg/instaparse](https://github.com/Engelberg/instaparse).
 - **[router](https://github.com/jolt-lang/router)** — routing trie that mirrors `reitit.Trie`, so reitit runs on Jolt.
 - **[logging](https://github.com/jolt-lang/logging)** — logging API with a native backend (drives `clojure.tools.logging`).
