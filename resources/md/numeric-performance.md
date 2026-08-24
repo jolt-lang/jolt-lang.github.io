@@ -1,16 +1,16 @@
-Jolt compiles to Chez Scheme, which represents small integers and flonums close to the metal (tagged fixnums and unboxed flonums), and jolt leans on that to run tight numeric code without the boxing and megamorphic dispatch a dynamic language usually pays. The key idea: when jolt can *prove* a value is a `double` (flonum) or a `long` (fixnum), it emits the native Chez operation — `fl+`/`fl*`/`flsqrt`, `fx+`/`fx*` — instead of the generic numeric-tower path that inspects the operand's type at runtime. This page is about how that proof happens and how you help it along.
+Jolt compiles to Chez Scheme, which represents small integers and flonums close to the metal (tagged fixnums and unboxed flonums), and jolt leans on that to run tight numeric code without the boxing and megamorphic dispatch a dynamic language usually pays. The key idea: when jolt can *prove* a value is a `double` (flonum) or a `long` (fixnum), it emits the native Chez operation (`fl+`/`fl*`/`flsqrt`, `fx+`/`fx*`) instead of the generic numeric-tower path that inspects the operand's type at runtime. This page is about how that proof happens and how you help it along.
 
-Everything here is a pure optimization: it never changes a result, only how fast it runs. A program that gives jolt no type information still runs correctly through the generic path — it is just slower in a hot loop.
+Everything here is a pure optimization: it never changes a result, only how fast it runs. A program that gives jolt no type information still runs correctly through the generic path; it is just slower in a hot loop.
 
 ## Most of the time you write plain Clojure
 
-Jolt infers numeric types structurally, with no hints, in a closed-world build ([RFC 0005](/docs/rfc)). A few things fall out of that:
+Jolt infers numeric types structurally, with no hints, in a closed-world build ([RFC 0005](/docs/rfc)). That has a few consequences:
 
-- **Whole-program parameter inference.** A function whose every call site passes a flonum has its parameter typed `double`, so its body unboxes — even with no `^double` hint. An integer caller leaves it generic; a function that escapes (stored in a var, passed around) stays dynamic.
+- **Whole-program parameter inference.** A function whose every call site passes a flonum has its parameter typed `double`, so its body unboxes, even with no `^double` hint. An integer caller leaves it generic; a function that escapes (stored in a var, passed around) stays dynamic.
 - **Record field inference.** A `defrecord` whose constructor is only ever called with flonums for a field has that field typed `double`, so reads off the field unbox and arithmetic over them lowers to `fl` ops. All-flonum construction is enough; you don't annotate the field.
 - **Flonum contagion.** A numeric field read next to a proven `double` operand is coerced (`exact->inexact`) and lowers to `fl*`, matching Clojure's contagion rules, without giving up the generic path where the type isn't proven.
 
-So idiomatic numeric code — a `defrecord` of doubles, functions over them, a `reduce` accumulating a sum — often unboxes on its own. Reach for hints when the inference can't see enough: across a var boundary, at an entry point, or on a value that comes from outside the closed world.
+So idiomatic numeric code (a `defrecord` of doubles, functions over them, a `reduce` accumulating a sum) often unboxes on its own. Reach for hints when the inference can't see enough: across a var boundary, at an entry point, or on a value that comes from outside the closed world.
 
 ## Hints, when you need them
 
@@ -62,6 +62,6 @@ Because the result types `double`, a `Math` call in the middle of an arithmetic 
 
 ## How to tell it worked
 
-The numeric fast paths are covered by gates in the jolt repo (`make numeric`, `numwp`, `mandelbrot-num`, `fieldnum`, `fieldjoin`, `contagion`, `flarr`, `mathfl`) that assert the emitted Scheme contains the native op — `fl+`, `jolt-flaget`, `flsqrt` — and not the generic dispatch. If you are tuning a kernel and want to confirm it unboxes, those gates are the reference for what proven-numeric emission looks like, and the [`bench/`](https://github.com/jolt-lang/jolt/tree/main/bench) programs (mandelbrot, the numeric micro-benchmarks) are the wall-clock check.
+The numeric fast paths are covered by gates in the jolt repo (`make numeric`, `numwp`, `mandelbrot-num`, `fieldnum`, `fieldjoin`, `contagion`, `flarr`, `mathfl`) that assert the emitted Scheme contains the native op (`fl+`, `jolt-flaget`, `flsqrt`) and not the generic dispatch. If you are tuning a kernel and want to confirm it unboxes, those gates are the reference for what proven-numeric emission looks like, and the [`bench/`](https://github.com/jolt-lang/jolt/tree/main/bench) programs (mandelbrot, the numeric micro-benchmarks) are the wall-clock check.
 
 Remember the fallback is always correctness: if a value can't be proven numeric, jolt runs it through the generic tower and the answer is the same. Hints and structural shape only decide whether that happens in a register or through a dispatch.

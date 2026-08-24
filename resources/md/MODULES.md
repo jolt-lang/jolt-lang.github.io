@@ -15,7 +15,7 @@ Where things live and what to read before changing them. Start here to answer
 | Build & tooling | `host/chez/build.ss`, `emit-image.ss`, `compile-eval.ss`, `loader.ss`, `cli.ss`, `bootstrap.ss` | AOT binary build, cross-compile, runtime eval/load, CLI spine, seed mint. | no (except via `reader.ss`) |
 | Tests & gate | `test/chez/`, `test/conformance/`, `host/chez/run-*.ss`, `Makefile` | Corpus (JVM oracle), unit, per-feature tests. Every `make` target has a comment. | no |
 
-**The reader is in `host/chez/reader.ss`** (Scheme, a seed source) — *not* in
+**The reader is in `host/chez/reader.ss`** (Scheme, a seed source), *not* in
 `jolt-core/jolt/` with the rest of the compiler. Re-mint applies to it.
 
 `rt.ss` is the runtime's load-order manifest: it `(load …)`s every shim in
@@ -48,9 +48,9 @@ composed and where a given `.ss` fits.
 
 Two homes, with a defined precedence:
 
-1. **Native shim** — a `(def-var! "clojure.core" "name" …)` in a `host/chez/*.ss`
+1. **Native shim**: a `(def-var! "clojure.core" "name" …)` in a `host/chez/*.ss`
    (hot/representation-coupled fns: `first`, `get`, `=`, the predicates).
-2. **Overlay** — a `defn` in a `jolt-core/clojure/core/NN-*.clj` tier (most of
+2. **Overlay**: a `defn` in a `jolt-core/clojure/core/NN-*.clj` tier (most of
    `clojure.core`, in portable Clojure).
 3. **`post-prelude.ss`** re-asserts a handful of natives *after* the overlay loads,
    so the native version wins (the overlay's value-reading versions are wrong for
@@ -60,7 +60,7 @@ Two homes, with a defined precedence:
 `grep -rn 'defn frequencies' jolt-core/clojure/core` to find a given fn. See
 [seed-overlay-registry.md](/docs/seed-overlay-registry.html) for the shadowing mechanism.
 
-## Cross-cutting features — touch points
+## Cross-cutting features: touch points
 
 A feature's *core* lives in one file; these are the other files you must keep in
 sync when changing it.

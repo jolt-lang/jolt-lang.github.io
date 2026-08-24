@@ -21,8 +21,8 @@ with the machine-readable name inventory in
 
 The runtime is written against three layers:
 
-1. **Portable Scheme.** Most of `host/chez/*.ss` — the collections, seqs,
-   reader, printer, vars, multimethods — is R6RS-flavored Scheme that a
+1. **Portable Scheme.** Most of `host/chez/*.ss` (the collections, seqs,
+   reader, printer, vars, multimethods) is R6RS-flavored Scheme that a
    port reuses unchanged. A lint gate (`make portcheck`) keeps
    Chez-only names out of these files.
 
@@ -31,16 +31,16 @@ The runtime is written against three layers:
    `sa-foreign-procedure`, `sa-continuation-frames`, and so on.
    `CONTRACT.txt` lists ~68 names grouped into capability tiers:
 
-   - `system` — clocks, environment, exit. Every target implements these.
-   - `threads` — OS/green threads, mutexes, condition variables,
+   - `system`: clocks, environment, exit. Every target implements these.
+   - `threads`: OS/green threads, mutexes, condition variables,
      thread-inherited parameters.
-   - `introspect` — continuation frames for backtraces.
-   - `ffi` — foreign procedures and callables.
-   - `native-compile` — AOT compilation of emitted code.
-   - `image` — heap image dump/restore.
+   - `introspect`: continuation frames for backtraces.
+   - `ffi`: foreign procedures and callables.
+   - `native-compile`: AOT compilation of emitted code.
+   - `image`: heap image dump/restore.
 
    A target implements a tier or **degrades it honestly**: an absent
-   capability raises a message-carrying error or returns empty — it never
+   capability raises a message-carrying error or returns empty; it never
    fakes a result. The Gambit backend runs with `ffi`, `native-compile`,
    and `image` degraded, and that is a supported configuration.
 
@@ -48,7 +48,7 @@ The runtime is written against three layers:
    shared: the adapter itself (`scheme-adapter-runtime.ss`) and the hash
    kernel (`hasheq.ss`), whose Chez build uses unsafe fixnum ops that
    other Schemes spell differently. A port also supplies whatever prelude
-   shims its host needs — Gambit's (`host/gambit/prelude-shims.ss`) maps
+   shims its host needs. Gambit's (`host/gambit/prelude-shims.ss`) maps
    the R6RS record, hashtable, and `fx` surfaces onto Gambit natives.
 
 ## The compiler side
@@ -57,10 +57,10 @@ The backend emits Scheme once; per-target differences go through a
 primitive table (`target-prims` in `jolt-core/jolt/backend_scheme.clj`).
 The main entry is the unsafe-op prefix: on Chez, proven-safe sites emit
 `#3%`-prefixed ops; a target that maps the prefix to the empty string gets
-checked ops everywhere — safe, portable, and slower. FFI lowerings go
+checked ops everywhere: safe, portable, and slower. FFI lowerings go
 through four `sa-foreign-*` syntax forms the adapter defines.
 
-The seed — `clojure.core` plus the compiler image, as emitted Scheme — is
+The seed (`clojure.core` plus the compiler image, as emitted Scheme) is
 **cross-minted on Chez** for each target: `make gambitseed` runs the
 emitter with the backend set to `:gambit` and writes
 `host/gambit/seed/{prelude,image}.ss`. A port never bootstraps itself from
@@ -73,11 +73,11 @@ Hard requirements, learned the hard way and now pinned by gates:
 - **R7RS-level basics** plus: `syntax-rules` macros, `call/cc`,
   proper tail calls, the full numeric tower (exact integers, bignums,
   ratios, flonums), string ports, and Unicode strings.
-- **`eval` into a persistent top-level environment** — a define evaluated
+- **`eval` into a persistent top-level environment**: a define evaluated
   at runtime must be visible to later evals. This is the entire runtime
   compile path (`jolt-compile-eval` evaluates emitted text).
 - **Records with parent types and inclusive predicates** (R6RS-style).
-  If the host's native records can't express parents — Gambit's can't —
+  If the host's native records can't express parents (Gambit's can't),
   the port implements records over another representation (Gambit uses
   tagged vectors with a type registry).
 - **Hashtables** with eq/eqv/equal semantics and weak-key tables.
@@ -88,7 +88,7 @@ Hard requirements, learned the hard way and now pinned by gates:
 Things a standard does not give you that the contract pins explicitly:
 error objects that carry their message and irritants; hash values that are
 stable 32-bit ints (the hash kernel must match Chez's murmur3 output
-bit-for-bit — the `gambitcheck` gate carries known-answer rows captured
+bit-for-bit; the `gambitcheck` gate carries known-answer rows captured
 from the Chez build); and the exact laziness of the seq tier.
 
 ## What the Gambit port looks like
@@ -96,15 +96,15 @@ from the Chez build); and the exact laziness of the seq tier.
 `host/gambit/` is a worked example of the whole recipe, about 3k lines of
 which the majority is generated or mechanical:
 
-- `prelude-shims.ss` — records, hashtables, `fx`/`fl` spellings,
+- `prelude-shims.ss`: records, hashtables, `fx`/`fl` spellings,
   conditions, threads mapped onto Gambit.
-- `scheme-adapter-runtime.ss` — the adapter: system tier real, `ffi` /
+- `scheme-adapter-runtime.ss`: the adapter: system tier real, `ffi` /
   `native-compile` / `image` raising cleanly.
-- `hasheq.ss` — the hash kernel in checked ops, byte-parity with Chez.
-- `rt-core.ss` — the target's kernel (var cells, exceptions, dispatch
+- `hasheq.ss`: the hash kernel in checked ops, byte-parity with Chez.
+- `rt-core.ss`: the target's kernel (var cells, exceptions, dispatch
   registries), ported from `rt.ss`'s spec with the Chez FFI regions left
   out.
-- `records-gambit.ss`, `seed/` — **generated on Chez**, never edited:
+- `records-gambit.ss`, `seed/`: **generated on Chez**, never edited:
   pre-expanded macros and the cross-minted seed.
 - Gates: `make gambitcheck` (adapter + shims), `make gambitkernel`
   (the booted kernel, 113 checks), `make gambiteval` (jolt source through
@@ -113,8 +113,8 @@ which the majority is generated or mechanical:
 ### Choosing how much of the language to build
 
 A backend that exists to be small needs a way to say what it leaves out.
-`host/gambit/profiles.ss` names optional **feature groups** — regex, the
-compiler, `clojure.core` itself — and profiles built from them; a generator
+`host/gambit/profiles.ss` names optional **feature groups** (regex, the
+compiler, `clojure.core` itself) and profiles built from them; a generator
 writes the boot file for a profile on Chez, because Gambit resolves its
 includes at expansion time and the choice cannot be made at runtime.
 
@@ -133,7 +133,7 @@ the regex feature group was excluded
 ```
 
 A predicate over a type the build cannot hold answers `false` instead of
-raising — a value simply is not a regex — while anything that would produce or
+raising; a value is not a regex, while anything that would produce or
 consume that type raises. This is the same rule the capability tiers follow one
 level down, and it is why a reduced build is diagnosable rather than mysterious.
 
@@ -146,16 +146,16 @@ be dropped, so profiles trade features for the remaining third.
 - **Demo-grade, not production.** The Chez backend is where jolt is
   gated, benchmarked, and released. Gambit exists to prove the porting
   seam and to run in the browser.
-- **No FFI, AOT, or images** — those tiers raise. `jolt build`
+- **No FFI, AOT, or images**: those tiers raise. `jolt build`
   standalone binaries are Chez-only.
 - **Single-threaded boot.** Gambit satisfies the threads contract
   (its parameters fork-inherit), but the demo boot stubs the concurrency
   tier: `future`/`agent`/`promise` raise.
-- **Checked ops only** — no unsafe fast paths, and on the JavaScript
+- **Checked ops only**: no unsafe fast paths, and on the JavaScript
   target all fixnum ops are generic (JS fixnums are ~30 bits; 32-bit hash
   values overflow them).
 - **Interpretation-speed eval.** The browser REPL compiles each form
-  and evaluates it through Gambit's interpreter — fine for a REPL,
+  and evaluates it through Gambit's interpreter; fine for a REPL,
   not for benchmarks.
 
 ### JavaScript-target notes
@@ -179,13 +179,13 @@ recipe:
 1. Satisfy the `CONTRACT.txt` names for the tiers you implement; degrade
    the rest honestly.
 2. Write your prelude shims and `hasheq.ss`; get `gambitcheck`-style
-   known-answer rows green first — hash parity is load-bearing for every
+   known-answer rows green first; hash parity is load-bearing for every
    collection.
 3. Boot the portable kernel file by file; port `rt.ss`'s surface into
    your own `rt-core.ss` where its Chez regions don't apply.
 4. Add your `target-prims` entry, cross-mint the seed on Chez, and wire
    the eval path.
-5. Gate each layer as you go — the Gambit port's three gates are the
+5. Gate each layer as you go; the Gambit port's three gates are the
    template.
 
 The Gambit port took the equivalent of a few focused days with the

@@ -1,12 +1,12 @@
 # Fibers: green threads for core.async
 
-Jolt can run a `go` body on a **fiber** — a green thread scheduled inside the
-process — instead of on an operating-system thread. Fibers are cheap enough to
+Jolt can run a `go` body on a **fiber**, a green thread scheduled inside the
+process, instead of on an operating-system thread. Fibers are cheap enough to
 have hundreds of thousands of them, and they share channels with ordinary
 threads, so the two kinds of process interoperate freely.
 
-This is **opt-in**. By default `go` still spawns a real OS thread which is the
-safe general purpose default.
+This is **opt-in**. By default `go` spawns a real OS thread, which is the safe
+general-purpose default.
 
 ```clojure
 (require '[clojure.core.async :as a])
@@ -19,7 +19,7 @@ safe general purpose default.
   (a/go (a/<! ch)))
 ```
 
-`*go-backend*` is read when a `go` spawns rather tahn when it is compiled, so the
+`*go-backend*` is read when a `go` spawns rather than when it is compiled, so the
 binding covers every `go` that runs inside its scope along with the ones inside
 functions it calls.
 
@@ -93,7 +93,7 @@ It answers the same way on either backend, and on a `thread` block's channel too
 Monitoring any other channel gives `nil` rather than an error.
 
 `(timeout ms)` is served by one shared timer thread, so `(<! (timeout 100))`
-parks the fiber and costs no thread. `(Thread/sleep 100)` does not — see
+parks the fiber and costs no thread. `(Thread/sleep 100)` does not; see
 [what parks and what pins](#what_parks_and_what_pins) below.
 
 ## Parking works through function calls
@@ -120,8 +120,8 @@ reason.
 ## `<!` and `<!!` are the same thing on a fiber
 
 Off a fiber they differ as always: `<!` is the parking take, `<!!` the blocking
-one. On a fiber, **both park**. Parking preserves what a blocking take means —
-your code does not proceed until a value arrives — without holding the OS thread,
+one. On a fiber, **both park**. Parking preserves what a blocking take means
+(your code does not proceed until a value arrives) without holding the OS thread,
 so there is no reason to make one of them worse. The JVM throws if you use `<!!`
 in a `go` block; Jolt does not need to. The same goes for `alts!` and `alts!!`.
 
@@ -138,13 +138,13 @@ code does:
 
 ```clojure
 (binding [a/*go-backend* :fiber]
-  (a/go (let [v (a/<! in)]      ; rewritten — no continuation captured
+  (a/go (let [v (a/<! in)]      ; rewritten; no continuation captured
           (a/>! out (f v))))    ; rewritten
 
   (a/go (read-two ch)))         ; parks inside a call: captures, as before
 ```
 
-A body can mix the two freely — the parks it can see get the cheap form, the rest
+A body can mix the two freely: the parks it can see get the cheap form, the rest
 keep working exactly as they do today. Nothing needs annotating, and there is no
 case where you have to know which one you got.
 
@@ -182,7 +182,7 @@ is not running Scheme, so no timer fires for it.
 ## Locks work across a park
 
 A lock is a lock. You can hold a monitor across a `<!`, run a transaction that
-parks in the middle, and force a `delay` whose body waits on a channel —
+parks in the middle, and force a `delay` whose body waits on a channel;
 exclusion holds in every case, because those locks carry ownership on the fiber
 rather than on the OS thread it happens to be running on.
 
@@ -202,7 +202,7 @@ rather than on the OS thread it happens to be running on.
 ## What parks and what pins
 
 A fiber runs on a **carrier**, an OS thread shared by many fibers. Parking frees
-the carrier for other fibers. Blocking does not — it holds the carrier, and Jolt
+the carrier for other fibers. Blocking does not: it holds the carrier, and Jolt
 cannot move the queued fibers elsewhere, because a captured continuation can only
 be resumed on the thread that captured it. Adding carriers does not help; the
 stranded fibers are already bound to the blocked one.
@@ -247,7 +247,7 @@ its completion. No channel involved unless you bring one.
 
 `spawn` returns the fiber handle immediately; the body runs on the carrier
 pool, with the caller's dynamic bindings conveyed (`*txn*` never is). `join`
-waits — parking when called on a fiber, blocking on a thread — and returns the
+waits (parking when called on a fiber, blocking on a thread) and returns the
 body's value; with a timeout, `(fib/join f 100 :not-yet)` gives up. A body
 that throws kills its fiber, and `join` rethrows the original error:
 
@@ -260,7 +260,7 @@ that throws kills its fiber, and `join` rethrows the original error:
 
 `monitor!` observes a completion without waiting for it: the callback runs
 exactly once with `nil` for a clean finish or the error for a death, and a
-fiber that already finished fires it inline — registering can never race the
+fiber that already finished fires it inline; registering can never race the
 completion. It runs on the fiber's carrier, so keep it short and never block
 in it.
 
@@ -271,7 +271,7 @@ in it.
 The rest of the surface: `fiber?` (is this value a fiber handle),
 `current-fiber` / `in-fiber?` (where am I), `state`
 (`:ready`/`:running`/`:parked`/`:done`/`:dead`), and `yield` (reschedule
-behind the other fibers on this carrier — rarely needed, since preemption
+behind the other fibers on this carrier; rarely needed, since preemption
 already time-slices).
 
 Everything on the core.async page applies to a spawned body: channel ops and
@@ -281,7 +281,7 @@ freely.
 
 ## Tuning
 
-Both knobs are read **once, when the carrier pool starts** — set them before the
+Both knobs are read **once, when the carrier pool starts**; set them before the
 first `:fiber` `go`. Neither is dynamic, so `alter-var-root` rather than
 `binding`; a `binding` would be thread-local and the pool that reads them is on
 another thread.
@@ -295,8 +295,8 @@ another thread.
 (alter-var-root #'a/*fiber-carrier-count* (constantly 1))
 ```
 
-`jolt.fibers` mirrors the knobs as functions — `set-carrier-count!` /
-`carrier-count` and `set-preempt-ticks!` / `preempt-ticks` — writing the same
+`jolt.fibers` mirrors the knobs as functions (`set-carrier-count!` /
+`carrier-count`, `set-preempt-ticks!` / `preempt-ticks`) writing the same
 settings, so either spelling works and they never disagree. There is no value
 that turns preemption off: cooperative-only is an unbounded starvation window,
 so effectively-cooperative wants a very large quantum instead.
@@ -308,12 +308,12 @@ Jolt has.
 ## Choosing
 
 Use fibers when you have **many mostly-idle processes doing channel or socket
-work** — thousands of connections, a large pipeline, per-item processes. That is
+work** (thousands of connections, a large pipeline, per-item processes). That is
 where the spawn cost and the memory difference are decisive, and where fan-in
 throughput favours them.
 
 Stay on threads when your `go` bodies **block on something the poller does not
-cover** — file IO, FFI, `Thread/sleep` — or when you want a small number of
+cover** (file IO, FFI, `Thread/sleep`) or when you want a small number of
 genuinely parallel workers with no carrier to strand. `thread` is always
 available for the blocking part of an otherwise fiber-shaped program.
 

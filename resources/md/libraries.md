@@ -1,34 +1,34 @@
 Two kinds of libraries run on Jolt. **Jolt libraries** are first-party packages
-from the [jolt-lang](https://github.com/orgs/jolt-lang/repositories) org — many
+from the [jolt-lang](https://github.com/orgs/jolt-lang/repositories) org; many
 bind native code through Jolt's FFI to cover ground the JVM would get from
 `java.*`. **JVM libraries** are ordinary Clojure/JVM libraries that load and pass
-their conformance checks on Jolt unchanged (a few lean on host shims Jolt
-provides). See the [examples repository](https://github.com/jolt-lang/examples)
+their conformance checks on Jolt unchanged, a few leaning on host shims Jolt
+provides. See the [examples repository](https://github.com/jolt-lang/examples)
 for runnable projects.
 
 ## Jolt libraries
 
 First-party libraries from the jolt-lang org.
 
-- **[db](https://github.com/jolt-lang/db)** — Postgres and SQLite access (`jdbc.core`), binding libpq and libsqlite3 through the FFI.
-- **[http-client](https://github.com/jolt-lang/http-client)** — HTTP client over POSIX sockets, OpenSSL (TLS), and zlib.
-- **[xml](https://github.com/jolt-lang/xml)** — XML: `clojure.xml/parse` (libxml2) plus a `clojure.data.xml` emit API.
-- **[yaml](https://github.com/jolt-lang/yaml)** — YAML load/dump over the system libyaml (`jolt.yaml`, `clj-yaml.core` compat).
-- **[crypto](https://github.com/jolt-lang/crypto)** — OpenSSL FFI (hashing, HMAC, ciphers); backs ring-defaults' session/CSRF crypto.
-- **[time](https://github.com/jolt-lang/time)** — the formatting and zone layer of `java.time` (`DateTimeFormatter`, `ZoneOffset`/`ZoneId`, `ZonedDateTime`/`OffsetDateTime`, named-zone offsets and DST, localized formatting, `java.util.Locale`), plus [tick](https://github.com/juxt/tick)'s idiomatic API. The base value types (`Instant`, `LocalDate`, `Duration`, `Period`, `Year`/`YearMonth`, …) are in core with no dependency; this library adds the rest (RFC 0008).
-- **[transit-jolt](https://github.com/jolt-lang/transit-jolt)** — Transit (JSON) read/write.
-- **[jolt-fressian](https://github.com/jolt-lang/jolt-fressian)** — [Fressian](https://github.com/Datomic/fressian) binary serialization, the format Datomic and `clojure.data.fressian` use. Wire-compatible both ways, gated against a real JVM Fressian reader and writer.
-- **[instaparse](https://github.com/jolt-lang/instaparse)** — context-free grammars (EBNF/ABNF) turned into parsers: left-recursive and ambiguous grammars, PEG-style lookahead, hiccup and enlive output, detailed error reporting. A port of [Engelberg/instaparse](https://github.com/Engelberg/instaparse).
-- **[router](https://github.com/jolt-lang/router)** — routing trie that mirrors `reitit.Trie`, so reitit runs on Jolt.
-- **[logging](https://github.com/jolt-lang/logging)** — logging API with a native backend (drives `clojure.tools.logging`).
-- **[otel](https://github.com/jolt-lang/otel)** — OpenTelemetry SDK: tracing (`with-span`, W3C Trace Context propagation) and metrics (counters, histograms), exported over OTLP via [http-client](https://github.com/jolt-lang/http-client). Reads the standard `OTEL_*` environment variables; every API has a no-op fallback.
-- **[mulog](https://github.com/jolt-lang/mulog)** — structured event logging and micro-tracing: `log` events with global/lexical context, `trace` with flake trace-IDs, duration, and error capture, buffered dispatch to publishers (console built in). A port of [BrunoBonacci/mulog](https://github.com/BrunoBonacci/mulog), with the Java classes it bundles (Flake event IDs, NanoClock, the timer pool) supplied as portable Jolt registrations — flakes are bit-for-bit with the JVM's.
-- **[nrepl](https://github.com/jolt-lang/nrepl)** — nREPL server and client for editor connections.
-- **[glimmer](https://github.com/jolt-lang/glimmer)** — reactive UI toolkit: Reagent-style reactive atoms, components that return hiccup, and a reconciler that patches the live widget tree in place (positional and keyed). Toolkit-independent — widgets come from a backend, so the same components render as GTK widgets or as text in a terminal with one require changed.
-- **[glimmer-gtk](https://github.com/jolt-lang/glimmer-gtk)** — the GTK4 backend for glimmer: widget constructors, prop setters and `:on-*` signals bound through the FFI, Pango markup from hiccup, and the `g_application_run` app loop (including the main-thread marshalling that keeps nREPL-driven UI development safe).
-- **[glimmer-tui](https://github.com/jolt-lang/glimmer-tui)** — the terminal backend for glimmer, over ncursesw: a widget set, box layout, painting, and an input loop with keyboard focus and mouse support. Binds only the ncurses 6.0 API, which macOS and every Linux already ship, so a terminal UI needs nothing installed. Rendering goes through a screen abstraction with an in-memory implementation, so an interactive app can be mounted, typed into and asserted on with no tty.
-- **[glimmer-gl](https://github.com/jolt-lang/glimmer-gl)** — OpenGL primitives for glimmer: composable 3D geometry and shaders-as-data, plus `:gl-area` and `:scale` widgets registered into glimmer-gtk so a GL pane lives in the same reactive tree.
-- **[ring-chez-adapter](https://github.com/jolt-lang/ring-chez-adapter)** — Ring adapter for serving HTTP, with the middleware whose Ring originals need a JVM library: file uploads (an RFC 7578 `multipart/form-data` parser ported from [defnull/multipart](https://github.com/defnull/multipart), incremental or all at once), gzip, and static files.
+- **[db](https://github.com/jolt-lang/db)**: Postgres and SQLite access (`jdbc.core`), binding libpq and libsqlite3 through the FFI.
+- **[http-client](https://github.com/jolt-lang/http-client)**: HTTP client over POSIX sockets, OpenSSL (TLS), and zlib.
+- **[xml](https://github.com/jolt-lang/xml)**: `clojure.xml/parse` (libxml2) plus a `clojure.data.xml` emit API.
+- **[yaml](https://github.com/jolt-lang/yaml)**: YAML load/dump over the system libyaml (`jolt.yaml`, `clj-yaml.core` compat).
+- **[crypto](https://github.com/jolt-lang/crypto)**: OpenSSL FFI for hashing, HMAC, and ciphers; backs ring-defaults' session/CSRF crypto.
+- **[time](https://github.com/jolt-lang/time)**: the formatting and zone layer of `java.time` (`DateTimeFormatter`, `ZoneOffset`/`ZoneId`, `ZonedDateTime`/`OffsetDateTime`, localized formatting, `java.util.Locale`) plus [tick](https://github.com/juxt/tick)'s idiomatic API. The base value types (`Instant`, `LocalDate`, `Duration`, `Period`, `Year`/`YearMonth`, ...) are in core with no dependency; this library adds the rest (RFC 0008).
+- **[transit-jolt](https://github.com/jolt-lang/transit-jolt)**: Transit (JSON) read/write.
+- **[jolt-fressian](https://github.com/jolt-lang/jolt-fressian)**: [Fressian](https://github.com/Datomic/fressian) binary serialization, the format Datomic and `clojure.data.fressian` use. Wire-compatible both ways, gated against a real JVM Fressian reader and writer.
+- **[instaparse](https://github.com/jolt-lang/instaparse)**: context-free grammars (EBNF/ABNF) turned into parsers, a port of [Engelberg/instaparse](https://github.com/Engelberg/instaparse): left-recursive and ambiguous grammars, PEG-style lookahead, hiccup and enlive output, detailed error reporting.
+- **[router](https://github.com/jolt-lang/router)**: a routing trie that mirrors `reitit.Trie`, so reitit runs on Jolt.
+- **[logging](https://github.com/jolt-lang/logging)**: logging API with a native backend (drives `clojure.tools.logging`).
+- **[otel](https://github.com/jolt-lang/otel)**: OpenTelemetry SDK: tracing (`with-span`, W3C Trace Context propagation) and metrics (counters, histograms), exported over OTLP via [http-client](https://github.com/jolt-lang/http-client). Reads the standard `OTEL_*` environment variables; every API has a no-op fallback.
+- **[mulog](https://github.com/jolt-lang/mulog)**: structured event logging and tracing, a port of [BrunoBonacci/mulog](https://github.com/BrunoBonacci/mulog): `log` events with global/lexical context, `trace` with flake trace IDs, duration, and error capture, buffered dispatch to publishers (console built in). The Java classes it bundles (flake event IDs, NanoClock, the timer pool) are supplied as portable Jolt registrations; flakes are bit-for-bit with the JVM's.
+- **[nrepl](https://github.com/jolt-lang/nrepl)**: nREPL server and client for editor connections.
+- **[glimmer](https://github.com/jolt-lang/glimmer)**: reactive UI toolkit: Reagent-style reactive atoms, components that return hiccup, and a reconciler that patches the live widget tree in place (positional and keyed). Widgets come from a backend, so the same components render as GTK widgets or as text in a terminal.
+- **[glimmer-gtk](https://github.com/jolt-lang/glimmer-gtk)**: the GTK4 backend for glimmer: widget constructors, prop setters and `:on-*` signals bound through the FFI, Pango markup from hiccup, and the `g_application_run` app loop (including the main-thread marshalling that keeps nREPL-driven UI development safe).
+- **[glimmer-tui](https://github.com/jolt-lang/glimmer-tui)**: the terminal backend for glimmer, over ncursesw: a widget set, box layout, painting, and an input loop with keyboard focus and mouse support. Binds only the ncurses 6.0 API, which macOS and Linux already ship, so a terminal UI needs nothing installed. A screen abstraction with an in-memory implementation lets an interactive app be mounted, typed into, and asserted on without a tty.
+- **[glimmer-gl](https://github.com/jolt-lang/glimmer-gl)**: OpenGL primitives for glimmer: composable 3D geometry and shaders-as-data, plus `:gl-area` and `:scale` widgets registered into glimmer-gtk so a GL pane lives in the same reactive tree.
+- **[ring-chez-adapter](https://github.com/jolt-lang/ring-chez-adapter)**: Ring adapter for serving HTTP, with the middleware whose Ring originals need a JVM library: file uploads (an RFC 7578 `multipart/form-data` parser ported from [defnull/multipart](https://github.com/defnull/multipart), incremental or all at once), gzip, and static files.
 
 ## JVM libraries
 
@@ -36,66 +36,69 @@ Third-party Clojure/JVM libraries confirmed to run on Jolt.
 
 ### Web and routing
 
-- **[ring-core](https://github.com/ring-clojure/ring)** — via `:deps/root "ring-core"`, on the [ring-app example](https://github.com/jolt-lang/examples/tree/main/ring-app).
-- **[ring-codec](https://github.com/ring-clojure/ring-codec)** — URL/form encoding.
-- **[ring-defaults](https://github.com/ring-clojure/ring-defaults)** — the standard middleware stack (params, static resources + content-type, session, security headers); session/CSRF crypto via [crypto](https://github.com/jolt-lang/crypto).
-- **[reitit-core](https://github.com/metosin/reitit)** — data-driven routing; the `reitit.Trie` Java class is mirrored by [router](https://github.com/jolt-lang/router).
-- **[integrant](https://github.com/weavejester/integrant)** — data-driven system configuration (`#ig/ref`), with its [dependency](https://github.com/weavejester/dependency) and [meta-merge](https://github.com/weavejester/meta-merge) deps.
+- **[ring-core](https://github.com/ring-clojure/ring)**: via `:deps/root "ring-core"`, on the [ring-app example](https://github.com/jolt-lang/examples/tree/main/ring-app).
+- **[ring-codec](https://github.com/ring-clojure/ring-codec)**: URL/form encoding.
+- **[ring-defaults](https://github.com/ring-clojure/ring-defaults)**: the standard middleware stack (params, static resources + content-type, session, security headers); session/CSRF crypto via [crypto](https://github.com/jolt-lang/crypto).
+- **[reitit-core](https://github.com/metosin/reitit)**: data-driven routing; the `reitit.Trie` Java class is mirrored by [router](https://github.com/jolt-lang/router).
+- **[integrant](https://github.com/weavejester/integrant)**: data-driven system configuration (`#ig/ref`), with its [dependency](https://github.com/weavejester/dependency) and [meta-merge](https://github.com/weavejester/meta-merge) deps.
 
 ### Data and schemas
 
-- **[malli](https://github.com/metosin/malli)** — data schema validation, on the [malli-app example](https://github.com/jolt-lang/examples/tree/main/malli-app).
-- **[honeysql](https://github.com/seancorfield/honeysql)** — SQL formatter and helpers.
-- **[clojure.data.json](https://github.com/clojure/data.json)** — JSON reading and writing.
-- **[clojure.spec.alpha](https://github.com/clojure/spec.alpha)** — data specs.
-- **[core.match](https://github.com/clojure/core.match)** — pattern matching.
-- **[core.cache](https://github.com/clojure/core.cache)** — caching (Basic/FIFO/LRU/LU/TTL/Soft + wrapped), over [data.priority-map](https://github.com/clojure/data.priority-map).
-- **[core.memoize](https://github.com/clojure/core.memoize)** — function memoization over [core.cache](https://github.com/clojure/core.cache).
-- **[core.async](https://github.com/clojure/core.async)** — CSP channels and `go` blocks (`<!`/`>!`/`alts!`, `pipeline`, `mult`/`mix`/`pub`/`sub`), on real OS threads or on [fibers](/docs/fibers.html).
-- **[core.logic](https://github.com/clojure/core.logic)** — relational logic programming (unification, `run`/`fresh`/`conde`, finite domains).
-- **[math.combinatorics](https://github.com/clojure/math.combinatorics)** — permutations, combinations, subsets, selections, cartesian products, partitions.
-- **[core.contracts](https://github.com/clojure/core.contracts)** — programming by contract (`contract`/`with-constraints`/`provide`), over [core.unify](https://github.com/clojure/core.unify).
-- **[data.zip](https://github.com/clojure/data.zip)** — zipper navigation, including `clojure.data.zip.xml`; XML via [xml](https://github.com/jolt-lang/xml).
-- **[data.csv](https://github.com/clojure/data.csv)** — reading and writing CSV.
-- **[data.codec](https://github.com/clojure/data.codec)** — base64 encode/decode over byte arrays.
-- **[data.priority-map](https://github.com/clojure/data.priority-map)** — priority maps (keyfn / custom comparator), with `subseq`/`rsubseq`.
-- **[tools.macro](https://github.com/clojure/tools.macro)** — local macros (`macrolet`/`symbol-macrolet`), `mexpand`/`mexpand-all`.
-- **[algo.monads](https://github.com/clojure/algo.monads)** — monad macros and monads (maybe/seq/state/writer/reader/…), over [tools.macro](https://github.com/clojure/tools.macro).
-- **[test.check](https://github.com/clojure/test.check)** — property-based testing (generators, `quick-check`, shrinking).
-- **[tools.cli](https://github.com/clojure/tools.cli)** — command-line argument parsing.
-- **[tools.reader](https://github.com/clojure/tools.reader)** — a Clojure reader in Clojure (edn + full reader, indexing/pushback reader types).
-- **[rewrite-clj](https://github.com/clj-commons/rewrite-clj)** — parse/rewrite Clojure source while preserving whitespace and comments (nodes + zipper), over [tools.reader](https://github.com/clojure/tools.reader).
-- **[edamame](https://github.com/borkdude/edamame)** — configurable EDN/Clojure parser with source locations (`parse-string`, `parse-next`, syntax quote, reader conditionals, auto-resolve).
-- **[yamlstar](https://github.com/yaml/yamlstar)** — YAML load/dump (pure-Clojure parser, JSON-safe integer policy).
-- **[medley](https://github.com/weavejester/medley)** — collection utilities.
-- **[ordered](https://github.com/clj-commons/ordered)** — insertion-ordered map and set (`ordered-map`/`ordered-set`), with transients and `#ordered/map` / `#ordered/set` reader tags.
-- **[config](https://github.com/yogthos/config)** — environment configuration.
-- **[aero](https://github.com/juxt/aero)** — EDN configuration with tag literals (`#ref`/`#env`/`#or`/`#profile`/`#long`/…).
-- **[mount](https://github.com/tolitius/mount)** — application state lifecycle (`defstate`, start/stop/swap, restart-on-recompile).
+- **[malli](https://github.com/metosin/malli)**: data schema validation, on the [malli-app example](https://github.com/jolt-lang/examples/tree/main/malli-app).
+- **[honeysql](https://github.com/seancorfield/honeysql)**: SQL formatter and helpers.
+- **[clojure.data.json](https://github.com/clojure/data.json)**: JSON reading and writing.
+- **[clojure.spec.alpha](https://github.com/clojure/spec.alpha)**: data specs.
+- **[core.match](https://github.com/clojure/core.match)**: pattern matching.
+- **[core.cache](https://github.com/clojure/core.cache)**: caching (Basic/FIFO/LRU/LU/TTL/Soft + wrapped), over [data.priority-map](https://github.com/clojure/data.priority-map).
+- **[core.memoize](https://github.com/clojure/core.memoize)**: function memoization over [core.cache](https://github.com/clojure/core.cache).
+- **[core.async](https://github.com/clojure/core.async)**: CSP channels and `go` blocks (`<!`/`>!`/`alts!`, `pipeline`, `mult`/`mix`/`pub`/`sub`), on real OS threads or on [fibers](/docs/fibers.html).
+- **[core.logic](https://github.com/clojure/core.logic)**: relational logic programming (unification, `run`/`fresh`/`conde`, finite domains).
+- **[math.combinatorics](https://github.com/clojure/math.combinatorics)**: permutations, combinations, subsets, selections, cartesian products, partitions.
+- **[core.contracts](https://github.com/clojure/core.contracts)**: programming by contract (`contract`/`with-constraints`/`provide`), over [core.unify](https://github.com/clojure/core.unify).
+- **[data.zip](https://github.com/clojure/data.zip)**: zipper navigation, including `clojure.data.zip.xml`; XML via [xml](https://github.com/jolt-lang/xml).
+- **[data.csv](https://github.com/clojure/data.csv)**: reading and writing CSV.
+- **[data.codec](https://github.com/clojure/data.codec)**: base64 encode/decode over byte arrays.
+- **[data.priority-map](https://github.com/clojure/data.priority-map)**: priority maps (keyfn / custom comparator), with `subseq`/`rsubseq`.
+- **[tools.macro](https://github.com/clojure/tools.macro)**: local macros (`macrolet`/`symbol-macrolet`), `mexpand`/`mexpand-all`.
+- **[algo.monads](https://github.com/clojure/algo.monads)**: monad macros and monads (maybe/seq/state/writer/reader/...), over [tools.macro](https://github.com/clojure/tools.macro).
+- **[test.check](https://github.com/clojure/test.check)**: property-based testing (generators, `quick-check`, shrinking).
+- **[tools.cli](https://github.com/clojure/tools.cli)**: command-line argument parsing.
+- **[tools.reader](https://github.com/clojure/tools.reader)**: a Clojure reader in Clojure (edn + full reader, indexing/pushback reader types).
+- **[rewrite-clj](https://github.com/clj-commons/rewrite-clj)**: parse/rewrite Clojure source while preserving whitespace and comments (nodes + zipper), over [tools.reader](https://github.com/clojure/tools.reader).
+- **[edamame](https://github.com/borkdude/edamame)**: configurable EDN/Clojure parser with source locations (`parse-string`, `parse-next`, syntax quote, reader conditionals, auto-resolve).
+- **[yamlstar](https://github.com/yaml/yamlstar)**: YAML load/dump (pure-Clojure parser, JSON-safe integer policy).
+- **[medley](https://github.com/weavejester/medley)**: collection utilities.
+- **[ordered](https://github.com/clj-commons/ordered)**: insertion-ordered map and set (`ordered-map`/`ordered-set`), with transients and `#ordered/map` / `#ordered/set` reader tags.
+- **[config](https://github.com/yogthos/config)**: environment configuration.
+- **[aero](https://github.com/juxt/aero)**: EDN configuration with tag literals (`#ref`/`#env`/`#or`/`#profile`/`#long`/...).
+- **[mount](https://github.com/tolitius/mount)**: application state lifecycle (`defstate`, start/stop/swap, restart-on-recompile).
 
 ### Databases
 
-- **[clojure.jdbc](https://github.com/yogthos/clojure.jdbc)** — via [db](https://github.com/jolt-lang/db)'s `jdbc.core`, over built-in SQLite access (libsqlite3 through Chez's FFI).
-- **[migratus](https://github.com/yogthos/migratus)** — database migrations over [db](https://github.com/jolt-lang/db).
+- **[clojure.jdbc](https://github.com/yogthos/clojure.jdbc)**: via [db](https://github.com/jolt-lang/db)'s `jdbc.core`, over built-in SQLite access (libsqlite3 through Chez's FFI).
+- **[migratus](https://github.com/yogthos/migratus)**: database migrations over [db](https://github.com/jolt-lang/db).
 
 ### Templating, markup, text
 
-- **[Selmer](https://github.com/yogthos/Selmer)** — Django-style templates.
-- **[hiccup](https://github.com/weavejester/hiccup)** — HTML from Clojure data, on the [hiccup-app example](https://github.com/jolt-lang/examples/tree/main/hiccup-app).
-- **[markdown-clj](https://github.com/yogthos/markdown-clj)** — Markdown to HTML, on the [markdown-app example](https://github.com/jolt-lang/examples/tree/main/markdown-app).
-- **[cuerdas](https://github.com/funcool/cuerdas)** — string manipulation.
-- **[camel-snake-kebab](https://github.com/clj-commons/camel-snake-kebab)** — word-case conversions.
-- **[clj-rss](https://github.com/yogthos/clj-rss)** — RSS feed generation, over [xml](https://github.com/jolt-lang/xml)'s `clojure.data.xml` emit.
-- **[text-diff](https://github.com/borkdude/text-diff)** — line-level diffing in `diff -u` unified format, with ANSI colorization.
+- **[Selmer](https://github.com/yogthos/Selmer)**: Django-style templates.
+- **[hiccup](https://github.com/weavejester/hiccup)**: HTML from Clojure data, on the [hiccup-app example](https://github.com/jolt-lang/examples/tree/main/hiccup-app).
+- **[markdown-clj](https://github.com/yogthos/markdown-clj)**: Markdown to HTML, on the [markdown-app example](https://github.com/jolt-lang/examples/tree/main/markdown-app).
+- **[cuerdas](https://github.com/funcool/cuerdas)**: string manipulation.
+- **[camel-snake-kebab](https://github.com/clj-commons/camel-snake-kebab)**: word-case conversions.
+- **[clj-rss](https://github.com/yogthos/clj-rss)**: RSS feed generation, over [xml](https://github.com/jolt-lang/xml)'s `clojure.data.xml` emit.
+- **[text-diff](https://github.com/borkdude/text-diff)**: line-level diffing in `diff -u` unified format, with ANSI colorization.
 
 ### Date and time
 
-- **[tick](https://github.com/juxt/tick)** — runs on Jolt through [time](https://github.com/jolt-lang/time), which adds the formatting/zone layer over core's base `java.time` and bundles tick and its `#time/…` literals.
+- **[tick](https://github.com/juxt/tick)**: runs on Jolt through [time](https://github.com/jolt-lang/time), which adds the formatting/zone layer over core's base `java.time` and bundles tick and its `#time/...` literals.
 
 ### Logging
 
-- **[tools.logging](https://github.com/clojure/tools.logging)** — runs verbatim over a native `clojure.tools.logging.impl` stderr backend.
+- **[tools.logging](https://github.com/clojure/tools.logging)**: runs verbatim over a native `clojure.tools.logging.impl` stderr backend.
 
 ---
 
-Loading a JVM library is per-function: a namespace can load with most functions working and a few not. If something is missing, it's usually a `clojure.core` function Jolt doesn't implement yet or a Java class to shim — see [Host Interop](/docs/host-interop.html).
+Loading a JVM library is per-function: a namespace can load with most functions
+working and a few not. If something is missing, it's usually a `clojure.core`
+function Jolt doesn't implement yet or a Java class to shim; see [Host
+Interop](/docs/host-interop.html).

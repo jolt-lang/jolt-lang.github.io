@@ -1,17 +1,17 @@
 # Jolt
 
 > Jolt is a Clojure implementation on Scheme. It reads Clojure source, analyzes
-> it to a host-neutral IR, emits Scheme, and runs it — on Chez by default, or on
+> it to a host-neutral IR, emits Scheme, and runs it: on Chez by default, or on
 > Gambit compiled to JavaScript for the browser. The compiler is self-hosted,
 > written in Clojure and compiling itself, and ships a Clojure-compatible
 > standard library. Programs compile to single self-contained native binaries
 > with no JVM and no runtime install.
 
 Important: there is no JVM underneath Jolt, so JVM reasoning does not carry
-over. Most portable Clojure runs unchanged — persistent collections, the numeric
+over. Most portable Clojure runs unchanged (persistent collections, the numeric
 tower (including `BigDecimal`), lazy seqs, transducers, protocols/records,
 multimethods, metadata, atoms, refs/STM, `future`/`promise`/`agent`/`pmap`,
-`core.async`, runtime `eval`, and the full reader. What differs: there is no Java
+`core.async`, runtime `eval`, and the full reader). What differs: there is no Java
 interop (no reflection, no `gen-class`/`proxy`; `Class.`/`Class/static`/`.method`
 resolve only against a shimmed subset of `java.*` written in Scheme, and a class
 token is a name, not a loaded class); those shims implement their JVM
@@ -59,6 +59,6 @@ Read the Differences page before assuming a JVM behaviour holds.
 
 - [Language Specification](https://jolt-lang.github.io/docs/spec/README.html): the reader, special forms, and per-function `clojure.core` coverage.
 - [deps.edn Internals](https://jolt-lang.github.io/docs/tools-deps.html): how dependency resolution works without Java.
-- [RFCs](https://jolt-lang.github.io/docs/rfc/README.html): design notes — transients, type hints, structural inference, success-type checking, compilation modes, program images, the portable Scheme layer.
+- [RFCs](https://jolt-lang.github.io/docs/rfc/README.html): design notes on transients, type hints, structural inference, success-type checking, compilation modes, program images, the portable Scheme layer.
 - [Module Map](https://jolt-lang.github.io/docs/MODULES.html): what each runtime and compiler file does.
 - [Seed & Overlay Registry](https://jolt-lang.github.io/docs/seed-overlay-registry.html): what is baked into the bootstrap seed versus loaded at runtime.

@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
-    <meta name="description" content="Jolt is a Clojure implementation on Scheme — Chez natively, Gambit for JavaScript. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="description" content="Jolt is a Clojure implementation on Scheme: Chez natively, Gambit for JavaScript. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
     <meta name="canonical" content="https://jolt-lang.github.io">
-    <title>Testing — Jolt</title>
+    <title>Testing: Jolt</title>
     <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
     <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
     <link href="/css/screen.css" rel="stylesheet" type="text/css" />
@@ -173,7 +173,7 @@
     </nav>
     
     <div id="content">
-      <p>Jolt ships <code>clojure.test</code>, and the official <a href='https://github.com/cognitect-labs/test-runner'>Cognitect test-runner</a> runs against it unmodified — the same <code>deps.edn</code> alias you would use on the JVM.</p><h2 id="writing&#95;tests">Writing tests</h2><p>Test namespaces are ordinary Clojure. By convention they live under a <code>test/</code> directory and their names end in <code>-test</code>, which is what test runners look for by default.</p><pre><code class="clojure">;; test/my&#95;lib/core&#95;test.clj
+      <p>Jolt ships <code>clojure.test</code>, and the official <a href='https://github.com/cognitect-labs/test-runner'>Cognitect test-runner</a> runs against it unmodified; the same <code>deps.edn</code> alias you would use on the JVM.</p><h2 id="writing&#95;tests">Writing tests</h2><p>Test namespaces are ordinary Clojure. By convention they live under a <code>test/</code> directory and their names end in <code>-test</code>, which is what test runners look for by default.</p><pre><code class="clojure">;; test/my&#95;lib/core&#95;test.clj
 &#40;ns my-lib.core-test
   &#40;:require &#91;clojure.test :refer &#91;deftest is are testing use-fixtures&#93;&#93;
             &#91;my-lib.core :as sut&#93;&#41;&#41;
@@ -193,7 +193,7 @@
 
 &#40;use-fixtures :once &#40;fn &#91;t&#93; &#40;with-open &#91;conn &#40;connect&#41;&#93; &#40;binding &#91;&#42;db&#42; conn&#93; &#40;t&#41;&#41;&#41;&#41;&#41;
 &#40;use-fixtures :each &#40;fn &#91;t&#93; &#40;reset-tables!&#41; &#40;t&#41;&#41;&#41;
-</code></pre><h3 id="custom&#95;assertions">Custom assertions</h3><p><code>clojure.test/assert-expr</code> is a multimethod, so a library can teach <code>is</code> a new form. Register the method in its own top-level form — <code>is</code> resolves it when the assertion is compiled, so the two cannot sit in the same form:</p><pre><code class="clojure">&#40;defmethod clojure.test/assert-expr 'roughly? &#91;msg form&#93;
+</code></pre><h3 id="custom&#95;assertions">Custom assertions</h3><p><code>clojure.test/assert-expr</code> is a multimethod, so a library can teach <code>is</code> a new form. Register the method in its own top-level form; <code>is</code> resolves it when the assertion is compiled, so the two cannot sit in the same form:</p><pre><code class="clojure">&#40;defmethod clojure.test/assert-expr 'roughly? &#91;msg form&#93;
   `&#40;let &#91;&#91;&#95;# a# b#&#93; '&#126;form&#93;
      &#40;clojure.test/do-report
        {:type &#40;if &#40;&lt; &#40;abs &#40;- &#126;&#40;nth form 1&#41; &#126;&#40;nth form 2&#41;&#41;&#41; 1e-6&#41; :pass :fail&#41;
@@ -215,7 +215,7 @@ Ran 24 tests. 91 assertions passed, 0 failures, 0 errors.
 </code></pre><pre><code class="bash">jolt -M:test:runner -e :integration      # everything but those
 jolt -M:test:runner -i :integration      # only those
 jolt -M:test:runner -v my-lib.core-test/addition
-</code></pre><p>Namespace selection needs jolt <strong>0.5.4</strong> or newer — earlier versions found no namespaces at all and reported <code>Ran 0 tests</code>, and the var-level options (<code>-v</code>, <code>-i</code>, <code>-e</code>) silently selected everything.</p><h2 id="running&#95;them&#95;without&#95;a&#95;runner">Running them without a runner</h2><p>A runner namespace is enough when you would rather not take the dependency. <code>run-tests</code> takes the namespaces to run and returns that call's summary:</p><pre><code class="clojure">;; test/my&#95;lib/test&#95;runner.clj
+</code></pre><p>Namespace selection needs jolt <strong>0.5.4</strong> or newer; earlier versions found no namespaces at all and reported <code>Ran 0 tests</code>, and the var-level options (<code>-v</code>, <code>-i</code>, <code>-e</code>) silently selected everything.</p><h2 id="running&#95;them&#95;without&#95;a&#95;runner">Running them without a runner</h2><p>A runner namespace is enough when you would rather not take the dependency. <code>run-tests</code> takes the namespaces to run and returns that call's summary:</p><pre><code class="clojure">;; test/my&#95;lib/test&#95;runner.clj
 &#40;ns my-lib.test-runner
   &#40;:require &#91;clojure.test :as t&#93;
             my-lib.core-test
@@ -224,10 +224,10 @@ jolt -M:test:runner -v my-lib.core-test/addition
 &#40;defn -main &#91;&amp; &#95;&#93;
   &#40;let &#91;{:keys &#91;fail error&#93;} &#40;t/run-tests 'my-lib.core-test 'my-lib.util-test&#41;&#93;
     &#40;System/exit &#40;if &#40;zero? &#40;+ fail error&#41;&#41; 0 1&#41;&#41;&#41;&#41;
-</code></pre><p>This replaces the <code>:test</code>/<code>:runner</code> pair above — one alias carries both the test path and the entry point, and the runner dependency is gone:</p><pre><code class="clojure">:aliases {:test {:extra-paths &#91;&quot;test&quot;&#93;
+</code></pre><p>This replaces the <code>:test</code>/<code>:runner</code> pair above; one alias carries both the test path and the entry point, and the runner dependency is gone:</p><pre><code class="clojure">:aliases {:test {:extra-paths &#91;&quot;test&quot;&#93;
                  :main-opts   &#91;&quot;-m&quot; &quot;my-lib.test-runner&quot;&#93;}}
 </code></pre><pre><code class="bash">jolt -M:test
-</code></pre><p>The trade-off is that you list the namespaces by hand; the Cognitect runner finds them for you by scanning the directory.</p><h2 id="notes">Notes</h2><ul><li>Test sources belong on <code>:extra-paths</code> in a test alias, not on the project's <code>:paths</code> — that keeps them out of what a library's consumers load.</li><li>Aliases combine, so <code>-M:test:runner</code> selects the dependencies from <code>:test</code> and the entry point from <code>:runner</code>. <code>:extra-paths</code>/<code>:extra-deps</code> accumulate; <code>:main-opts</code> is last-wins. See <a href='/docs/building-and-deps.html'>Building &amp; Running</a>.</li><li>A library whose tests reach for <code>java.time</code> needs <a href='/docs/api/time.html'>jolt-lang/time</a> as a test dependency — those classes live in that library rather than core, by <a href='/docs/rfc/0008-time-core-library-split.html'>RFC 0008</a>.</li><li><code>run-tests</code> with no arguments runs every registered test rather than the current namespace's. That is a deliberate superset of the JVM's behavior; pass namespaces explicitly if you want the narrower one.</li></ul>
+</code></pre><p>The trade-off is that you list the namespaces by hand; the Cognitect runner finds them for you by scanning the directory.</p><h2 id="notes">Notes</h2><ul><li>Test sources belong on <code>:extra-paths</code> in a test alias, not on the project's <code>:paths</code>; that keeps them out of what a library's consumers load.</li><li>Aliases combine, so <code>-M:test:runner</code> selects the dependencies from <code>:test</code> and the entry point from <code>:runner</code>. <code>:extra-paths</code>/<code>:extra-deps</code> accumulate; <code>:main-opts</code> is last-wins. See <a href='/docs/building-and-deps.html'>Building &amp; Running</a>.</li><li>A library whose tests reach for <code>java.time</code> needs <a href='/docs/api/time.html'>jolt-lang/time</a> as a test dependency; those classes live in that library rather than core, by <a href='/docs/rfc/0008-time-core-library-split.html'>RFC 0008</a>.</li><li><code>run-tests</code> with no arguments runs every registered test rather than the current namespace's. That is a deliberate superset of the JVM's behavior; pass namespaces explicitly if you want the narrower one.</li></ul>
     </div>
   </main>
 </div>

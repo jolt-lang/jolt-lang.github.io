@@ -8,15 +8,15 @@ authoritative.
 ## The two tiers
 
 - **Native shims** (`host/chez/natives-*.ss`) bind a set of `clojure.core` vars
-  directly to Scheme runtime values via `def-var!` — collection constructors,
-  seq fns, numeric/string ops, and so on. These cover names the overlay assumes
+  directly to Scheme runtime values via `def-var!` (collection constructors,
+  seq fns, numeric/string ops, and so on). These cover names the overlay assumes
   exist as bare `clojure.core` vars but does not define itself.
 - **The Clojure overlay** (`jolt-core/clojure/core/NN-*.clj`) defines the rest of
   `clojure.core` in dependency-ordered tiers, loaded in order: `00-syntax`,
   `00-kernel`, `10-seq`, `20-coll`, `25-sorted`, `30-macros`, `40-lazy`, `50-io`.
 
 The overlay loads after the native shims. When an overlay tier `(defn X …)` for a
-name a native shim already bound, the **overlay def shadows the native binding** —
+name a native shim already bound, the **overlay def shadows the native binding**;
 user code sees the overlay copy. The native binding then survives only if some
 other native/runtime code still calls the Scheme value directly.
 

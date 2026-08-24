@@ -1,6 +1,6 @@
 Jolt has no JVM, so it has no `java.*` to lean on for talking to the outside world. Instead it ships a foreign-function interface (`jolt.ffi`) that binds C shared libraries directly. This is how the real libraries work: the [db](https://github.com/jolt-lang/db) library binds `libsqlite3`/`libpq`, and the [http-client](https://github.com/jolt-lang/http-client) binds POSIX sockets, OpenSSL, and zlib. This page is the guide for writing your own.
 
-The FFI is a thin, explicit layer: you declare the library, bind each C function with its argument and return types, and marshal memory by hand. There is no automatic struct introspection and no garbage collection of foreign memory — you manage it, the way you would in C.
+The FFI is a thin, explicit layer: you declare the library, bind each C function with its argument and return types, and marshal memory by hand. There is no automatic struct introspection and no garbage collection of foreign memory; you manage it, the way you would in C.
 
 ## Declaring the native library
 
@@ -18,10 +18,10 @@ A library names the shared objects it needs in its `deps.edn` under `:jolt/nativ
 
 Each entry is a map:
 
-- `:name` — a human-readable label, used only in the "library not found" error.
-- `:darwin` / `:linux` / `:windows` — per-platform candidates, a string or a vector tried in order. Jolt picks the key for the host OS (`os.name`) and loads the first candidate that resolves. List the versioned name first (`libsqlite3.so.0`), the bare name as a fallback.
-- `:optional true` — a missing library is skipped instead of erroring. Use it for feature-gated drivers (the db library makes Postgres optional). Check `(jolt.ffi/loaded? "libpq.so.5")` before using such a binding.
-- `:process true` — bind symbols already in the running process (libc, POSIX) rather than loading a file. The http-client uses this for `socket`/`connect`/`send`/`recv`:
+- `:name`: a human-readable label, used only in the "library not found" error.
+- `:darwin` / `:linux` / `:windows`: per-platform candidates, a string or a vector tried in order. Jolt picks the key for the host OS (`os.name`) and loads the first candidate that resolves. List the versioned name first (`libsqlite3.so.0`), the bare name as a fallback.
+- `:optional true`: a missing library is skipped instead of erroring. Use it for feature-gated drivers (the db library makes Postgres optional). Check `(jolt.ffi/loaded? "libpq.so.5")` before using such a binding.
+- `:process true`: bind symbols already in the running process (libc, POSIX) rather than loading a file. The http-client uses this for `socket`/`connect`/`send`/`recv`:
 
 ```clojure
 :jolt/native [{:name "libc (POSIX sockets)" :process true}
@@ -37,7 +37,7 @@ Declared natives are loaded privately and registered; a `defcfn` looks its C
 symbol up in the registered libraries first (in load order) and falls back to
 the process-global namespace only when none of them export it. Two properties
 follow. A system library that happens to export the same names as your declared
-native — macOS ships BoringSSL system-wide with OpenSSL's `EVP_*` symbol set —
+native (macOS ships BoringSSL system-wide with OpenSSL's `EVP_*` symbol set)
 can never intercept your bindings. And a library may bind symbols that another
 *declared* dependency's native provides (glimmer-gl binds GTK symbols declared
 by glimmer-gtk), since every declared native participates in the lookup. Plain
@@ -45,7 +45,7 @@ libc symbols need no declaration; they resolve through the process fallback.
 
 ### Static vs dynamic linking in a built binary
 
-When you `run`/`repl`, the candidates above are loaded dynamically — the `.so`/`.dylib` has to be present on the machine. When you `jolt build`, you can instead **link the library statically into the binary**, so the executable calls the C code with no shared object present at runtime. Add a `:static` archive to the spec:
+When you `run`/`repl`, the candidates above are loaded dynamically; the `.so`/`.dylib` has to be present on the machine. When you `jolt build`, you can instead **link the library statically into the binary**, so the executable calls the C code with no shared object present at runtime. Add a `:static` archive to the spec:
 
 ```clojure
 :jolt/native [{:name "sqlite3"
@@ -54,9 +54,9 @@ When you `run`/`repl`, the candidates above are loaded dynamically — the `.so`
                :linux  ["libsqlite3.so.0" "libsqlite3.so"]}]
 ```
 
-A spec with `:static` is **statically linked by default** on `jolt build`. `:static {:archive PATH}` force-loads the whole `.a` and is the reliable cross-platform form; `:static {:lib NAME :libdir DIR}` links `-lNAME` (with a `-Bstatic` preference on Linux, where an archive path is safer on macOS). Keep the `:darwin`/`:linux` candidates too — `run`/`repl` have no static binary and still load the shared object, as does a build passed `--dynamic` (or `:jolt/build {:dynamic-natives true}`), which keeps the runtime-load behavior for every lib.
+A spec with `:static` is **statically linked by default** on `jolt build`. `:static {:archive PATH}` force-loads the whole `.a` and is the reliable cross-platform form; `:static {:lib NAME :libdir DIR}` links `-lNAME` (with a `-Bstatic` preference on Linux, where an archive path is safer on macOS). Keep the `:darwin`/`:linux` candidates too; `run`/`repl` have no static binary and still load the shared object, as does a build passed `--dynamic` (or `:jolt/build {:dynamic-natives true}`), which keeps the runtime-load behavior for every lib.
 
-Static linking needs a C compiler (`cc`) on `PATH` at build time — the distributed `jolt` bundles the Chez kernel and re-links its launcher with the archive baked in, so no external Chez is required, just `cc`. The *produced* binary needs nothing: drop it on a machine and it runs, calling the statically-linked C code, with only the standard system libraries present. (Like Go's cgo or Rust, building against a C library needs a C toolchain; running the result does not.)
+Static linking needs a C compiler (`cc`) on `PATH` at build time; the distributed `jolt` bundles the Chez kernel and re-links its launcher with the archive baked in, so no external Chez is required, just `cc`. The *produced* binary needs nothing: drop it on a machine and it runs, calling the statically-linked C code, with only the standard system libraries present. (Like Go's cgo or Rust, building against a C library needs a C toolchain; running the result does not.)
 
 ## Binding a function
 
@@ -83,27 +83,27 @@ Each defined function is an ordinary Clojure fn you call with Jolt values; argum
 
 ### `:blocking`
 
-A trailing `:blocking` marks a call that may wait — network I/O, a lock, a sleep. The http-client marks every socket call:
+A trailing `:blocking` marks a call that may wait (network I/O, a lock, a sleep). The http-client marks every socket call:
 
 ```clojure
 (ffi/defcfn c-connect "connect" [:int :pointer :int] :int :blocking)
 (ffi/defcfn c-recv    "recv"    [:int :pointer :size_t :int] :ssize_t :blocking)
 ```
 
-This matters for correctness, not just speed: without `:blocking`, a thread parked inside a foreign call pins the garbage collector for every thread. With it, Jolt releases the collector while the call waits. Mark anything that can block; leave pure, fast calls unmarked.
+This matters for correctness as much as speed: without `:blocking`, a thread parked inside a foreign call pins the garbage collector for every thread. With it, Jolt releases the collector while the call waits. Mark anything that can block; leave pure, fast calls unmarked.
 
 ### `:varargs`
 
-A `:varargs` marker inside the argtype vector declares a **variadic** C function — `fcntl`, `ioctl`, `open` — and marks the boundary: the types before it are the fixed (named) parameters, the types after it are the concrete variadic arguments the binding always passes. `fcntl` is `int fcntl(int fd, int cmd, ...)`, so a binding that passes flags to `F_SETFL` is:
+A `:varargs` marker inside the argtype vector declares a **variadic** C function (`fcntl`, `ioctl`, `open`) and marks the boundary: the types before it are the fixed (named) parameters, the types after it are the concrete variadic arguments the binding always passes. `fcntl` is `int fcntl(int fd, int cmd, ...)`, so a binding that passes flags to `F_SETFL` is:
 
 ```clojure
 (ffi/defcfn c-fcntl "fcntl" [:int :int :varargs :int] :int)
 (c-fcntl fd F-SETFL O-NONBLOCK)
 ```
 
-This is not optional decoration. On Apple arm64 variadic arguments are passed on the stack, not in registers — a fixed-arity binding to a variadic function compiles, runs, and silently hands the callee garbage for every argument after the named ones. The marker makes Jolt emit the variadic calling convention so the arguments land where the callee's `va_list` reads them.
+This is not optional decoration. On Apple arm64 variadic arguments are passed on the stack, not in registers; a fixed-arity binding to a variadic function compiles, runs, and silently hands the callee garbage for every argument after the named ones. The marker makes Jolt emit the variadic calling convention so the arguments land where the callee's `va_list` reads them.
 
-Two shapes are rejected at compile time with an error naming the rule: `:varargs` first (C requires at least one named parameter) and `:varargs` last (nothing would be variadic). `:varargs` does not combine with `:blocking`. A call that passes **no** variadic arguments — `fcntl(fd, F_GETFL)` — may use a plain fixed-arity binding: named arguments travel identically in both conventions.
+Two shapes are rejected at compile time with an error naming the rule: `:varargs` first (C requires at least one named parameter) and `:varargs` last (nothing would be variadic). `:varargs` does not combine with `:blocking`. A call that passes **no** variadic arguments (`fcntl(fd, F_GETFL)`) may use a plain fixed-arity binding: named arguments travel identically in both conventions.
 
 ## Types at the boundary
 
@@ -120,14 +120,14 @@ The argument and return types are keywords. The full set:
 | `:char` | `char` | number (code point) |
 | `:uint8` (`:u8`, `:byte`) | `unsigned char` | number 0–255 |
 | `:pointer` (`:void*`) | any pointer | number (machine address) |
-| `:string` | `char *` | string — marshaled both ways |
+| `:string` | `char *` | string (marshaled both ways) |
 | `:void` | `void` | return ignored (nil) |
 
-A `:string` argument is copied to a NUL-terminated C string for the call; a `:string` return reads a NUL-terminated C string back, decoding UTF-8 (falling back to Latin-1). Pointers are plain integers — you pass them around, offset them, and hand them back to C.
+A `:string` argument is copied to a NUL-terminated C string for the call; a `:string` return reads a NUL-terminated C string back, decoding UTF-8 (falling back to Latin-1). Pointers are plain integers; you pass them around, offset them, and hand them back to C.
 
 ## Memory and strings
 
-Foreign memory is manual. Allocate, use, free — there is no finalizer:
+Foreign memory is manual. Allocate, use, free; there is no finalizer:
 
 ```clojure
 (ffi/alloc nbytes)          ; -> pointer (address); you must free it
@@ -149,8 +149,8 @@ Foreign memory is manual. Allocate, use, free — there is no finalizer:
 (ffi/loaded? name)          ; was a library loaded?
 ```
 
-Rather than pairing each `alloc` with a `free` on every path out — including the
-one an exception takes — bind it for a scope:
+Rather than pairing each `alloc` with a `free` on every path out (including the
+one an exception takes), bind it for a scope:
 
 ```clojure
 (ffi/with-alloc [p 64] ...)             ; freed however the body ends
@@ -160,7 +160,7 @@ one an exception takes — bind it for a scope:
 (ffi/with-c-string-array [argv 2] ["a" "b"] ...)
 ```
 
-Each returns the body's value, and frees exactly what it allocated — a handle C
+Each returns the body's value, and frees exactly what it allocated; a handle C
 gave you is still yours to close. The pointer is valid only inside the body.
 
 ### Out-parameters
@@ -192,8 +192,8 @@ or, with the allocation scoped:
 
 ### Structs by layout
 
-Declare the struct and let Chez work out the ABI — size, alignment and every
-field offset — instead of counting bytes:
+Declare the struct and let Chez work out the ABI (size, alignment and every
+field offset) instead of counting bytes:
 
 ```clojure
 (def date (ffi/layout [:struct [[:year :int32] [:month :uint8] [:day :uint8]]]))
@@ -230,7 +230,7 @@ there and returns it:
 ```
 
 Layouts cover fixed-size scalars and nested structs. Arrays, unions, bitfields
-and explicit packing are not modelled — for those, and for any struct whose
+and explicit packing are not modelled; for those, and for any struct whose
 shape you cannot state literally, lay it out by offset as below.
 
 ### Structs by offset
@@ -261,7 +261,7 @@ Offsets and sizes are platform-specific. The http-client keeps a per-OS offset w
 
 ### Binary data
 
-For bytes that aren't text, use the array helpers — they don't touch encoding. The http-client moves ciphertext through OpenSSL's in-memory BIOs this way:
+For bytes that aren't text, use the array helpers; they don't touch encoding. The http-client moves ciphertext through OpenSSL's in-memory BIOs this way:
 
 ```clojure
 (let [buf (ffi/alloc n)
@@ -276,7 +276,7 @@ A syscall that fails reports *how* through `errno`, and `errno` is not a
 global: every modern libc keeps a per-thread slot behind a function
 (`__error` on macOS, `__errno_location` on Linux, `_errno` on Windows).
 `jolt.ffi/errno` reads the calling thread's slot through the right one, so
-it is correct under threads — and under fibers, whose syscall and errno read
+it is correct under threads, and under fibers, whose syscall and errno read
 both run on the fiber's carrier thread. `errno-message` renders a code (or
 the current errno) through `strerror`:
 
@@ -290,15 +290,15 @@ the current errno) through `strerror`:
 ```
 
 Read it **immediately** after the failing call. Anything that can enter the
-runtime between the call and the read — an allocation, a park, another FFI
-call — may make a syscall of its own and overwrite the slot.
+runtime between the call and the read (an allocation, a park, another FFI
+call) may make a syscall of its own and overwrite the slot.
 
 ## Checklist for a binding
 
 - Declare the library in `deps.edn` `:jolt/native` with per-OS candidates; mark optional drivers `:optional`, process symbols `:process`. Add a `:static` archive to link it into a built binary (keep the dynamic candidates for `run`/`repl`).
 - Bind each C function with `defcfn`, exact argument/return types, and `:blocking` on anything that waits.
-- Free every `ffi/alloc` and `ffi/string->ptr` — wrap allocation in `try`/`finally`. Leaked foreign memory is never reclaimed.
-- Check C return codes and null pointers explicitly, and `throw` an `ex-info` on failure — `(ffi/errno-message)` makes the message say what went wrong.
+- Free every `ffi/alloc` and `ffi/string->ptr`; wrap allocation in `try`/`finally`. Leaked foreign memory is never reclaimed.
+- Check C return codes and null pointers explicitly, and `throw` an `ex-info` on failure; `(ffi/errno-message)` makes the message say what went wrong.
 - Keep struct offsets and type widths LP64-correct, and branch on `os.name` where macOS and Linux differ.
 
 ## Calling into Jolt from C
@@ -335,11 +335,11 @@ Things to keep in mind across the boundary:
 
 - **Single thread.** The library carries its own GC. Call `jolt_library_init`
   exactly once, and make `jolt_lookup` and every exported-function call from that
-  same thread — the callbacks are not registered as collect-safe, so entering
+  same thread; the callbacks are not registered as collect-safe, so entering
   them from another OS thread the runtime never activated is undefined behavior.
   Call `jolt_library_shutdown` to tear it down.
 - **Pointer lifetimes.** A value returned as `:pointer`/`:void*` is not GC-tracked
-  by the caller — if Jolt hands back a pointer into managed memory you must keep
+  by the caller; if Jolt hands back a pointer into managed memory you must keep
   it alive on the Jolt side (e.g. hold it in a top-level ref) for as long as C
   uses it.
 - **Linux needs a PIC kernel.** The link folds Chez's `libkernel.a` into the
