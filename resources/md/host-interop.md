@@ -278,6 +278,29 @@ returns it as a value (usable with `map`, stored in a var by `defsfn`);
 definitions persisting. An unbound name or a Scheme error surfaces as a
 catchable exception.
 
+`scheme` is `eval-string` without the quoting: the body is written in Jolt
+and rendered to Scheme source at macroexpansion, so a Scheme expression
+reads like a `do` block. Multiple forms run in order as a `(begin ...)`, the
+last value is returned, and a `define` splices into the interaction
+environment.
+
+```clojure
+(scheme/scheme (let ((x 3)) (* x 14)))       ;=> 42
+(scheme/scheme (string-append "a" "b"))      ;=> "ab"
+
+(scheme/scheme (define counter 0)            ; define persists, last value wins
+               (+ counter 1))                ;=> 1
+```
+
+The body is read with Jolt's reader, so Scheme spellings Jolt's reader
+rejects are written in Jolt spelling and rendered across: `true` and `false`
+become `#t` and `#f`, `\A` becomes `#\A`, and `[1 2 3]` becomes the datum
+vector `#(1 2 3)`. That cuts both ways: a vector is data, not binding
+syntax, so a `let` needs Scheme-style `((x 3))` bindings, and keywords, maps
+and sets have no Scheme reading and are refused at macroexpansion. Reader
+sugar that expands to `clojure.core` calls (`@x`, syntax-quote) lands as
+unbound Scheme names, so write `(unquote ...)` longhand.
+
 The contract is **raw**: numbers, strings, booleans and characters are the
 same representations on both sides and cross untouched; everything else
 crosses as whatever it is on the other side. A Scheme vector arriving in Jolt
