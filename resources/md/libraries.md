@@ -100,5 +100,6 @@ Third-party Clojure/JVM libraries confirmed to run on Jolt.
 
 Loading a JVM library is per-function: a namespace can load with most functions
 working and a few not. If something is missing, it's usually a `clojure.core`
-function Jolt doesn't implement yet or a Java class to shim; see [Host
-Interop](/docs/host-interop.html).
+function Jolt doesn't implement yet, a Java class to shim, or a method missing
+from a class Jolt part-shims; the last two you can supply from your own project
+without waiting for a release. See [Host Interop](/docs/host-interop.html).

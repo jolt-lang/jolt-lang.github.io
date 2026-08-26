@@ -81,6 +81,7 @@ to one registration function:
 | `No method add on host …` (a `(.method obj …)` call) | `__register-class-methods!` |
 | `(instance? SomeClass x)` returns `false` when it shouldn't | `__register-instance-check!` |
 | `isa?` / `ancestors` / `instance?`-through-a-parent is wrong | `jolt.host/register-class-supers!` |
+| `No matching method x found taking N args for class java.io.File` (Jolt ships the class, not that method) | `jolt.host/extend-class!` |
 
 Add the one it names, re-run, repeat until the library is happy. **Method,
 static, and class names are strings that match the literal name in the interop
@@ -175,10 +176,10 @@ functions through its methods, like the JVM: `Indexed` → `nth`, `Counted` →
 arity-overloaded across interfaces (`seq [this]` and `seq [this ascending]`), and
 a marker protocol with no methods still answers `satisfies?`/`instance?`.
 
-Extending a *built-in* class instead (adding a method to core's `String` shim,
-say) means editing the runtime's `host/chez/*.ss` and rebuilding; that's a
-contribution to Jolt itself rather than a project-level shim (see
-[Building &amp; Running](/docs/building-and-deps.html)).
+Extending a class Jolt *does* ship — adding a method its shim doesn't cover — is
+a different job with its own seam; see
+[Extending a class Jolt already shims](#extending_a_class_jolt_already_shims)
+below.
 
 ### Instance checks compose
 
@@ -188,16 +189,108 @@ register checks without clobbering each other. This is the mechanism Jolt's HTTP
 client library uses to emulate `java.net.URL` and `HttpURLConnection` so
 `clj-http-lite` runs unchanged.
 
+### Extending a class Jolt already shims
+
+The registries above add a class Jolt doesn't have. The other half of the
+problem is a class Jolt *does* ship but only part of — `java.io.File` answers
+about thirty methods, not the whole JVM surface — and a library reaches for one
+of the rest. The error names a class you already have:
+
+```
+No matching method setWritable found taking 1 args for class java.io.File
+```
+
+`jolt.host/extend-class!` adds that one method and leaves the shim answering
+everything else exactly as before:
+
+```clojure
+(ns myapp.shims
+  (:require [jolt.host :as host]
+            [babashka.fs :as fs]))
+
+(host/extend-class! "java.io.File"
+  {:methods {"setWritable"
+             (fn [self writable?]
+               (fs/set-posix-file-permissions
+                 (.getPath self)
+                 (fs/str->posix (if writable? "rw-r--r--" "r--r--r--")))
+               true)}})
+```
+
+```clojure
+(.setWritable (java.io.File. "notes.txt") false)   ;=> true
+(.getName (java.io.File. "notes.txt"))             ;=> "notes.txt"  — untouched
+```
+
+One spec can describe a whole class, not only its methods:
+
+```clojure
+(host/extend-class! "java.util.zip.Deflater"
+  {:methods {"deflate" (fn [self buf] …)}    ; (.deflate d buf)
+   :statics {"BEST_COMPRESSION" 9}           ; java.util.zip.Deflater/BEST_COMPRESSION
+   :ctor    (fn [] …)})                      ; (java.util.zip.Deflater.)
+```
+
+`:statics` and `:ctor` are the same registries as `__register-class-statics!`
+and `__register-class-ctor!`, so they keep those semantics: statics *merge* into
+whatever the class already has, and a `:ctor` *replaces* the constructor
+process-wide. They are here so one spec can describe a class Jolt doesn't ship
+at all; the gap-filling guarantee below is about `:methods`.
+
+A method name with a leading dash answers the field spelling: `"-length"` shims
+`(.-length x)`.
+
+**An addition can't change what Jolt already answers.** By default a
+registration is consulted only where the call would otherwise fail, so extending
+a class is safe even when another library extends the same one — the two collide
+only if they claim the same missing method. That is the opposite of replacing
+the class with `__register-class-ctor!`, which every namespace in the process
+inherits whether it wanted your version or not.
+
+**To replace a method Jolt does implement, say so.**
+
+```clojure
+(host/extend-class! "java.io.File"
+  {:methods  {"getCanonicalPath" (fn [self] …)}
+   :override true})
+```
+
+An override is process-wide: every `(.getCanonicalPath f)` in every namespace
+runs your method, including in code that never asked for it. Prefer the default
+tier, and reach for `:override` only when Jolt's answer is wrong for everyone
+rather than inconvenient for you. `JOLT_DEBUG=1` reports each override as it
+registers, so surprising behaviour downstream is one environment variable away
+from its cause instead of a bisect.
+
+**Names resolve through the class hierarchy.** `"java.io.File"` and `"File"`
+both match, and a registration on a supertype answers for its subtypes — extend
+`java.io.Reader` and a `StringReader` receiver gets the method. By the same rule
+a registration on `java.lang.Object` reaches every value, which is occasionally
+what you want and usually not.
+
+**One limit.** Methods on `String`, `Keyword` and `StringBuilder` — and on
+anything they inherit from, such as `CharSequence` — cannot be *overridden*.
+Where the compiler can prove the receiver's type it compiles those calls
+straight to a primitive, so an override would take effect at some call sites and
+not others; `extend-class!` refuses the registration rather than let that
+happen. Adding a method those classes don't have is unaffected.
+
+Your own shimmed class is extensible here too, once `(class x)` knows about it:
+`(clojure.core/__register-class! pred class-fn tags-fn)` makes its values report
+a class name (and dispatch protocols extended to that class), and
+`extend-class!` then addresses them by that name like any built-in.
+
 ### The registration API at a glance
 
-All four `__register-*` functions live in `clojure.core` (no require); the
-tagged-table and hierarchy seams live in `jolt.host`:
+The `__register-*` functions live in `clojure.core` (no require); the
+tagged-table, hierarchy and class-extension seams live in `jolt.host`:
 
 - `(__register-class-ctor! "pkg.Name" (fn [args…] …))`: `(pkg.Name. args…)`
 - `(__register-class-statics! "pkg.Name" {"FIELD" v, "method" (fn […] …)})`: `pkg.Name/FIELD`, `(pkg.Name/method …)`
 - `(__register-class-methods! :your-tag {"method" (fn [self args…] …)})`: `(.method obj args…)` on a value tagged `:your-tag`
 - `(__register-instance-check! (fn [class-name-str v] true|false|nil))`: `(instance? pkg.Name v)`
 - `(jolt.host/register-class-supers! "pkg.Name" ["pkg.Super" "pkg.Iface" …])`: hierarchy for `isa?`/`ancestors`
+- `(jolt.host/extend-class! "pkg.Name" {:methods {…} :statics {…} :ctor f :override bool})`: add to — or replace — a shim Jolt already has
 - `jolt.host/tagged-table`, `jolt.host/ref-put!`, `jolt.host/ref-get`, `jolt.host/table?`: build and read a stateful wrapper
 
 If a shim would be useful to everyone, it's also a great contribution to the

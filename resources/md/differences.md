@@ -4,7 +4,7 @@ The sections below are the genuine divergences, where the absence of the JVM act
 
 ## No JVM, no Java interop
 
-This is the difference that matters. There is no JVM underneath, so there is no general Java interop, no reflection, and no `gen-class`/`proxy`. Interop syntax (`Class.`, `Class/staticMethod`, `.method`) resolves only against a shimmed subset of the `java.*` standard library; a class token is a name, not a loaded class. See [Host Interop](/docs/host-interop.html) for what's covered and how to register your own host classes.
+This is the difference that matters. There is no JVM underneath, so there is no general Java interop, no reflection, and no `gen-class`/`proxy`. Interop syntax (`Class.`, `Class/staticMethod`, `.method`) resolves only against a shimmed subset of the `java.*` standard library; a class token is a name, not a loaded class. See [Host Interop](/docs/host-interop.html) for what's covered, how to register a class Jolt doesn't ship, and how to add a method to one it only part-shims.
 
 To call C libraries directly (the way the SQLite/Postgres and HTTP-client libraries work), Jolt has a foreign-function interface. See [Native Interop](/docs/native-interop.html).
 
