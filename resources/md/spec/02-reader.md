@@ -40,6 +40,19 @@ ratio    := ['+'|'-'] digits '/' digits            ; host-numeric-tower (§4 not
 exponent := [eE] ['+'|'-'] digits
 ```
 
+- S4a. **Digit separators (a Jolt superset).** An underscore between two
+  digits is a separator and is dropped: `1_000_000` reads as `1000000`. The
+  rule is Java's — the separator must sit *between two digits*, never against
+  the sign, the `0x` / `NrDDD` radix marker, the decimal point, the exponent
+  marker, the ratio slash, or the `N`/`M` suffix. So `0xFF_FF`, `0_52`,
+  `36rR_Z`, `1_0.5_5`, `1_0e1_0` and `3_000N` read, while `1_`, `0x_52` and
+  `1e_5` raise `Invalid number` as before. A run of underscores counts as one
+  separator (`5_______2` is `52`), and a leading underscore still starts an
+  ordinary symbol (`_1` is the symbol `_1`). Reference Clojure raises
+  `Invalid number` on every literal this adds, so nothing that reads on the
+  JVM changes meaning here. `clojure.edn` deliberately does **not** accept
+  separators: edn is an interchange format whose integer grammar has none, and
+  the printer never emits one.
 - S5. Trailing `N` (BigInt) and `M` (BigDecimal) suffixes are part of the
   grammar; their value semantics are the §4 numeric-tower question.
   Implementations without those towers SHOULD read them as the nearest

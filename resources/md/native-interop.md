@@ -229,9 +229,27 @@ there and returns it:
   [:by-value [:struct [[:year :int32] [:month :uint8] [:day :uint8]]]])
 ```
 
-Layouts cover fixed-size scalars and nested structs. Arrays, unions, bitfields
-and explicit packing are not modelled; for those, and for any struct whose
-shape you cannot state literally, lay it out by offset as below.
+A **fixed array** field is `[:array count element-type]`, and elements may
+themselves be arrays or structs. Indices are integer components in the path,
+mixed in with the keywords:
+
+```clojure
+(def frame (ffi/layout [:struct [[:tag    :int32]
+                                 [:matrix [:array 2 [:array 3 :double]]]
+                                 [:events [:array 4 [:struct [[:code  :int32]
+                                                              [:frame :int32]]]]]]]))
+
+(ffi/field-offset frame :matrix)          ; the array's base offset — the pointer C wants
+(ffi/field-offset frame [:matrix 1 2])    ; one element
+(ffi/field-offset frame [:events 2 :frame])
+```
+
+Indexed offsets come from the ABI's element stride rather than a stored entry
+per element, so a large array is no more expensive to describe than a small one.
+
+Unions, bitfields and explicit packing are still not modelled; for those, and
+for any struct whose shape you cannot state literally, lay it out by offset as
+below.
 
 ### Structs by offset
 
@@ -293,10 +311,30 @@ Read it **immediately** after the failing call. Anything that can enter the
 runtime between the call and the read (an allocation, a park, another FFI
 call) may make a syscall of its own and overwrite the slot.
 
+When "immediately" isn't good enough — a `:blocking` call, or anything where
+cleanup or the collector can run before you get control back — bind the function
+with `{:capture-native-error true}` and the error code is read *inside* the
+foreign-call return path, where nothing can get between:
+
+```clojure
+(ffi/defcfn c-open "open" [:string :int :varargs :int] :int
+            {:capture-native-error true})
+
+(let [[fd err] (c-open path 0 0)]
+  (when (neg? fd)
+    (throw (ex-info (str "open " path ": " (ffi/errno-message err))
+                    {:path path :errno err}))))
+```
+
+The call returns `[native-result error-code]` instead of the bare result. It
+composes with blocking — `{:blocking true :capture-native-error true}` — and on
+Windows the captured code is `GetLastError`. Capture needs a scalar result to
+pair the code with, so it is rejected on `:void` and on by-value struct returns.
+
 ## Checklist for a binding
 
 - Declare the library in `deps.edn` `:jolt/native` with per-OS candidates; mark optional drivers `:optional`, process symbols `:process`. Add a `:static` archive to link it into a built binary (keep the dynamic candidates for `run`/`repl`).
-- Bind each C function with `defcfn`, exact argument/return types, and `:blocking` on anything that waits.
+- Bind each C function with `defcfn`, exact argument/return types, and `:blocking` on anything that waits. Add `{:capture-native-error true}` where you need `errno` and can't guarantee an immediate read.
 - Free every `ffi/alloc` and `ffi/string->ptr`; wrap allocation in `try`/`finally`. Leaked foreign memory is never reclaimed.
 - Check C return codes and null pointers explicitly, and `throw` an `ex-info` on failure; `(ffi/errno-message)` makes the message say what went wrong.
 - Keep struct offsets and type widths LP64-correct, and branch on `os.name` where macOS and Linux differ.

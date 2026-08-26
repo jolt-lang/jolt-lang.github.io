@@ -26,6 +26,28 @@ For the end-to-end guide to writing a binding — declaring the library in `deps
 (ffi/defcfn c-strlen  "strlen"  [:string] :size_t)
 ```
 
+The trailing option may instead be a **map**, which is how you combine flags and
+how you ask for the error code:
+
+- `{:blocking true}` — the same as the `:blocking` keyword.
+- `{:capture-native-error true}` — the call returns `[native-result error-code]`,
+  with POSIX `errno` (or Windows `GetLastError`) read *inside* the foreign-call
+  return path, before anything else can overwrite it. See
+  [errno](/docs/native-interop.html) for why that matters.
+
+```clojure
+(ffi/defcfn c-open "open" [:string :int :varargs :int] :int
+            {:capture-native-error true})
+
+(c-open "/definitely/not/here" 0 0)   ; => [-1 2]
+(ffi/errno-message 2)                 ; => "No such file or directory"
+```
+
+Keys and values are validated at compile time and fail closed: an unknown key
+or a non-literal Boolean is an error rather than a silently ignored option.
+Capture needs a scalar result to pair the code with, so it is rejected on
+`:void` and on by-value struct returns.
+
 ## Struct layouts
 
 A layout compiles a literal, data-only descriptor into the ABI metadata for a C
@@ -34,9 +56,9 @@ those from the same declarations the C compiler would, so a padded or nested
 struct comes out right without you counting bytes.
 
 - `layout` `descriptor` — compile `[:struct [[field type] ...]]`. Field names are
-  unqualified keywords and must be unique; a field is a fixed-size scalar or a
-  nested `[:struct ...]`. The descriptor must be a literal — it is read at compile
-  time, not evaluated.
+  unqualified keywords and must be unique; a field is a fixed-size scalar, a
+  nested `[:struct ...]`, or a fixed array `[:array count type]`. The descriptor
+  must be a literal — it is read at compile time, not evaluated.
 - `layout-size` `layout` — `sizeof` the struct, padding included.
 - `layout-alignment` `layout` — its alignment requirement.
 - `field-offset` `layout path` — the byte offset of a field. `path` is a keyword,
@@ -66,9 +88,41 @@ A nested struct is addressed by path:
 (ffi/read-field p event [:when :month])
 ```
 
-Layouts cover fixed-size scalar fields and nested structs. Arrays, unions,
-bitfields, explicit packing, and self-referential descriptors are not supported;
-lay those out by offset as before.
+A fixed array is `[:array count element-type]`, and elements may themselves be
+arrays or structs — so a matrix is an array of arrays, and a ring buffer of
+events is an array of structs. Array indices are **integer** components in a
+field path, alongside the keywords:
+
+```clojure
+(def frame (ffi/layout [:struct [[:tag    :int32]
+                                 [:matrix [:array 2 [:array 3 :double]]]
+                                 [:name   [:array 8 :uint8]]]]))
+
+(ffi/layout-size frame)                    ; => 64
+(ffi/field-offset frame :matrix)           ; => 8   (the array's base offset)
+(ffi/field-offset frame [:matrix 1 2])     ; => 48
+(ffi/field-offset frame [:name 3])         ; => 59
+
+(ffi/with-layout [p frame]
+  (ffi/write-field p frame [:matrix 1 2] 3.5)
+  (ffi/read-field  p frame [:matrix 1 2]))  ; => 3.5
+```
+
+```clojure
+;; an array of structs, indexed then named
+(def q (ffi/layout [:struct [[:events [:array 4 [:struct [[:code  :int32]
+                                                          [:frame :int32]]]]]]]))
+(ffi/field-offset q [:events 2 :frame])     ; => 20
+```
+
+Naming the array itself (`:matrix`, with no index) still gives its base offset,
+which is what you pass to C when the function wants a pointer to the first
+element. Offsets for indexed paths are computed from the ABI's element stride
+rather than stored per element, so metadata stays one entry per declared array
+shape — a million-element array costs no more to describe than a two-element one.
+
+Unions, bitfields, explicit packing, and self-referential descriptors are still
+not supported; lay those out by offset as before.
 
 ## Structs by value
 
