@@ -14,3 +14,6 @@ a thing is built the way it is; the code is the source of truth for *how*.
 | [0008](/docs/rfc/0008-time-core-library-split.html) | Splitting time between core and the library | Implemented | The base `java.time` value types are in core; formatting and zones are jolt-lang/time. |
 | [0009](/docs/rfc/0009-program-image-dump-restore.html) | Program image dump and restore | Implemented | `jolt.image` — writing program state to a file and restoring it on another machine or architecture. |
 | [0010](/docs/rfc/0010-portable-scheme-layer.html) | The portable Scheme layer | Implemented | Contract + adapter isolating the host from Chez, with capability degradations — the boundary a second target (Guile, WASM) ports against. |
+| [0011](/docs/rfc/0011-tail-calls-are-guaranteed.html) | Tail calls are guaranteed | Implemented | Proper tail calls for any tail-position call; `recur` stays as the JVM-compatible spelling. |
+| [0012](/docs/rfc/0012-no-interpreter.html) | There is no interpreter | Implemented | Every entry point compiles to native code — `-e`, REPL, nREPL, `eval`, builds. |
+| [0013](/docs/rfc/0013-numeric-tower.html) | The numeric tower | Implemented | Host-native integers/ratios with a JVM-shaped class surface; lowering opts out per-site. |

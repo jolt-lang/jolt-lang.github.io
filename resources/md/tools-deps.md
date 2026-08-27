@@ -120,7 +120,8 @@ roots, and de-sugars the argv into a run:
 - `repl` → a line REPL;
 - `path` → print the resolved roots;
 - `build -m NS [-o OUT] [--opt|--dev]` → AOT-compile the app into a standalone binary;
-- `<task>` → run a `deps.edn` `:tasks` entry.
+- `tasks` → list the project's tasks;
+- `<task> [args]` → run a `bb.edn` / `deps.edn` `:tasks` entry (see below).
 
 The resolver lives in the overlay alongside the runtime, but the runtime's only
 dependency interface is the list of source roots it's handed.
@@ -129,6 +130,65 @@ Scripts can also resolve deps at runtime with `jolt.deps/add-deps` (the
 `babashka.deps/add-deps` twin): same coordinates, roots appended after the
 current ones so an added dep never shadows a loaded namespace. See
 [Dependencies (jolt.deps)](/docs/api/deps.html).
+
+## Tasks
+
+A project's tasks live in the `:tasks` map of its `bb.edn` or its `deps.edn`,
+and follow babashka's semantics:
+
+```clojure
+;; bb.edn
+{:paths ["script"]
+ :tasks {:requires ([babashka.fs :as fs])
+         clean {:doc "remove build output" :task (fs/delete-tree "target")}
+         build {:doc "build" :depends [clean] :task (shell "make")}
+         test  {:doc "run the tests" :main-opts ["-m" "app.test-runner"]}}}
+```
+
+```bash
+jolt tasks                 # list them, with their :doc
+jolt build                 # run one — `jolt run build` does the same
+jolt run --parallel build  # …with independent :depends run concurrently
+jolt test -v               # arguments after the name are *command-line-args*
+```
+
+A task's value is either a map or the body on its own. The map keys are `:doc`,
+`:task` (the body), `:depends`, `:requires`, `:private` (kept out of the
+listing), `:extra-paths` / `:extra-deps` (roots and dependencies for that task
+alone), and `:override-builtin` (take a jolt command's name deliberately). The
+`:tasks` map itself takes `:init` (evaluated once before any task), `:requires`
+(for every task), and `:enter` / `:leave` (around each one).
+
+Bodies are evaluated in the `user` namespace with `clojure.core` and
+[`babashka.tasks`](https://book.babashka.org/#tasks) referred, so `shell`,
+`clojure`, `run` and `current-task` need no require. A `shell` that exits
+non-zero fails the task, and `jolt` exits with the child's status.
+
+Each dependency runs at most once per invocation, and a cycle is an error
+rather than a hang.
+
+Two forms are jolt's rather than babashka's. A **string** body is a shell
+command line — `{clean "rm -rf target"}` — where babashka would evaluate it as
+an expression, which does nothing. And a map with **`:main-opts`** runs them
+like an alias's, which is how a `deps.edn` task names a `-main` to call. Both
+work in either file.
+
+`clojure` runs the jolt CLI, not the JVM Clojure CLI: on this host jolt is the
+Clojure, so `(clojure "-M:test")` means what it means under `bb` without
+needing a JVM. `(shell "clojure" "-M:test")` still reaches the real one.
+
+`:pods` are not supported and say so when a `bb.edn` declares them.
+
+### bb.edn and deps.edn together
+
+With no `deps.edn`, `bb.edn` **is** the project config: its `:paths` and
+`:deps` drive `run`, `repl`, `path` and `build` like a `deps.edn` would.
+
+With both files, `deps.edn` is the project — it alone answers every command —
+and `bb.edn` contributes its `:tasks`. Its `:paths` and `:deps` join the
+resolution for a task run only, so a `bb.edn` `:paths ["script"]` cannot
+displace the app's own source roots on every other command. A task name
+declared in both files is babashka's.
 
 ## Native libraries
 

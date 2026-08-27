@@ -49,4 +49,7 @@
   ["rfc/0007-compilation-modes-and-binary-output.md" "RFC 0007: Compilation Modes & Binary Output" "page"]
   ["rfc/0008-time-core-library-split.md"         "RFC 0008: Splitting Time Between Core & Library" "page"]
   ["rfc/0009-program-image-dump-restore.md"      "RFC 0009: Program Image Dump & Restore"  "page"]
-  ["rfc/0010-portable-scheme-layer.md"           "RFC 0010: The Portable Scheme Layer"     "page"]]
+  ["rfc/0010-portable-scheme-layer.md"           "RFC 0010: The Portable Scheme Layer"     "page"]
+  ["rfc/0011-tail-calls-are-guaranteed.md"       "RFC 0011: Tail Calls Are Guaranteed"     "page"]
+  ["rfc/0012-no-interpreter.md"                  "RFC 0012: There Is No Interpreter"       "page"]
+  ["rfc/0013-numeric-tower.md"                   "RFC 0013: The Numeric Tower"             "page"]]

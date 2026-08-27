@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Scheme: Chez natively, Gambit for JavaScript. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>RFC 0013: The Numeric Tower: Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+    
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <img src="/img/jolt.svg" alt="Jolt logo" class="brand-logo">
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li ><a href="/docs/get-involved.html">Get Involved</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+        <a class="btn btn-primary nav-cta" href="/docs/getting-started.html">Get Started</a>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rationale.html">Rationale</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/testing.html">Testing</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/cljc-interop.html">Cljc Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/scheme-backends.html">Scheme Backends</a>
+      </li>
+      
+      <li >
+        <a href="/docs/fibers.html">Fibers</a>
+      </li>
+      
+      <li >
+        <a href="/docs/extension-points.html">Extension Points</a>
+      </li>
+      
+      <li >
+        <a href="/docs/numeric-performance.html">Numeric Performance</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Libraries</a>
+      </li>
+      
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/deps.html">Dependencies (jolt.deps)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (babashka.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/image.html">Program Images (jolt.image)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/time.html">Date &amp; Time (jolt-lang/time)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/continuations.html">Continuations (jolt.continuations)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/util.html">Utilities (jolt.util)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>RFC 0013: The Numeric Tower</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#rfc_0013_—_the_numeric_tower">RFC 0013 — The numeric tower</a></li><li><a href="#summary">Summary</a></li><li><a href="#integers:_one_representation,_no_overflow">Integers: one representation, no overflow</a></li><li><a href="#ratios">Ratios</a></li><li><a href="#the_jvm-shaped_class_surface">The JVM-shaped class surface</a></li><li><a href="#lowering_opts_out_per-site,_not_globally">Lowering opts out per-site, not globally</a></li><li><a href="#complex_numbers">Complex numbers</a></li><li><a href="#why_this_shape">Why this shape</a></li><li><a href="#related">Related</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <h1 id="rfc&#95;0013&#95;—&#95;the&#95;numeric&#95;tower">RFC 0013 — The numeric tower</h1><ul><li><strong>Status</strong>: Implemented</li><li><strong>Champions</strong>: jolt maintainers</li></ul><h2 id="summary">Summary</h2><p>jolt runs on the host's numeric tower, not an emulation of one. Integers are one seamless type that never overflows, ratios are exact and native, and the surface JVM Clojure code sees — classes, promotion, printing — is a parity layer on top. Type hints (<code>&#94;long</code>/<code>&#94;double</code>) can opt a hot path down to machine arithmetic without shrinking the tower for everyone else.</p><h2 id="integers:&#95;one&#95;representation,&#95;no&#95;overflow">Integers: one representation, no overflow</h2><p>There is no fixnum/bignum boundary at the language surface. Machine fixnums promote to bignums transparently mid-computation:</p><pre><code class="clojure">&#40;inc 9223372036854775807&#41;   ;=&gt; 9223372036854775808N
+&#40;&#42; 123456789012345678901234567890 987654321098765432109876543210&#41;
+;;=&gt; 121932631137021795226185032733622923332237463801111263526900N
+</code></pre><p>Arithmetic never throws on integer overflow because overflow has no representation to reach. The JVM's <code>Long</code>/<code>BigInt</code> split — two classes, two sets of ops, and the <code>+'</code> family of explicitly-promoting variants it motivates — is not a <em>representation</em> split here: there is one exact integer, and <code>+</code> already does what <code>+'</code> does. <code>+'</code> still exists and still works, because JVM code calls it.</p><p>What the split does survive as is a reporting convention, described next.</p><h2 id="ratios">Ratios</h2><p>Division of integers that doesn't divide evenly yields an exact ratio, and ratio arithmetic stays exact until a double enters:</p><pre><code class="clojure">1/3                  ;=&gt; 1/3
+&#40;+ 1/3 1/6&#41;          ;=&gt; 1/2
+&#40;/ 3 2&#41;              ;=&gt; 3/2
+&#40;+ 1/3 0.5&#41;          ;=&gt; 0.8333333333333333
+&#40;numerator 3/4&#41;      ;=&gt; 3
+&#40;denominator 3/4&#41;    ;=&gt; 4
+</code></pre><p>This matches JVM Clojure's <code>clojure.lang.Ratio</code> behavior — jolt ratios <em>are</em> reported as <code>clojure.lang.Ratio</code>.</p><h2 id="the&#95;jvm-shaped&#95;class&#95;surface">The JVM-shaped class surface</h2><p>The host representation is Chez's; the class surface is Clojure's, so code that dispatches on <code>&#40;class x&#41;</code> or prints values keeps working:</p><pre><code class="clojure">&#40;class 42&#41;                       ;=&gt; java.lang.Long
+&#40;class &#40;inc Long/MAX&#95;VALUE&#41;&#41;     ;=&gt; clojure.lang.BigInt
+&#40;class 1.5&#41;                      ;=&gt; java.lang.Double
+&#40;class 1.5M&#41;                     ;=&gt; java.math.BigDecimal
+&#40;class 3/4&#41;                      ;=&gt; clojure.lang.Ratio
+</code></pre><p>The integer answers are derived from its <strong>magnitude</strong>, not from a stored tag: an exact integer inside the <code>long</code> range reports <code>java.lang.Long</code>, one outside it reports <code>clojure.lang.BigInt</code>, and printing follows the same rule — the <code>N</code> suffix appears exactly where the JVM would print one. That gets JVM code the class and the rendering it expects without a second integer type existing.</p><p>The consequence is that the reported class follows the value rather than its history. A JVM <code>BigInt</code> stays a <code>BigInt</code> when arithmetic brings it back into range; here it is a <code>Long</code> again:</p><pre><code class="clojure">&#40;class &#40;dec &#40;inc Long/MAX&#95;VALUE&#41;&#41;&#41;   ;=&gt; java.lang.Long      &#40;JVM: clojure.lang.BigInt&#41;
+&#40;class 10N&#41;                          ;=&gt; java.lang.Long      &#40;JVM: clojure.lang.BigInt&#41;
+2r1010N                              ;=&gt; 10                  &#40;JVM: reader error&#41;
+</code></pre><p>An <code>N</code> suffix therefore asks for nothing the value does not already have: it is accepted, and it is a no-op. Values and arithmetic agree with the JVM throughout — <code>&#40;= 10 10N&#41;</code> and <code>&#40;= &#40;inc Long/MAX&#95;VALUE&#41; 9223372036854775808&#41;</code> are both true — only the class of a small <code>N</code> literal differs, and jolt's divergence registry carries these rows under <code>:integer-box-model</code> and <code>:reader-model</code>. A faithfully narrow box is not worth its cost: it would have to crash raw compiled <code>&#40;+ …&#41;</code> or de-optimize all arithmetic.</p><p><code>M</code> literals are decimal (<code>BigDecimal</code>) as on the JVM. <code>##Inf</code>, <code>##-Inf</code>, <code>##NaN</code> read and print with JVM spelling, and <code>Math</code>-shaped operations keep JVM results (<code>&#40;Math/sqrt -1&#41;</code> is <code>##NaN</code>, not an error).</p><h2 id="lowering&#95;opts&#95;out&#95;per-site,&#95;not&#95;globally">Lowering opts out per-site, not globally</h2><p>The <code>&#94;long</code>/<code>&#94;double</code> hints drive <code>fl&#42;</code>/<code>fx&#42;</code> lowering — unchecked machine ops with coercion at the boundaries — as specified in RFC 0004 and RFC 0007. The hint is a contract on that one function; every unhinted call keeps full-tower semantics. There is no build mode in which the tower silently shrinks.</p><h2 id="complex&#95;numbers">Complex numbers</h2><p>Chez's tower extends below what Clojure has: it carries exact and inexact complex numbers natively. jolt does not surface them first-class — no reader syntax, no <code>complex?</code> — but they are the layer underneath, reachable through the raw host seam (<code>jolt.scheme</code>) where Chez procedures and their results cross untouched:</p><pre><code class="clojure">&#40;require '&#91;jolt.scheme :as s&#93;&#41;
+&#40;s/call &quot;sqrt&quot; -1&#41;              ;=&gt; 0+1i
+&#40;s/call &quot;make-rectangular&quot; 1 2&#41; ;=&gt; 1+2i
+</code></pre><p>Such a value reports <code>java.lang.Number</code> and has no Clojure-level arithmetic of its own; it is a host value passing through. First-class complex support is deliberately not promised here — exposing more of the host tower is future work on that seam (RFC 0010).</p><h2 id="why&#95;this&#95;shape">Why this shape</h2><p>JVM Clojure's tower is an emulation layered over JVM primitives: <code>Long</code> with promotion rules into <code>BigInteger</code>, a <code>Ratio</code> class, boxes for each. jolt's is the host's own representation with a Clojure-compatible veneer, so exactness is the default rather than a promotion path, and the parity surface (classes, printing, promotion, literals) is exactly the part JVM code can observe. That is the split: representation follows the host, contract follows Clojure.</p><h2 id="related">Related</h2><p>RFC 0004 (type hints) and RFC 0007 (compilation modes) — the opt-in lowering; RFC 0010 (portable Scheme layer) — what a second host must provide to keep this tower honest.</p>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>
