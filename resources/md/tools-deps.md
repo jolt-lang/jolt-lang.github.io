@@ -161,8 +161,8 @@ alone), and `:override-builtin` (take a jolt command's name deliberately). The
 
 Bodies are evaluated in the `user` namespace with `clojure.core` and
 [`babashka.tasks`](https://book.babashka.org/#tasks) referred, so `shell`,
-`clojure`, `run` and `current-task` need no require. A `shell` that exits
-non-zero fails the task, and `jolt` exits with the child's status.
+`jolt`, `clojure`, `run` and `current-task` need no require. A `shell` that
+exits non-zero fails the task, and `jolt` exits with the child's status.
 
 Each dependency runs at most once per invocation, and a cycle is an error
 rather than a hang.
@@ -173,9 +173,11 @@ an expression, which does nothing. And a map with **`:main-opts`** runs them
 like an alias's, which is how a `deps.edn` task names a `-main` to call. Both
 work in either file.
 
-`clojure` runs the jolt CLI, not the JVM Clojure CLI: on this host jolt is the
-Clojure, so `(clojure "-M:test")` means what it means under `bb` without
-needing a JVM. `(shell "clojure" "-M:test")` still reaches the real one.
+`jolt` re-invokes this CLI — `(jolt "-M:test")`. `clojure` is the same
+function under babashka's name for it, so a bb.edn that calls
+`(clojure "-M:test")` runs here: on this host jolt is the Clojure, and the
+point of the exercise is not to need a JVM. Prefer `jolt` in new task maps;
+`(shell "clojure" "-M:test")` still reaches the real Clojure CLI.
 
 `:pods` are not supported and say so when a `bb.edn` declares them.
 
