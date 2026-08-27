@@ -24,6 +24,39 @@ Strings are Chez strings: codepoint-indexed, with no UTF-16 surrogate pairs. `co
 
 Patterns compile through [irregex](https://github.com/ashinn/irregex) (vendored), not `java.util.regex`. `re-find`, `re-matches`, `re-seq`, the `clojure.string` regex functions, and `#"…"` literals all work for common patterns, but Java-specific regex features can differ at the edges.
 
+## Set literals in macro argument position
+
+A macro that inspects its own argument form sees a set literal as a tagged map, `{:jolt/type :jolt/set :value [...]}`, whenever that set is nested inside another form. `clojure.core/set?` answers `false` for it and `clojure.core/map?` answers `true`, so a `cond` written the obvious way routes a set into its map branch.
+
+```clojure
+(defmacro probe [form]
+  (let [subject (second form)]
+    (list 'quote {:subject (pr-str subject)
+                  :set?    (set? subject)
+                  :map?    (map? subject)})))
+
+(probe @#{"a" "b"})
+;; {:subject "{:jolt/type :jolt/set, :value [\"a\" \"b\"]}", :set? false, :map? true}
+
+(probe @{"k" "v"})
+;; {:subject "{\"k\" \"v\"}", :set? false, :map? true}
+```
+
+Test the form with `jolt.host/form-set?` instead. It knows both shapes, and there is a matching `form-map?` that excludes tagged forms rather than answering true for them.
+
+```clojure
+(ns my.macros (:require [jolt.host :as h]))
+
+(h/form-set? subject)   ;; true for a set literal, in either shape
+(h/form-map? subject)   ;; false for a set literal, true for a real map
+```
+
+Two things narrow this considerably, so it is worth knowing when it does not apply.
+
+Only a NESTED set is tagged. A set passed as the whole macro argument arrives as an ordinary set, so `(probe #{"a"})` sees `set?` answer `true`.
+
+Reading data is unaffected. `read-string` returns real sets at any depth, and set literals in ordinary code are ordinary sets. This is specifically about the form a macro receives.
+
 ## Coverage
 
 `clojure.core` is implemented function by function against a conformance corpus whose expected values come from reference JVM Clojure. Coverage is broad but not total: a namespace can load with most functions working and a few not yet implemented. The per-function coverage lives in the [language specification](/docs/spec/README.html).
