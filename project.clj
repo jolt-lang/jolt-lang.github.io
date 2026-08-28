@@ -5,7 +5,7 @@
             :url  "https://opensource.org/licenses/EPL-1.0"}
   :dependencies [[org.clojure/clojure "1.11.1"]
                  [hiccup "1.0.5"]
-                 [markdown-clj "1.11.2"]
+                 [markdown-clj "1.12.10"]
                  [crouton "0.1.2"]
                  [selmer "1.12.53"]
                  [me.raynes/fs "1.4.6"]
