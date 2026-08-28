@@ -65,7 +65,9 @@ Three more reader differences, all in the direction of reading something the JVM
 (read-string "#foo/bar 5") ;; Jolt: #foo/bar 5 JVM: throws (no reader fn)
 ```
 
-An unregistered tag reads as an inert tagged literal rather than failing, so a file using a tag you have not registered loads and only fails if something looks inside the value.
+An unregistered tag reads as an inert tagged literal rather than failing, so data carrying a tag you have not registered can be inspected before you decide what to do with it. That is `read-string` only: the same tag in a source file being compiled is an error naming the tag, the way the JVM's reader raises on it.
+
+The `#` dispatch table is also **open for punctuation**, which Clojure's is not: `jolt.reader/set-dispatch-macro!` puts a reader function on a character. Jolt ships one, `#$"a ~{x} b ~(inc x)"`, applying `clojure.core.strint`'s interpolation grammar at read time. Additive in the same direction as everything else in this section — every `#<punctuation>` sequence is a read error on the JVM — but a file using it will not read on Clojure. See [Reader Macros & Interpolation](/docs/api/reader.html).
 
 Quoted lists carry no source position: `(meta '(foo))` is `nil` where the JVM answers `{:line … :column …}`. The reader's position metadata is stripped from quoted lists so a quoted form is a constant.
 
