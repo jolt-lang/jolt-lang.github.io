@@ -371,11 +371,19 @@ add(2, 3);                          /* => 5 */
 
 Things to keep in mind across the boundary:
 
-- **Single thread.** The library carries its own GC. Call `jolt_library_init`
-  exactly once, and make `jolt_lookup` and every exported-function call from that
-  same thread; the callbacks are not registered as collect-safe, so entering
-  them from another OS thread the runtime never activated is undefined behavior.
-  Call `jolt_library_shutdown` to tear it down.
+- **One thread, unless you opt out.** The library carries its own GC. Call
+  `jolt_library_init` exactly once. By default an entry point is not registered
+  collect-safe, so entering it from another OS thread the runtime never
+  activated is undefined behavior, and in practice ends the process rather than
+  returning an error. Either make `jolt_lookup` and every exported call from the
+  thread that ran `jolt_library_init`, or export with `:collect-safe`:
+
+  ```clojure
+  (ffi/export! "jadd" add [:int :int] :int :collect-safe)
+  ```
+
+  which registers the entry so another thread may call it. Call
+  `jolt_library_shutdown` to tear it down.
 - **Pointer lifetimes.** A value returned as `:pointer`/`:void*` is not GC-tracked
   by the caller; if Jolt hands back a pointer into managed memory you must keep
   it alive on the Jolt side (e.g. hold it in a top-level ref) for as long as C
