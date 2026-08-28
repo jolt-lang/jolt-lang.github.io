@@ -9,6 +9,9 @@ add *data* to something core already implements. Per-locale currency symbols,
 month names and number separators are the working examples; core knows how to
 format, it just cannot ship CLDR.
 
+Adding *syntax* is a third registry again: the reader's `#` dispatch table, in
+[Reader Macros & Interpolation](/docs/api/reader.html).
+
 ## The problem it solves
 
 `java.text.NumberFormat/getCurrencyInstance` needs a currency symbol, decimal and
