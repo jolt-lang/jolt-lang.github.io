@@ -115,6 +115,10 @@
       </li>
       
       <li >
+        <a href="/docs/api/reader.html">Reader Macros &amp; Interpolation</a>
+      </li>
+      
+      <li >
         <a href="/docs/api/image.html">Program Images (jolt.image)</a>
       </li>
       
@@ -177,7 +181,7 @@
     </nav>
     
     <div id="content">
-      <h1 id="extension&#95;points">Extension Points</h1><p>An extension point is a named contract that lets **Jolt core define behaviour whose data it does not carry**, and lets a library supply that data later.</p><p>The class-shim registries in <a href='/docs/host-interop.html'>Host Interop</a> let a library add a <em>class</em>. Extension points are the other half: they let a library add <em>data</em> to something core already implements. Per-locale currency symbols, month names and number separators are the working examples; core knows how to format, it just cannot ship CLDR.</p><h2 id="the&#95;problem&#95;it&#95;solves">The problem it solves</h2><p><code>java.text.NumberFormat/getCurrencyInstance</code> needs a currency symbol, decimal and grouping separators, and a fraction-digit count, per locale. Core carries none of that. Two obvious options are both bad:</p><ul><li><strong>Guess.</strong> Format a German amount with US separators. The number comes out  wrong and <em>looks</em> right, which is the worst kind of failure.</li><li><strong>Refuse entirely.</strong> Leave the method unimplemented, so nothing that touches it  works even for the one locale core can answer correctly.</li></ul><p>An extension point takes the third path: core declares the shape, answers for the one key it genuinely knows, and says clearly what is missing for any other.</p><h2 id="declaring&#95;a&#95;point">Declaring a point</h2><p>Core declares; you normally only <em>register</em> against a point. The declaration is what makes the contract checkable:</p><pre><code class="clojure">&#40;jolt.host/register-extension-point! :currency-data
+      <h1 id="extension&#95;points">Extension Points</h1><p>An extension point is a named contract that lets **Jolt core define behaviour whose data it does not carry**, and lets a library supply that data later.</p><p>The class-shim registries in <a href='/docs/host-interop.html'>Host Interop</a> let a library add a <em>class</em>. Extension points are the other half: they let a library add <em>data</em> to something core already implements. Per-locale currency symbols, month names and number separators are the working examples; core knows how to format, it just cannot ship CLDR.</p><p>Adding <em>syntax</em> is a third registry again: the reader's <code>#</code> dispatch table, in <a href='/docs/api/reader.html'>Reader Macros & Interpolation</a>.</p><h2 id="the&#95;problem&#95;it&#95;solves">The problem it solves</h2><p><code>java.text.NumberFormat/getCurrencyInstance</code> needs a currency symbol, decimal and grouping separators, and a fraction-digit count, per locale. Core carries none of that. Two obvious options are both bad:</p><ul><li><strong>Guess.</strong> Format a German amount with US separators. The number comes out  wrong and <em>looks</em> right, which is the worst kind of failure.</li><li><strong>Refuse entirely.</strong> Leave the method unimplemented, so nothing that touches it  works even for the one locale core can answer correctly.</li></ul><p>An extension point takes the third path: core declares the shape, answers for the one key it genuinely knows, and says clearly what is missing for any other.</p><h2 id="declaring&#95;a&#95;point">Declaring a point</h2><p>Core declares; you normally only <em>register</em> against a point. The declaration is what makes the contract checkable:</p><pre><code class="clojure">&#40;jolt.host/register-extension-point! :currency-data
   {:key      :string
    :root     &quot;&quot;
    :fields   {:symbol :string, :symbol-sep :string, :symbol-first? :boolean,
