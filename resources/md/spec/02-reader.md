@@ -1,7 +1,8 @@
 # §2 The Reader (Lexical Syntax)
 
 **Status**: token grammar drafted; reader-macro catalog complete with
-normative entries; #inst and literal-collapse divergences resolved.
+normative entries, including the dispatch-table extension point (S20a);
+#inst and literal-collapse divergences resolved.
 Conformance: jolt `reader-forms-spec` + `reader-syntax-spec` (granularity
 model: jank's per-construct corpus, 62 files under
 `test/jank/{reader-macro,syntax-quote}` — adapted rows cited per entry).
@@ -132,6 +133,7 @@ checks → UNVERIFIED (rows to add).
 | `##Inf ##-Inf ##NaN` | symbolic floats | S19 |
 | `#tag form` | tagged literal | S20 below |
 | `#! …` | shebang comment line (implementations SHOULD accept) | |
+| `#<punct> …` | program-supplied reader, where an implementation opens the table | S20a below |
 
 ### S16 — anonymous function `#(…)`
 
@@ -189,7 +191,10 @@ false; `(NaN? ##NaN)` is true.
 - `#tag form`: the reader resolves `tag` in the data-reader table and MUST
   apply the reader function to the *read* form, yielding its result as the
   read value. An unknown tag MUST be a read error (jank
-  `fail-unsupported-tag`).
+  `fail-unsupported-tag`). (jolt: an unknown tag is an error where the form is
+  compiled, naming the tag; `read-string` instead yields an inert tagged
+  literal, so data carrying an unregistered tag can be inspected rather than
+  refused — a documented divergence from this statement.)
 - Built-in tags every implementation MUST provide: `#uuid "…"` → a UUID
   value (§9 `parse-uuid` semantics — round-trips through printing), and
   `#inst "…"` → an instant value: RFC3339 with partial-timestamp defaults
@@ -198,10 +203,51 @@ false; `(NaN? ##NaN)` is true.
   canonically as `#inst "yyyy-MM-ddThh:mm:ss.fff-00:00"` and round-tripping. A
   malformed timestamp MUST be an error.
 
+### S20a — program-supplied dispatch readers
+
+The reference dispatch table is closed: a character not catalogued above is a
+read error ("No dispatch macro for: $"). That is a deliberate reference
+decision, and this section does not require it to change.
+
+- S20a. An implementation MAY open the remaining **punctuation** characters to
+  program-supplied readers, and MUST document which characters it does. It
+  MUST NOT open a character catalogued above, nor a letter or digit — those
+  begin a tag (S20), so a reader on one would swallow every `#tag` that starts
+  with it. A registration on a character the implementation reserves MUST be
+  refused, not silently allowed to shadow it.
+- S20b. Program-supplied readers MUST NOT be consulted in edn (below). edn's
+  grammar is closed and has no user extension point, so a document that read
+  only under one implementation would not be edn.
+- S20c. The extension is **additive**: since `#<punct>` with no reader is a
+  read error on every conforming implementation, nothing that reads portably
+  reads differently where the table is open. It is not portable in the other
+  direction — a program that installs or uses one reads only where the table
+  is open, and an implementation that does not open it stays conforming.
+
+The registration API, the reader's signature, and the scope and timing of a
+registration are **implementation-defined**.
+
+(jolt: `jolt.reader/set-dispatch-macro!` puts a reader on one character, in
+either of two tiers — the next form is read normally and the reader rewrites
+it, or `{:raw true}` hands the reader the source and an index and takes back
+`[form end-index]`. Registration is process-wide and takes effect for
+everything read after it, so a file may register a reader and use it in a later
+top-level form. jolt reserves `#{ #( #" #_ #! #' #^ ## #= #? #:`, every letter
+and digit, and the characters the reader cannot see past — whitespace, a comma,
+a semicolon, a backslash, and a closing delimiter. It ships one reader of its
+own: `#$"a ~{x} b ~(inc x)"`
+reads as `(clojure.core/str "a " x " b " (inc x))` — `clojure.core.strint`'s
+interpolation grammar at read time — registered through the same table, so it
+is listed by `dispatch-macros` and can be removed.)
+
 **Conformance** (2.3): jolt `reader-forms-spec` "#() (% %N %&)" + new rows
 (symbolic values, stacked discard, conditionals); `uuid-spec` reader-literal
 group; jank `reader-macro/{function,regex,uuid,symbolic-value}/*`,
-`fail-unsupported-tag.jank`.
+`fail-unsupported-tag.jank`. S20a/S20b/S20c → jolt unit `reader-macros` (both
+tiers, the reserved-character refusals, the raw tier's index contract, edn, and
+`#$`); the two `:reader-model` entries in `known-divergences.edn`, which
+`certify.clj` and `run-documented.ss` re-derive on reference Clojure and on
+jolt every run.
 
 ## 2.4 Syntax-quote
 
@@ -234,7 +280,8 @@ unquote,unquote-splice}/*`. S25 → UNVERIFIED.
 ## 2.5 What the reader is not
 
 The reader performs **no macroexpansion and no evaluation** (tagged-literal
-reader functions are the deliberate exception, S20). Forms read identically
+reader functions are the deliberate exception, S20, as are program-supplied
+dispatch readers where an implementation provides them, S20a). Forms read identically
 whether or not they will be evaluated; `read-string` of any printable value
 `v` followed by evaluation yields a value equal to `v` for the
 self-evaluating types (§4 print/read round-trip contract).

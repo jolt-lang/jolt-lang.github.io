@@ -107,13 +107,15 @@ binary reads the same source the same way `jolt run` does — both tiers include
 
 ## What you cannot put a reader on
 
-Only punctuation. Two kinds of character raise at registration instead of
+Only punctuation. Three kinds of character raise at registration instead of
 quietly shadowing what is there:
 
 - **The ones the reader claims**: `#{`, `#(`, `#"`, `#_`, `#!`, `#'`, `#^`,
   `##`, `#=`, `#?`, `#:`.
 - **Any letter or digit**, because those begin a `#tag`. A reader on `\s` would
   swallow every `#some/tag` in the program.
+- **Anything the reader cannot see past**: whitespace, a comma, a semicolon,
+  a backslash, and a closing delimiter.
 
 `clojure.edn` never consults the table. edn is a closed grammar with no user
 extension point, so `#$` in an edn document stays the unreadable tag it always
