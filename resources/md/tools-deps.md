@@ -134,16 +134,20 @@ current ones so an added dep never shadows a loaded namespace. See
 ## Tasks
 
 A project's tasks live in the `:tasks` map of its `bb.edn` or its `deps.edn`,
-and follow babashka's semantics:
+and follow babashka's semantics. **Either file works** — a project that has no
+`bb.edn` declares its tasks in `deps.edn` and loses nothing:
 
 ```clojure
-;; bb.edn
-{:paths ["script"]
+;; deps.edn — no bb.edn needed
+{:paths ["src"]
  :tasks {:requires ([babashka.fs :as fs])
          clean {:doc "remove build output" :task (fs/delete-tree "target")}
-         build {:doc "build" :depends [clean] :task (shell "make")}
+         build {:doc "build" :depends [clean] :task (shell "cc" "-O2" "-o" "target/app" "app.c")}
          test  {:doc "run the tests" :main-opts ["-m" "app.test-runner"]}}}
 ```
+
+When a project has both, the two `:tasks` maps merge with `bb.edn` last, so a
+name in both is babashka's.
 
 ```bash
 jolt tasks                 # list them, with their :doc
@@ -166,6 +170,13 @@ exits non-zero fails the task, and `jolt` exits with the child's status.
 
 Each dependency runs at most once per invocation, and a cycle is an error
 rather than a hang.
+
+Because a task can shell out and `deps.edn` already describes the project, a
+project that needs a build step — compiling a C shim named by
+[`:jolt/native`](/docs/native-interop.html), generating a source file — can
+carry it here instead of in a makefile or a script beside it. A task run does
+not require the project's `:jolt/native` libraries to be loadable, precisely so
+that the task which builds one can run on a fresh checkout.
 
 Two forms are jolt's rather than babashka's. A **string** body is a shell
 command line — `{clean "rm -rf target"}` — where babashka would evaluate it as

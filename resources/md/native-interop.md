@@ -20,8 +20,49 @@ Each entry is a map:
 
 - `:name`: a human-readable label, used only in the "library not found" error.
 - `:darwin` / `:linux` / `:windows`: per-platform candidates, a string or a vector tried in order. Jolt picks the key for the host OS (`os.name`) and loads the first candidate that resolves. List the versioned name first (`libsqlite3.so.0`), the bare name as a fallback.
+
+    A candidate is a **name** or a **path**, and the difference is a separator — the same line `dlopen` draws. `libsqlite3.so.0` is searched for on the loader path; `native/libfoo.so` is a path, resolved **relative to the project** (the directory holding `deps.edn`), not to wherever you happened to run `jolt` from. Absolute paths are used as given.
 - `:optional true`: a missing library is skipped instead of erroring. Use it for feature-gated drivers (the db library makes Postgres optional). Check `(jolt.ffi/loaded? "libpq.so.5")` before using such a binding.
 - `:process true`: bind symbols already in the running process (libc, POSIX) rather than loading a file. The http-client uses this for `socket`/`connect`/`send`/`recv`:
+
+### Shipping your own C
+
+A shim you compile yourself is a path candidate, so it can live beside the source it is built from:
+
+```
+my-project/
+  deps.edn
+  native/shim.c              ← the source
+  native/libshim.dylib       ← the artifact, named by :jolt/native
+```
+
+The artifact is a build product, so a fresh checkout does not have one. Put the compile step in a [task](/docs/tools-deps.html#tasks) and it travels with the project, no makefile or shell script beside it:
+
+```clojure
+{:jolt/native [{:name "shim"
+                :darwin ["native/libshim.dylib"]
+                :linux  ["native/libshim.so"]}]
+
+ :tasks
+ {:requires ([babashka.fs :as fs])
+  :init (def lib (str "native/libshim."
+                      (if (re-find #"^Mac" (System/getProperty "os.name")) "dylib" "so")))
+
+  native
+  {:doc "compile native/shim.c"
+   :task (when (seq (fs/modified-since lib ["native/shim.c"]))
+           (shell "cc" "-O2" "-fPIC" "-shared" "native/shim.c" "-o" lib)
+           (println "built:" lib))}}}
+```
+
+```bash
+jolt native      # compiles it
+jolt run -m app  # loads it
+```
+
+Running a **task** does not require the libraries to be present — it warns and carries on, because the task may be the very thing that builds one. Every other command still refuses to start without a required library, so a missing artifact never reaches your code as a confusing binding error.
+
+Pass the compiler its arguments **separately**, as above, rather than as one command string: no shell sees them, so an ELF rpath keeps its literal `$ORIGIN` (a single string would have the shell expand it away).
 
 ```clojure
 :jolt/native [{:name "libc (POSIX sockets)" :process true}
