@@ -85,6 +85,18 @@ compiles `(fn* [free-names…] form)` back in that namespace and applies it to
 the restored values. Shared captures restore to one object, and a closure
 that captures the atom containing it comes back still holding itself.
 
+`clojure.core`'s own literals are recorded the same way, so the closures
+`partial`, `comp`, `memoize`, `juxt` and friends return travel like any other.
+Multimethods, `reify` instances and namespaces travel as their **name** and come
+back as the live object, not a copy — they are code, or interned, and the
+restoring build already has them.
+
+Lazy sequences travel **unforced**. A core producer records what it is — the
+producer and its arguments — rather than closing over them, so restore
+re-applies it and what comes back is still lazy: an infinite sequence keeps
+generating, and a side effect that had not run still has not. Forcing at dump
+would do neither.
+
 Because restore evaluates fn sources, **an image is code**: load images with
 exactly the trust you would give a source file. (An image already rebinds
 your vars, so this was never a data-only trust boundary.)
@@ -161,8 +173,8 @@ hook re-derives the live graph from the restored root:
 ### What to hand `dump!`
 
 Hand it the value, not the container. Dumping an atom drags in whatever watches
-are attached to it, and a watch is usually an anonymous function with no name to
-write — so `dump!` refuses. Dumping `@atom` writes the data and nothing else.
+are attached to it; those travel as source like any other function, but they are
+rarely what you meant to save. Dumping `@atom` writes the data and nothing else.
 
 The same reasoning covers the rest: dump what your state *is*, and let the things
 derived from it be derived again on the other side. An application whose cursors
@@ -210,9 +222,14 @@ an inert value that prints as `#image/stub{...}`. After a world restore,
   bakes such captures into the compiled code, so their values cannot be
   recovered from the live closure while the stored source still needs them.
   The error names the capture. Closures over runtime-computed values travel.
-- **Closures made by `partial`, `comp`, `memoize` and friends refuse.** Their
-  literals live in `clojure.core`, whose forms are not registered in this
-  version. The refusal names the path; store what you composed instead.
+- **Execution does not travel.** A future that has not completed refuses — its
+  thread is not in the image, so a restored one would never finish — and so
+  does a transient, which belongs to the thread that made it. `deref` the
+  future and `persistent!` the transient first. An agent's state travels while
+  its pending queue does not.
+- **A function the runtime built rather than analyzed refuses.** There is no
+  source form to rebuild it from. Functions you wrote travel, `clojure.core`'s
+  included.
 - **Restoring closures needs the compiler.** A tree-shaken build that dropped
   it refuses a closure-bearing image up front, by name.
 - **Images do not survive a Chez upgrade.** They do survive a change of

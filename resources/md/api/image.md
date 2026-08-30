@@ -80,8 +80,11 @@ An open resource — a port, a thread — cannot travel as itself. Three ways to
 `dump!` (strict by default) refuses rather than write a subtly incomplete image, naming the path through your data to each offending object; `scan` answers without writing — one `{:path :object :disposition}` map per finding, where `:would-stub` marks what stub mode would carry.
 
 - **A closure over compile-time constants.** `(let [a 5] (fn [x] (+ a x)))` folds `a` into the compiled code, so its value cannot be recovered from the live closure while the stored source still needs it. The message names the capture. Closures over runtime-computed values travel fine.
-- **Closures made by `partial`, `comp`, `memoize` and friends** — their literals live in `clojure.core`, which is not source-registered. Store what you composed instead.
+- **Execution.** A future that has not completed refuses — its thread is not in the image, so a restored one would never finish — and so does a transient, which belongs to the thread that made it. `deref` the one and `persistent!` the other first. An agent's state travels; its pending queue does not.
+- **A function the runtime built rather than analyzed** — there is no source form to rebuild it from. Functions you wrote travel, and so do `clojure.core`'s: the closures `partial`, `comp`, `memoize` and `juxt` return are ordinary registered literals.
 - **Restoring closures needs the compiler**: a tree-shaken build that dropped it refuses closure-bearing images up front.
+
+Lazy sequences travel unforced and stay lazy — an infinite one keeps generating after a restore, and a side effect that had not run still has not. Multimethods, `reify` instances and namespaces travel as their name and come back as the live object.
 
 An image survives a change of machine and architecture, but not a Chez upgrade or an incompatible rebuild of your application — `read-image` and `restore-world!` check the header and refuse with the reason, rather than reading stale data.
 
