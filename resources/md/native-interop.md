@@ -416,7 +416,10 @@ Things to keep in mind across the boundary:
   exactly once, and make `jolt_lookup` and every exported-function call from that
   same thread; the callbacks are not registered as collect-safe, so entering
   them from another OS thread the runtime never activated is undefined behavior.
-  Call `jolt_library_shutdown` to tear it down.
+  If the embedder must call in from a thread it started itself, build that export
+  with a trailing `:collect-safe` (`export!` accepts it; same rule as
+  [`foreign-callable`](/docs/api/ffi.html)) so the entry activates the calling
+  thread on the way in. Call `jolt_library_shutdown` to tear it down.
 - **Pointer lifetimes.** A value returned as `:pointer`/`:void*` is not GC-tracked
   by the caller; if Jolt hands back a pointer into managed memory you must keep
   it alive on the Jolt side (e.g. hold it in a top-level ref) for as long as C
