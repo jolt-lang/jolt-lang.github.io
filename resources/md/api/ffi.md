@@ -19,7 +19,7 @@ For the end-to-end guide to writing a binding — declaring the library in `deps
 
 - `defcfn` `name csym argtypes rettype [:blocking]` — define a foreign function `name` bound to the C symbol `csym`. `(sqlite3-open "x.db" pp)` becomes an ordinary Clojure fn you call with Jolt values.
 - `foreign-fn` `csym argtypes rettype [:blocking]` — the anonymous form; returns a callable instead of `def`ing a name.
-- A trailing `:blocking` marks a call that may wait — network I/O, a lock, a sleep. The call is emitted collect-safe so a thread parked inside it does not pin the garbage collector. Mark anything that can block; leave pure, fast calls unmarked.
+- A trailing `:blocking` marks a call that may wait — network I/O, a lock, a sleep, a UI run loop you never return from. The call is emitted collect-safe so a thread parked inside it does not pin the garbage collector. An unmarked call stops collection process-wide for as long as it runs: other threads halt at their next allocation, far from the call responsible, while the parked thread itself looks healthy. Mark anything that can block; leave pure, fast calls unmarked.
 
 ```clojure
 (ffi/defcfn c-connect "connect" [:int :pointer :int] :int :blocking)
