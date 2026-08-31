@@ -168,7 +168,9 @@ A `:string` argument is copied to a NUL-terminated C string for the call; a `:st
 
 ## Memory and strings
 
-Foreign memory is manual. Allocate, use, free; there is no finalizer:
+Foreign memory is manual. Allocate, use, free; there is no finalizer. `alloc`
+hands back **zeroed** memory, so a struct you only partly fill has no leftovers
+in the rest of it:
 
 ```clojure
 (ffi/alloc nbytes)          ; -> pointer (address); you must free it
@@ -176,7 +178,7 @@ Foreign memory is manual. Allocate, use, free; there is no finalizer:
 (ffi/sizeof :pointer)       ; size of a type, for laying out structs/out-params
 
 (ffi/read  ptr type [offset])      ; read a typed value at ptr (+ optional byte offset)
-(ffi/write ptr type offset value)  ; write a typed value at ptr + offset
+(ffi/write ptr type value [offset]) ; write a typed value at ptr (+ optional byte offset)
 
 (ffi/string->ptr s)         ; alloc a C string from s (free it yourself)
 (ffi/ptr->string ptr)       ; read a NUL-terminated C string back
@@ -270,15 +272,15 @@ there and returns it:
   [:by-value [:struct [[:year :int32] [:month :uint8] [:day :uint8]]]])
 ```
 
-A **fixed array** field is `[:array count element-type]`, and elements may
+A **fixed array** field is `[:array element-type count]`, and elements may
 themselves be arrays or structs. Indices are integer components in the path,
 mixed in with the keywords:
 
 ```clojure
 (def frame (ffi/layout [:struct [[:tag    :int32]
-                                 [:matrix [:array 2 [:array 3 :double]]]
-                                 [:events [:array 4 [:struct [[:code  :int32]
-                                                              [:frame :int32]]]]]]]))
+                                 [:matrix [:array [:array :double 3] 2]]
+                                 [:events [:array [:struct [[:code  :int32]
+                                                            [:frame :int32]]] 4]]]]))
 
 (ffi/field-offset frame :matrix)          ; the array's base offset — the pointer C wants
 (ffi/field-offset frame [:matrix 1 2])    ; one element
@@ -303,10 +305,9 @@ Written out as byte offsets, using `ffi/read`/`ffi/write` directly. The http-cli
 (def ^:private O-next-out 24)
 (def ^:private O-avail-out 32)
 
-(let [strm (ffi/alloc ZS)]
-  (dotimes [i ZS] (ffi/write strm :uint8 i 0))   ; zero the struct
-  (ffi/write strm :pointer O-next-in  src-buf)
-  (ffi/write strm :uint    O-avail-in n)
+(let [strm (ffi/alloc ZS)]                        ; alloc zeroes; no fill loop
+  (ffi/write strm :pointer src-buf O-next-in)
+  (ffi/write strm :uint    n       O-avail-in)
   ...)
 ```
 
@@ -328,6 +329,22 @@ For bytes that aren't text, use the array helpers; they don't touch encoding. Th
   (when (pos? got) (net/send-bytes sock (ffi/read-array buf got)))
   (ffi/free buf))
 ```
+
+For a group of allocations with one lifetime — several blocks, a C string and a
+callback released together — use an arena instead of a macro per pointer:
+
+```clojure
+(with-open [a (ffi/confined-arena)]
+  (let [buf   (ffi/alloc a 4096)
+        name  (ffi/string->ptr a "config.toml")
+        on-ev (ffi/callback a handle-event [:pointer :int] :void)]
+    ...))                                ; all three released here
+```
+
+Arenas also scope the pointer sizes `segment`, `slice` and `reinterpret` record.
+Called without an arena those record for the life of the process, which is the
+wrong form in a loop — see [Pointer sizes](/docs/api/ffi.html#pointer-sizes) in
+the API reference.
 
 ## errno
 

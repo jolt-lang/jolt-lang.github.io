@@ -57,7 +57,7 @@ struct comes out right without you counting bytes.
 
 - `layout` `descriptor` — compile `[:struct [[field type] ...]]`. Field names are
   unqualified keywords and must be unique; a field is a fixed-size scalar, a
-  nested `[:struct ...]`, or a fixed array `[:array count type]`. The descriptor
+  nested `[:struct ...]`, or a fixed array `[:array element-type count]`. The descriptor
   must be a literal — it is read at compile time, not evaluated.
 - `layout-size` `layout` — `sizeof` the struct, padding included.
 - `layout-alignment` `layout` — its alignment requirement.
@@ -88,15 +88,15 @@ A nested struct is addressed by path:
 (ffi/read-field p event [:when :month])
 ```
 
-A fixed array is `[:array count element-type]`, and elements may themselves be
-arrays or structs — so a matrix is an array of arrays, and a ring buffer of
-events is an array of structs. Array indices are **integer** components in a
-field path, alongside the keywords:
+A fixed array is `[:array element-type count]` — element type first, count
+second — and elements may themselves be arrays or structs, so a matrix is an
+array of arrays and a ring buffer of events is an array of structs. Array
+indices are **integer** components in a field path, alongside the keywords:
 
 ```clojure
 (def frame (ffi/layout [:struct [[:tag    :int32]
-                                 [:matrix [:array 2 [:array 3 :double]]]
-                                 [:name   [:array 8 :uint8]]]]))
+                                 [:matrix [:array [:array :double 3] 2]]
+                                 [:name   [:array :uint8 8]]]]))
 
 (ffi/layout-size frame)                    ; => 64
 (ffi/field-offset frame :matrix)           ; => 8   (the array's base offset)
@@ -110,8 +110,8 @@ field path, alongside the keywords:
 
 ```clojure
 ;; an array of structs, indexed then named
-(def q (ffi/layout [:struct [[:events [:array 4 [:struct [[:code  :int32]
-                                                          [:frame :int32]]]]]]]))
+(def q (ffi/layout [:struct [[:events [:array [:struct [[:code  :int32]
+                                                       [:frame :int32]]] 4]]]]))
 (ffi/field-offset q [:events 2 :frame])     ; => 20
 ```
 
@@ -197,6 +197,7 @@ Argument and return types are keywords:
 - `:double` `:float` — `double` / `float`
 - `:char` — `char` (a code point)
 - `:uint8` (alias `:u8`, `:byte`) — `unsigned char`, number 0–255
+- `:bool` — C99 `_Bool` / `stdbool.h`, one byte. Reads as `true`/`false`, writes on Jolt truthiness.
 - `:pointer` (alias `:void*`) — any pointer (a machine address)
 - `:string` — `char *`, marshaled both ways (UTF-8 both directions)
 - `:void` — return ignored (`nil`)
@@ -217,10 +218,10 @@ even when they export the same symbol names — macOS ships BoringSSL system-wid
 with the full `EVP_*` set, and before this rule an OpenSSL-backed library's
 digest calls could silently land there and abort the process.
 - `alloc` `nbytes` — allocate `nbytes`; returns a pointer (address). You must `free` it.
-- `free` `ptr` — release memory from `alloc` / `string->ptr`.
+- `free` `ptr` — release memory from `alloc` / `string->ptr`, and forget any size recorded for that pointer (see [Pointer sizes](#pointer-sizes)).
 - `sizeof` `type` — byte size of a type, for laying out structs and out-parameters.
 - `read` `ptr type [offset]` — read a typed value at `ptr` (+ optional byte offset).
-- `write` `ptr type offset value` — write a typed value at `ptr + offset`.
+- `write` `ptr type value [offset]` — write a typed value at `ptr` (+ optional byte offset). The value comes **before** the offset; an offset and a value are both integers, so a call written the other way round is not detectable and writes the wrong thing.
 - `read-array` `ptr n` — `n` bytes → `byte-array` (binary-faithful, no encoding).
 - `write-array` `ptr arr` — `byte-array` → memory.
 - `read-bytes` `ptr n` — `n` bytes → string (UTF-8).
@@ -228,6 +229,83 @@ digest calls could silently land there and abort the process.
 - `string->ptr` `s` — allocate a NUL-terminated C string from `s` (free it yourself).
 - `ptr->string` `ptr` — read a NUL-terminated C string back.
 - `null` — the null pointer; `null?` `p` — the test.
+
+### Arenas
+
+An arena is a group of allocations with one lifetime. Closing it releases the
+whole group: blocks (in reverse allocation order), callbacks, and views.
+
+- `confined-arena` — usable only from the thread that created it. Using or
+  closing it from another thread raises. This is the one to reach for inside a
+  function.
+- `shared-arena` — usable from any thread.
+- `global-arena` — lives as long as the process; cannot be closed.
+- `auto-arena` — released once the collector reclaims the arena itself; cannot
+  be closed by hand. For a callback C may invoke on a thread Jolt never started,
+  where no lexical scope can be the lifetime.
+- `close-arena` `a` — release the group. A second close releases nothing and is
+  not an error. `with-open` calls this.
+- `arena?` `x`, `arena-open?` `a` — the predicates.
+- `drain-auto-arenas!` — release every automatic arena the collector has
+  reclaimed, and answer how many. Jolt drains on arena creation and on
+  allocation into an automatic arena; call this to force one at a chosen point.
+
+`alloc`, `string->ptr`, `clone`, `callback`, `segment`, `slice` and
+`reinterpret` all take the arena in the **first** position.
+
+```clojure
+(with-open [a (ffi/confined-arena)]
+  (let [buf   (ffi/alloc a 4096)
+        name  (ffi/string->ptr a "config.toml")
+        on-ev (ffi/callback a handle-event [:pointer :int] :void)]
+    ...))                                ; all three released here
+```
+
+Do not close an arena while C still holds its memory. C can read released
+memory, and nothing raises.
+
+### Pointer sizes
+
+A Jolt pointer is a bare machine address — it carries no length. `size` answers
+what Jolt was *told* a pointer addresses, which is what lets `copy` and `clone`
+work without a byte count:
+
+- `size` `p` — the recorded size, or `0` for a pointer Jolt was never told about
+  (every pointer that comes back from C).
+- `segment` `[arena] addr [nbytes]` — a pointer to `addr`, recording `nbytes`.
+- `slice` `[arena] p offset [len]` — a pointer `offset` bytes into `p`,
+  recording `len`.
+- `reinterpret` `[arena] p nbytes [cleanup]` — declare that `p` addresses
+  `nbytes`. With an arena, the arena also calls `cleanup` with `p` on close —
+  the place to hand a C library its own deallocator. The arena frees nothing
+  here; the memory is C's.
+
+An arena allocation records its size, and the arena forgets it on close. `free`
+forgets the size of the pointer it releases.
+
+**Without an arena, `segment`, `slice` and `reinterpret` record for the life of
+the process.** That is the form to use for a pointer whose size you declare once
+at startup. It is the wrong form in a loop, for two reasons:
+
+- The record is never reclaimed, so it grows without bound.
+- The record is keyed by **address**, and an allocator hands the same address
+  out again. Once the memory behind a declared address is released, the record
+  outlives it, and a later allocation that lands there inherits a size it never
+  had — which `copy` and `clone` would then use as a byte count.
+
+Pass an arena and both problems go away, because the record dies with the group:
+
+```clojure
+;; walking an array of structs — the sizes die with the arena
+(with-open [a (ffi/confined-arena)]
+  (dotimes [i n]
+    (let [p (ffi/slice a arr (* i (ffi/sizeof point)) point)]
+      (handle (ffi/read p point)))))
+```
+
+`reinterpret` is also how a pointer from C gets a size in the first place. Give
+it the **actual** size: nothing can check it, Jolt does not bounds-check a read,
+and a size larger than the allocation is a read off the end.
 
 ### Scoped allocation
 
