@@ -203,6 +203,31 @@ resolution for a task run only, so a `bb.edn` `:paths ["script"]` cannot
 displace the app's own source roots on every other command. A task name
 declared in both files is babashka's.
 
+## Declaring the Jolt a project needs
+
+`:jolt/min-version` is the oldest Jolt a project — or a library — works on, and a
+runtime below it refuses to load rather than run:
+
+```clojure
+{:paths ["src"]
+ :jolt/min-version "0.8.0"}
+```
+
+Not every breaking change is visible at the call site. `jolt.ffi/write`'s
+argument order moved in 0.8.0, and the old and new spellings are both integers,
+so an older runtime writes to the wrong place and reports nothing — exactly the
+failure a declared floor turns into a message.
+
+A **library** is the natural declarer: it knows which Jolt its FFI bindings or
+host shims need, and the application pulling it in does not. The floor is read
+from every dependency's `deps.edn` as well as the project's, and an unmet one
+names what is needed, what is running, and which dependency asked.
+
+The key is honoured by the Jolt that reads it, so it protects from 0.8.0 onward
+and not before — an older Jolt ignores it, as it ignores every key it does not
+know. A runtime that names no version (a source build answers `dev`) is never
+refused, and `JOLT_SKIP_MIN_VERSION=1` runs anyway.
+
 ## Native libraries
 
 A library that binds C declares the shared objects it needs under `:jolt/native`,
