@@ -446,3 +446,71 @@ Things to keep in mind across the boundary:
   shared object. On Linux that archive must be position-independent; a kernel
   built without `-fPIC` fails the `-shared` link with a relocation error. macOS is
   always PIC. Build Chez from source with a PIC kernel if your distro's isn't.
+
+### The ABI surface
+
+Three C symbols are the whole documented ABI:
+
+| Symbol | Signature | When |
+|---|---|---|
+| `jolt_library_init` | `int (int argc, char **argv)` | once, before anything else; returns 0 on success, non-zero if the runtime failed to come up. A `NULL` `argv` is fine and means no args. |
+| `jolt_lookup` | `void *(const char *name)` | after a successful init; returns the entry point registered by `export!` under `name`, or `NULL` if there is none. |
+| `jolt_library_shutdown` | `void (void)` | once, last, from the owner thread. |
+
+Everything else the shared object exports is an implementation detail. The link
+folds Chez's `libkernel.a` into the object, so the symbol table also carries the
+Chez C API (`Sscheme_init`, `Sbuild_heap`, `Scompact_heap`, …) alongside jolt's
+own stub internals (`jolt_set_lookup_addr`). Those are not part of the ABI —
+they are not versioned, they are specific to the Chez backend, and calling them
+behind the runtime's back is undefined. Reach the runtime through `jolt_lookup`
+and the exports you declared with `export!`; anything the host needs that the
+three symbols above don't cover is an `export!` away.
+
+### Collection and memory pressure
+
+There is deliberately no `jolt_library_collect` in the ABI. Allocation-driven
+collection is the supported policy: the embedded runtime collects on its own,
+and an embedder has to do nothing to keep it healthy.
+
+If your host does want to ask — an Android `onTrimMemory`, a service going idle
+— export it yourself. It is one line, and because it is an ordinary export it
+inherits the lifecycle and threading rules above instead of inventing new ones:
+
+```clojure
+(jolt.ffi/export! "lib_collect" (fn [] (System/gc)) [] :void)
+```
+
+```c
+typedef void (*collect_fn)(void);
+((collect_fn)lookup("lib_collect"))();
+```
+
+`System/gc` requests a collection of every generation — the same call the JVM
+arm makes, with the same strength: **it is a hint**. Chez refuses an explicit
+collection while another thread is active, and a live jolt runtime always has
+service threads (the I/O poller, fiber carriers, the timer) that are runnable
+for short stretches. jolt retries across a short window and then gives up
+quietly rather than throwing, so a call made while a compute loop is running can
+return having done nothing. Never make progress depend on it.
+
+Two things it does not do:
+
+- **It does not promise to return memory to the OS.** It reclaims garbage inside
+  the runtime's heap. Whether RSS falls afterwards is up to the collector and
+  the allocator. For the reading itself, `(Runtime/getRuntime)` answers
+  `totalMemory` and `freeMemory`; `maxMemory` reports `Long/MAX_VALUE`, because
+  Chez grows the heap on demand with no configured ceiling.
+- **It is not compaction.** Chez's `Scompact_heap`, which does consolidate the
+  heap into fewer OS chunks, is in the symbol table but is not supported here,
+  and it is the wrong tool for a memory-pressure callback: it moves live objects
+  into the *static* generation, which is never collected again. Called once at a
+  quiescent point, that is merely irreversible; called on every pressure
+  notification it ratchets the heap floor up to the high-water mark of whatever
+  was live at each call, and none of it is ever given back.
+
+The same reasoning applies to any future backend. `System/gc` routes through the
+[scheme-adapter](/docs/scheme-backends.html) capability contract, whose
+documented degradation is that a collection request may be a no-op — so an
+export written this way keeps working, with honest semantics, on a backend whose
+collector offers no explicit entry point at all. A C symbol wired straight to a
+Chez primitive would not.
