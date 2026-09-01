@@ -203,6 +203,59 @@ resolution for a task run only, so a `bb.edn` `:paths ["script"]` cannot
 displace the app's own source roots on every other command. A task name
 declared in both files is babashka's.
 
+## Declaring the Jolt a project needs
+
+`:jolt/min-version` is the oldest Jolt a project — or a library — works on, and a
+runtime below it refuses to load rather than run:
+
+```clojure
+{:paths ["src"]
+ :jolt/min-version "0.8.0"}
+```
+
+Not every breaking change is visible at the call site. `jolt.ffi/write`'s
+argument order moved in 0.8.0, and the old and new spellings are both integers,
+so an older runtime writes to the wrong place and reports nothing. That is the
+shape of failure a declared floor turns into a message — though not that
+particular one, which no floor can catch; see
+[What a floor cannot do](#what_a_floor_cannot_do) below.
+
+A **library** is the natural declarer: it knows which Jolt its FFI bindings or
+host shims need, and the application pulling it in does not. The floor is read
+from every dependency's `deps.edn` as well as the project's, and an unmet one
+names what is needed, what is running, and which dependency asked. Where several
+floors go unmet, the newest is the one reported.
+
+### What a floor cannot do
+
+The key is honoured by the Jolt that **reads** it, so it protects from 0.8.0
+onward and not before — an older Jolt ignores it, as it ignores every key it does
+not know.
+
+That excludes 0.8.0's own breaking changes, including the `jolt.ffi/write` change
+above. `:jolt/min-version` landed in the commit immediately after the one that
+moved those arguments, so the two sets do not overlap: every runtime old enough
+to take the offset first is also too old to parse the key, and skips it. No value
+of the floor closes that gap.
+
+Declaring `:jolt/min-version "0.8.0"` on a project whose call sites use the new
+order therefore buys nothing on a 0.7.x runtime, and what you get instead of a
+refusal is the untreated failure — a misdirected write, or a namespace that fails
+to load. A test run under those conditions can drop whole namespaces and still
+exit zero, which reads as a pass. **Pin the toolchain** if you need 0.7.x users
+to stop, rather than relying on the floor.
+
+What the floor does catch is every break of that shape from 0.8.0 on, where the
+runtime on both sides of the change can read the key. Declaring it now is what
+makes the next one catchable.
+
+### Runtimes that are never refused
+
+A runtime that names no version is never refused: a source build answers `dev`,
+which reads as the oldest possible version while in practice being the newest.
+`JOLT_SKIP_MIN_VERSION=1` runs anyway, for a released runtime whose version
+string understates what it carries.
+
 ## Native libraries
 
 A library that binds C declares the shared objects it needs under `:jolt/native`,

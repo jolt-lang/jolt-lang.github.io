@@ -53,4 +53,5 @@
   ["rfc/0010-portable-scheme-layer.md"           "RFC 0010: The Portable Scheme Layer"     "page"]
   ["rfc/0011-tail-calls-are-guaranteed.md"       "RFC 0011: Tail Calls Are Guaranteed"     "page"]
   ["rfc/0012-no-interpreter.md"                  "RFC 0012: There Is No Interpreter"       "page"]
-  ["rfc/0013-numeric-tower.md"                   "RFC 0013: The Numeric Tower"             "page"]]
+  ["rfc/0013-numeric-tower.md"                   "RFC 0013: The Numeric Tower"             "page"]
+  ["rfc/0014-host-class-providers.md"           "RFC 0014: Host Classes Are Provided by Declaration" "page"]]
