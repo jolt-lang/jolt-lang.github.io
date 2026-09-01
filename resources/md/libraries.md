@@ -6,6 +6,11 @@ their conformance checks on Jolt unchanged, a few leaning on host shims Jolt
 provides. See the [examples repository](https://github.com/jolt-lang/examples)
 for runnable projects.
 
+Community-maintained libraries and tooling live at
+[jlt-commons](https://jlt-commons.github.io) — a community-led home,
+supported by the core team, for adopted projects whose original maintainers
+moved on and for new libraries the core team does not want to own.
+
 ## Jolt libraries
 
 First-party libraries from the jolt-lang org.

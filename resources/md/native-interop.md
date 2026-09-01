@@ -133,18 +133,18 @@ A trailing `:blocking` marks a call that may wait (network I/O, a lock, a sleep)
 
 This matters for correctness as much as speed: without `:blocking`, a thread parked inside a foreign call pins the garbage collector for every thread. With it, Jolt releases the collector while the call waits. Mark anything that can block; leave pure, fast calls unmarked.
 
-### `:varargs`
+### `:&` (variadic C functions)
 
-A `:varargs` marker inside the argtype vector declares a **variadic** C function (`fcntl`, `ioctl`, `open`) and marks the boundary: the types before it are the fixed (named) parameters, the types after it are the concrete variadic arguments the binding always passes. `fcntl` is `int fcntl(int fd, int cmd, ...)`, so a binding that passes flags to `F_SETFL` is:
+A `:&` marker inside the argtype vector declares a **variadic** C function (`fcntl`, `ioctl`, `open`) and marks the boundary: the types before it are the fixed (named) parameters, the types after it are the concrete variadic arguments the binding always passes. `:varargs` is Jolt's older spelling of the same marker and still works. `fcntl` is `int fcntl(int fd, int cmd, ...)`, so a binding that passes flags to `F_SETFL` is:
 
 ```clojure
-(ffi/defcfn c-fcntl "fcntl" [:int :int :varargs :int] :int)
+(ffi/defcfn c-fcntl "fcntl" [:int :int :& :int] :int)
 (c-fcntl fd F-SETFL O-NONBLOCK)
 ```
 
 This is not optional decoration. On Apple arm64 variadic arguments are passed on the stack, not in registers; a fixed-arity binding to a variadic function compiles, runs, and silently hands the callee garbage for every argument after the named ones. The marker makes Jolt emit the variadic calling convention so the arguments land where the callee's `va_list` reads them.
 
-Two shapes are rejected at compile time with an error naming the rule: `:varargs` first (C requires at least one named parameter) and `:varargs` last (nothing would be variadic). `:varargs` does not combine with `:blocking`. A call that passes **no** variadic arguments (`fcntl(fd, F_GETFL)`) may use a plain fixed-arity binding: named arguments travel identically in both conventions.
+Two shapes are rejected at compile time with an error naming the rule: the marker first (C requires at least one named parameter) and the marker last — babashka.ffi's bare `:&`, where each call infers its own tail, which a compiled `foreign-procedure` cannot do because its types are fixed before any call. The tail belongs to the binding: bind one signature per tail shape. The marker does not combine with `:blocking`. A call that passes **no** variadic arguments (`fcntl(fd, F_GETFL)`) may use a plain fixed-arity binding: named arguments travel identically in both conventions.
 
 ## Types at the boundary
 
@@ -171,12 +171,13 @@ A `:string` argument is copied to a NUL-terminated C string for the call; a `:st
 Foreign memory is manual. Allocate, use, free; there is no finalizer:
 
 ```clojure
+(ffi/alloc arena n)         ; -> pointer; the arena releases it (see Arenas)
 (ffi/alloc nbytes)          ; -> pointer (address); you must free it
-(ffi/free ptr)              ; release it
+(ffi/free ptr)              ; release an arena-less allocation
 (ffi/sizeof :pointer)       ; size of a type, for laying out structs/out-params
 
 (ffi/read  ptr type [offset])      ; read a typed value at ptr (+ optional byte offset)
-(ffi/write ptr type offset value)  ; write a typed value at ptr + offset
+(ffi/write ptr type value [offset]) ; write a typed value — VALUE before offset
 
 (ffi/string->ptr s)         ; alloc a C string from s (free it yourself)
 (ffi/ptr->string ptr)       ; read a NUL-terminated C string back
@@ -270,15 +271,15 @@ there and returns it:
   [:by-value [:struct [[:year :int32] [:month :uint8] [:day :uint8]]]])
 ```
 
-A **fixed array** field is `[:array count element-type]`, and elements may
+A **fixed array** field is `[:array element-type count]` — babashka.ffi's order — and elements may
 themselves be arrays or structs. Indices are integer components in the path,
 mixed in with the keywords:
 
 ```clojure
 (def frame (ffi/layout [:struct [[:tag    :int32]
-                                 [:matrix [:array 2 [:array 3 :double]]]
-                                 [:events [:array 4 [:struct [[:code  :int32]
-                                                              [:frame :int32]]]]]]]))
+                                 [:matrix [:array [:array :double 3] 2]]
+                                 [:events [:array [:struct [[:code  :int32]
+                                                            [:frame :int32]]] 4]]]]))
 
 (ffi/field-offset frame :matrix)          ; the array's base offset — the pointer C wants
 (ffi/field-offset frame [:matrix 1 2])    ; one element
@@ -303,10 +304,9 @@ Written out as byte offsets, using `ffi/read`/`ffi/write` directly. The http-cli
 (def ^:private O-next-out 24)
 (def ^:private O-avail-out 32)
 
-(let [strm (ffi/alloc ZS)]
-  (dotimes [i ZS] (ffi/write strm :uint8 i 0))   ; zero the struct
-  (ffi/write strm :pointer O-next-in  src-buf)
-  (ffi/write strm :uint    O-avail-in n)
+(let [strm (ffi/alloc ZS)]                        ; ffi/alloc zeroes the block
+  (ffi/write strm :pointer src-buf O-next-in)
+  (ffi/write strm :uint    n       O-avail-in)
   ...)
 ```
 
@@ -340,7 +340,7 @@ both run on the fiber's carrier thread. `errno-message` renders a code (or
 the current errno) through `strerror`:
 
 ```clojure
-(ffi/defcfn c-open "open" [:string :int :varargs :int] :int)
+(ffi/defcfn c-open "open" [:string :int :& :int] :int)
 
 (let [fd (c-open path 0 0)]
   (when (neg? fd)
@@ -358,7 +358,7 @@ with `{:capture-native-error true}` and the error code is read *inside* the
 foreign-call return path, where nothing can get between:
 
 ```clojure
-(ffi/defcfn c-open "open" [:string :int :varargs :int] :int
+(ffi/defcfn c-open "open" [:string :int :& :int] :int
             {:capture-native-error true})
 
 (let [[fd err] (c-open path 0 0)]
