@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Scheme: Chez natively, Gambit for JavaScript. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>RFC 0014: Host Classes Are Provided by Declaration: Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+    
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <img src="/img/jolt.svg" alt="Jolt logo" class="brand-logo">
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li ><a href="/docs/get-involved.html">Get Involved</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+        <a class="btn btn-primary nav-cta" href="/docs/getting-started.html">Get Started</a>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rationale.html">Rationale</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/testing.html">Testing</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/cljc-interop.html">Cljc Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/scheme-backends.html">Scheme Backends</a>
+      </li>
+      
+      <li >
+        <a href="/docs/fibers.html">Fibers</a>
+      </li>
+      
+      <li >
+        <a href="/docs/extension-points.html">Extension Points</a>
+      </li>
+      
+      <li >
+        <a href="/docs/numeric-performance.html">Numeric Performance</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Libraries</a>
+      </li>
+      
+      <li>
+        <a href="https://jlt-commons.github.io" target="_blank" rel="noopener">Community Libraries</a>
+      </li>
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/deps.html">Dependencies (jolt.deps)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (babashka.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/reader.html">Reader Macros &amp; Interpolation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/image.html">Program Images (jolt.image)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/time.html">Date &amp; Time (jolt-lang/time)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/continuations.html">Continuations (jolt.continuations)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/util.html">Utilities (jolt.util)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>RFC 0014: Host Classes Are Provided by Declaration</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#rfc_0014_%E2%80%94_host_classes_are_provided_by_declaration%2C_not_by_a_list_in_the_runtime">RFC 0014 — Host classes are provided by declaration, not by a list in the runtime</a></li><li><a href="#summary">Summary</a></li><li><a href="#the_problem">The problem</a></li><li><a href="#the_constraint_any_solution_must_respect">The constraint any solution must respect</a></li><li><a href="#design">Design</a><ol><li><a href="#phase_1_%E2%80%94_declaration_%28data%2C_discoverable_ahead_of_load%29">Phase 1 — declaration (data, discoverable ahead of load)</a></li><li><a href="#phase_2_%E2%80%94_registration_%28behaviour%2C_at_load%29">Phase 2 — registration (behaviour, at load)</a></li><li><a href="#the_runtime_side">The runtime side</a></li><li><a href="#what_core_keeps">What core keeps</a></li><li><a href="#what_this_buys">What this buys</a></li></ol></li><li><a href="#alternatives_considered">Alternatives considered</a></li><li><a href="#diagnostics">Diagnostics</a></li><li><a href="#decisions">Decisions</a></li><li><a href="#compatibility">Compatibility</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <h1 id="rfc_0014_%E2%80%94_host_classes_are_provided_by_declaration%2C_not_by_a_list_in_the_runtime">RFC 0014 — Host classes are provided by declaration, not by a list in the runtime</h1><ul><li><strong>Status</strong>: Implemented</li><li><strong>Champions</strong>: jolt maintainers</li></ul><h2 id="summary">Summary</h2><p>A JVM library reaches for <code>MessageDigest/getInstance</code> or <code>java.sql.ResultSet</code> without requiring an install namespace first, because on the JVM the class is simply <em>there</em>. Jolt has no such class, so something must load the library that emulates it — and it must happen on the <em>first reference</em>, before anything of that library has loaded.</p><p>The runtime used to answer that with a hardcoded table. <code>host-static.ss</code> named <code>jolt.crypto</code>, <code>io.github.jolt-lang/jolt-crypto</code>, <code>jolt.socket</code>, <code>jolt.time</code> and every class each of them registers, in both the simple and fully-qualified spelling. Roughly 140 of that file's 552 lines were this bookkeeping, in two parallel mechanisms — a bespoke one for <code>java.time</code> and a general <code>lib-class-providers</code> list — invoked side by side at five call sites, plus a sixth copy in the build path whose comment said it "mirrors the runtime predicates".</p><p>This RFC replaces both with one mechanism: **a library declares the host classes it provides in its own <code>deps.edn</code>; jolt collects those declarations through the dependency walk it already performs; the runtime consults the collected table.** Core names no library.</p><blockquote><p> The immediate trigger was jolt-lang/jolt#810, which added a <code>java.sql</code> entry  for jolt-lang/db and was reverted in #812. The entry was correct by the  existing design and still wrong to merge: the language does not get to know  what <code>db.jdbc-shim</code> is. </p></blockquote><h2 id="the_problem">The problem</h2><p>The old design conflated two responsibilities and hardcoded both:</p><ol><li><strong>Lazy autoload.</strong> On an unresolved class, load a namespace that may register   it. This must be lazy — a program that never hashes anything should not pay   for loading OpenSSL.</li><li><strong>Diagnostics.</strong> When the class is still unresolved, name the coordinate to   add to <code>deps.edn</code>.</li></ol><p>Both are keyed off one literal mapping <code>class name → &#40;install-ns, coordinate&#41;</code>. The consequences are not stylistic:</p><ul><li><strong>Core references specific libraries.</strong> The language's runtime contains the  string <code>io.github.jolt-lang/jolt-crypto</code>.</li><li><strong>Exactly one provider per class, chosen by the runtime.</strong> There is no way to  supply a different <code>java.sql</code> implementation, or any implementation of a class  the list does not mention. Providers are not swappable, which is the part that  makes this an architectural problem rather than an untidy one.</li><li><strong>Adding a provider requires a jolt release.</strong> A library cannot become  autoloadable on its own schedule.</li><li><strong>The list is hand-synchronised, and drifts.</strong> The source says so directly:</li></ul><p>  > This list has to name EVERY class jolt-lang/time registers, in both the   > simple and the fully-qualified spelling. […] a name missing here fails only   > for the IMPORTED SIMPLE form — which is how libraries actually write it, and   > why <code>DateTimeFormatterBuilder</code> being absent kept malli's <code>transform.cljc</code>   > from loading while <code>&#40;java.time.format.DateTimeFormatterBuilder.&#41;</code> worked.   > When the library grows a class, add it here.</p><p>  A comment instructing a human to keep a table in sync, with a recorded   instance of the bug it causes, is the design asking to be replaced.</p><h2 id="the_constraint_any_solution_must_respect">The constraint any solution must respect</h2><p>The miss happens <strong>before</strong> the provider has loaded. That is the entire purpose of the mechanism, and it rules out the obvious inversion: a library cannot register itself as a provider <em>when it loads</em>, because nothing has loaded it.</p><p>So the class → provider mapping has to be **discoverable without loading the provider**, while the load itself stays lazy. Any design that satisfies only the first half degenerates into eagerly loading every candidate provider at startup.</p><h2 id="design">Design</h2><p>Two phases, mirroring how <code>:jolt/native</code> already works.</p><h3 id="phase_1_%E2%80%94_declaration_%28data%2C_discoverable_ahead_of_load%29">Phase 1 — declaration (data, discoverable ahead of load)</h3><p>A library declares what it provides, in its own <code>deps.edn</code>:</p><pre><code class="clojure">;; jolt-lang/db
+{:jolt/provides {db.jdbc-shim &#91;&quot;java.sql.ResultSet&quot;
+                               &quot;java.sql.Connection&quot;
+                               &quot;java.sql.Statement&quot;
+                               &quot;java.sql.DriverManager&quot;&#93;}}
+</code></pre><pre><code class="clojure">;; jolt-lang/jolt-crypto
+{:jolt/provides {jolt.crypto &#91;&quot;java.security.MessageDigest&quot;
+                              &quot;javax.crypto.Mac&quot;
+                              &quot;javax.crypto.Cipher&quot;
+                              &quot;javax.crypto.spec.SecretKeySpec&quot;
+                              &quot;javax.crypto.spec.IvParameterSpec&quot;&#93;}}
+</code></pre><p>Fully-qualified names only. The runtime derives the simple spelling, which deletes the hand-sync failure mode described above.</p><p><code>jolt.deps</code> already walks every dependency's <code>deps.edn</code> and collects <code>:jolt/native</code> and <code>:jolt/min-version</code> this way (<code>deps.clj</code>, the <code>:natives</code> and <code>:min-versions</code> keys of the resolve result). <code>:jolt/provides</code> is the same shape, collected as <code>&#91;install-ns lib class …&#93;</code> rows, where <code>lib</code> is the coordinate of the declaring dependency (<code>nil</code> for the project's own declaration).</p><h3 id="phase_2_%E2%80%94_registration_%28behaviour%2C_at_load%29">Phase 2 — registration (behaviour, at load)</h3><p>Unchanged. The install namespace calls <code>&#95;&#95;register-class-statics!</code>, <code>&#95;&#95;register-class!</code>, <code>jolt.host/register-class-supers!</code> and friends when it loads, exactly as today.</p><h3 id="the_runtime_side">The runtime side</h3><p><code>lib-class-providers</code> stops being a literal and becomes a table populated at startup through a host seam, symmetric with <code>jolt.host/set-source-roots!</code>:</p><pre><code class="clojure">&#40;jolt.host/register-class-provider! install-ns coordinate &#91;&quot;java.sql.ResultSet&quot; …&#93;&#41;
+</code></pre><p><code>lib-provider-for</code>, <code>lib-try-autoload!</code> and the <code>'ok</code>/<code>'failed</code> latch keep their current logic — only the source of the table changes. <code>jolt build</code> bakes the collected table into the binary the way <code>encode-natives</code> bakes natives.</p><p>The bespoke <code>jt-&#42;</code> path collapses into this: jolt-lang/time declares <code>:jolt/provides</code>, and <code>jt-base-names</code>, <code>jt-library-names</code>, <code>java-time-prefixed?</code>, <code>jt-base-autoload-done</code> and the <code>java.time</code> branch of <code>unknown-class-message</code> are deleted. One mechanism, not two.</p><h3 id="what_core_keeps">What core keeps</h3><p>Core still owns the classes <strong>it</strong> implements: the <code>java.time</code> value types (RFC 0008, installed by <code>jolt.time.base</code>) and <code>jolt.socket</code>'s <code>java.net</code> surface. Those are jolt's own stdlib, not third-party libraries, and core declaring its own stdlib is not the thing this RFC objects to.</p><p>They are a <code>core-class-providers</code> list seeding the same table the declarations append to, so there is one code path and one lookup. Their entries carry **no coordinate** — there is no dependency for a caller to add, and the autoload always finds them.</p><h3 id="what_this_buys">What this buys</h3><ul><li>Core references no library.</li><li>Providers are swappable: whichever dependency claims a class provides it. A  different <code>java.sql</code> implementation needs no change to jolt.</li><li>Adding a provider needs no jolt release.</li><li>Errors stop naming libraries. See <em>Diagnostics</em> below — this is a deliberate  trade, not a free win.</li><li>Conflicts become visible. Two dependencies claiming the same class is a  detectable condition instead of silent first-wins.</li></ul><h2 id="alternatives_considered">Alternatives considered</h2><p><strong>Pure load-time registration</strong> (<code>register-class-provider!</code> called by the namespace as it loads). Cannot work alone — see the constraint above. It solves the aesthetic problem and leaves the functional one.</p><p><strong>Eagerly load every declared provider at startup.</strong> Makes registration sufficient, at the cost of loading OpenSSL, libsqlite3 and a timezone database for a program that touches none of them. Rejected: the laziness is the feature.</p><p><strong>A separate metadata file per library</strong> (<code>jolt-provides.edn</code> at the dependency root). Works, but <code>deps.edn</code> is already the declaration point and is already walked; a second mechanism buys nothing.</p><p><strong>Leave it alone.</strong> Defensible while there were two entries. It stops being defensible as soon as a third library wants in — which is what #810 was — and the swappability problem does not go away by not looking at it.</p><h2 id="diagnostics">Diagnostics</h2><p>Removing the table removes what the runtime knew about libraries it has not loaded, and the error message is where that shows. Before:</p><blockquote><p> <code>java.security.MessageDigest</code> is provided by the io.github.jolt-lang/jolt-crypto  library, not core. Add it to your deps.edn. </p></blockquote><p>After:</p><blockquote><p> No dependency provides <code>java.security.MessageDigest</code> — a concrete  implementation of the JDK classes must be provided. </p></blockquote><p>This is deliberate, and it is not only a cost. Which library supplies <code>java.sql</code> or <code>java.time</code> is not the runtime's to say: a caller may write the shim themselves, and declaring it through <code>:jolt/provides</code> is exactly the point. Naming a specific library in the error would put the coupling back as a string — the runtime would once again ship an opinion about which library you ought to depend on, going stale as the ecosystem grows.</p><p>Two unit tests pinned the old wording (<code>insttime</code>, on <code>DateTimeFormatter</code> and <code>ZoneOffset</code>), which is how deliberate the old message was; they now assert the general form, plus a third asserting that no library name appears — so the coupling cannot return as a string.</p><p>A claim that IS declared but whose provider raised while loading still names that provider. That is not a catalogue: it is the dependency the caller declared, read back from their own <code>deps.edn</code>, and the fix is the opposite of adding something, so the two cases must not read alike.</p><h2 id="decisions">Decisions</h2><ol><li><strong>Trust.</strong> A dependency may not claim a class the runtime already   <em>implements</em>; the registration is refused, naming the classes. "Implements"   is the statics/ctor tables, <strong>not</strong> the class hierarchy — the hierarchy knows   names it does not implement (<code>java.time.ZoneId</code> is in it so <code>isa?</code> and   <code>instance?</code> answer correctly, while the implementation is the library's to   install), and checking it rejected every provider for the classes the   mechanism exists to provide.</li><li><strong>Conflicts.</strong> Two dependencies claiming one class is an **error at resolve   time**, naming both claimants. Whichever won would decide what   <code>java.sql.Connection</code> means for the whole program, and the loser's shim would   be half-installed — registered for the classes nobody else claimed, silently   absent for the rest.</li><li><strong>Scope of a claim.</strong> Exact class names only; no prefix claims. Each declared   name is indexed under both its fully-qualified and simple spelling, derived by   the runtime, which is what removes the hand-sync failure the old table kept   hitting.</li></ol><h2 id="compatibility">Compatibility</h2><p><code>:jolt/provides</code> is a new <code>deps.edn</code> key. Older jolt ignores unknown <code>deps.edn</code> keys silently, so libraries can declare it before the runtime understands it — the declaration is inert until a jolt that reads it. <code>:jolt/min-version</code> (jolt 0.8.0) is how a library states that it needs the newer behaviour.</p><p>Removing the hardcoded table is a behaviour change for any project that relies on the autoload today without declaring the dependency it is getting the class from. Those projects already declare the dependency in practice — the autoload only fires when the install namespace is on the source roots, which means the dependency is present — so the migration is for the libraries, which gain a <code>:jolt/provides</code> key, and not for their consumers.</p>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>
