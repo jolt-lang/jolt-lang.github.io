@@ -31,7 +31,7 @@ short list of places they still differ, and why.
 - `defcfn` also has a **wrapper form**: a symbol after the return type names the
   raw binding, and the rest is an ordinary `fn` tail — the shape for an
   out-parameter or an error code callers should never see.
-- A trailing `:blocking` marks a call that may wait — network I/O, a lock, a sleep. The call is emitted collect-safe so a thread parked inside it does not pin the garbage collector. Mark anything that can block; leave pure, fast calls unmarked.
+- A trailing `:blocking` marks a call that may wait — network I/O, a lock, a sleep, a UI run loop you never return from. The call is emitted collect-safe so a thread parked inside it does not pin the garbage collector. An unmarked call stops collection process-wide for as long as it runs: other threads halt at their next allocation, far from the call responsible, while the parked thread itself looks healthy. Mark anything that can block; leave pure, fast calls unmarked.
 
 ```clojure
 (ffi/defcfn c-connect "connect" [:int :pointer :int] :int :blocking)
@@ -179,7 +179,7 @@ field path, alongside the keywords:
 ```clojure
 ;; an array of structs, indexed then named
 (def q (ffi/layout [:struct [[:events [:array [:struct [[:code  :int32]
-                                                       [:frame :int32]]] 4]]]]))
+                                                        [:frame :int32]]] 4]]]]))
 (ffi/field-offset q [:events 2 :frame])     ; => 20
 ```
 
@@ -271,7 +271,6 @@ Argument and return types are keywords:
 - `:double` `:float` — `double` / `float`
 - `:char` — `char` (a code point)
 - `:uint8` (alias `:u8`, `:byte`) — `unsigned char`, number 0–255
-- `:bool` — C99 `_Bool` / `stdbool.h`, one byte. Reads as `true`/`false`, writes on Jolt truthiness.
 - `:pointer` (alias `:void*`) — any pointer (a machine address)
 - `:string` — `char *`, marshaled both ways (UTF-8 both directions)
 - `:bool` — a one-byte C boolean (`_Bool`/`stdbool.h`), `true`/`false` in Jolt.
