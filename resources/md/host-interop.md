@@ -77,6 +77,7 @@ to one registration function:
 | The error you hit | What to register |
 | --- | --- |
 | `Unknown class java.util.StringJoiner` (a static/field ref, or the class is wholly unknown) | `__register-class-statics!` / `__register-class-ctor!` |
+| `No dependency provides java.time.ZoneOffset` (a JDK class core does not implement) | the library that provides it — [time](https://github.com/jolt-lang/time) v0.0.8+, [crypto](https://github.com/jolt-lang/crypto) v0.0.5+ — or your own shim, declared under [`:jolt/provides`](/docs/tools-deps.html#host_classes_a_library_provides) |
 | `No constructor for class java.util.StringJoiner` | `__register-class-ctor!` |
 | `No method add on host …` (a `(.method obj …)` call) | `__register-class-methods!` |
 | `(instance? SomeClass x)` returns `false` when it shouldn't | `__register-instance-check!` |

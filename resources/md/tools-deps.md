@@ -256,6 +256,50 @@ which reads as the oldest possible version while in practice being the newest.
 `JOLT_SKIP_MIN_VERSION=1` runs anyway, for a released runtime whose version
 string understates what it carries.
 
+## Host classes a library provides
+
+A library that emulates JDK classes — jolt-lang/time's `DateTimeFormatter` and
+`ZoneId`, jolt-lang/crypto's `MessageDigest` and `Mac` — declares them under
+`:jolt/provides`, keyed by the namespace whose load installs them:
+
+```clojure
+{:paths ["src"]
+ :jolt/provides {jolt.crypto ["java.security.MessageDigest"
+                              "javax.crypto.Mac"
+                              "javax.crypto.Cipher"]}}
+```
+
+A program reaches for `MessageDigest/getInstance` without requiring anything
+first, because on the JVM the class is simply there. Jolt has no such class, so
+on the first reference it must load the library that supplies one — before any
+of that library has loaded, which is why the library cannot register itself as
+it loads and the mapping arrives as data instead. `jolt.deps` collects every
+dependency's declaration through the same walk that collects `:jolt/native`
+and installs the table before user code compiles; on a class miss the runtime
+loads the declared namespace once and retries. Names are fully qualified, and
+the simple spelling is derived. Core declares only the classes it implements
+itself (the base `java.time` value types, the `java.net` socket surface) and
+names no library.
+
+Two dependencies claiming one class is an error at resolve time naming both —
+whichever won would decide what `java.sql.Connection` means for the whole
+program — and a claim on a class the runtime already implements is refused. A
+class nothing provides says so:
+
+```
+No dependency provides java.time.ZoneOffset — a concrete implementation of the
+JDK classes must be provided. A library supplies one by declaring :jolt/provides
+in its deps.edn (RFC 0014).
+```
+
+Before 0.8.1 the runtime carried that table itself, so a pin of jolt-lang/time
+or jolt-lang/crypto older than their declarations — time before v0.0.8, crypto
+before v0.0.5 — hits that message on the first class use that used to autoload
+the library. Bump the pin; a project that requires `jolt.time` or `jolt.crypto`
+itself before the first use is unaffected. An older Jolt ignores the key, so a
+library can declare it without dropping 0.8.0 users. The design is
+[RFC 0014](/docs/rfc/0014-host-class-providers.html).
+
 ## Native libraries
 
 A library that binds C declares the shared objects it needs under `:jolt/native`,

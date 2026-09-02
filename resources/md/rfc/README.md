@@ -17,4 +17,4 @@ a thing is built the way it is; the code is the source of truth for *how*.
 | [0011](/docs/rfc/0011-tail-calls-are-guaranteed.html) | Tail calls are guaranteed | Implemented | Proper tail calls for any tail-position call; `recur` stays as the JVM-compatible spelling. |
 | [0012](/docs/rfc/0012-no-interpreter.html) | There is no interpreter | Implemented | Every entry point compiles to native code — `-e`, REPL, nREPL, `eval`, builds. |
 | [0013](/docs/rfc/0013-numeric-tower.html) | The numeric tower | Implemented | Host-native integers/ratios with a JVM-shaped class surface; lowering opts out per-site. |
-| [0014](/docs/rfc/0014-host-class-providers.html) | Host classes are provided by declaration | Draft | `:jolt/provides` — a library declares the host classes it supplies; core names no library. |
+| [0014](/docs/rfc/0014-host-class-providers.html) | Host classes are provided by declaration | Implemented | `:jolt/provides` — a library declares the host classes it supplies; core names no library. |

@@ -80,11 +80,14 @@ answer `instance?` exactly like the real classes — and protocols extended to a
 each class. The base value types are portable Clojure under `stdlib/jolt/time/` in
 core, autoloaded on first use; the library's `fmt`/`zones`/`zoned` namespaces
 require that base and add formatting and the zone layer. Both halves autoload the
-same way: on a class miss the runtime loads `jolt.time.base` from core, and — when
-the class belongs to the formatting/zone half and `jolt.time` is resolvable on the
-source roots — the library's install namespace, then retries the lookup. Each is
-attempted at most once per process, so a program that never touches a date pays
-nothing and an unresolvable class still reports the dependency to add. Named-zone offsets and
+same way: on a class miss the runtime loads the namespace that provides the
+class — `jolt.time.base` from core for a base type, and for the formatting/zone
+half the library's install namespace, which the library declares under
+`:jolt/provides` in its `deps.edn` (Jolt 0.8.1+ with time v0.0.8+; see
+[deps.edn Internals](/docs/tools-deps.html#host_classes_a_library_provides)) —
+then retries the lookup. Each is attempted at most once per process, so a
+program that never touches a date pays nothing, and a class no dependency
+provides says so rather than guessing at a library. Named-zone offsets and
 DST come from the OS through a small libc primitive in core (`localtime`/`tzset`
 reading `/usr/share/zoneinfo`), with a built-in US/EU/AU/NZ rule table as the
 fallback; localized month and day names come from `strftime`.
