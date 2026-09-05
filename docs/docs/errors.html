@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Scheme: Chez natively, Gambit for JavaScript. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>Error Reference: Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+    
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand">
+          <img src="/img/jolt.svg" alt="Jolt logo" class="brand-logo">
+          <span class="brand-name">Jolt</span>
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li ><a href="/docs/get-involved.html">Get Involved</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+        <a class="btn btn-primary nav-cta" href="/docs/getting-started.html">Get Started</a>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rationale.html">Rationale</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/testing.html">Testing</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/cljc-interop.html">Cljc Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/scheme-backends.html">Scheme Backends</a>
+      </li>
+      
+      <li >
+        <a href="/docs/fibers.html">Fibers</a>
+      </li>
+      
+      <li >
+        <a href="/docs/extension-points.html">Extension Points</a>
+      </li>
+      
+      <li >
+        <a href="/docs/numeric-performance.html">Numeric Performance</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Libraries</a>
+      </li>
+      
+      <li>
+        <a href="https://jlt-commons.github.io" target="_blank" rel="noopener">Community Libraries</a>
+      </li>
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/deps.html">Dependencies (jolt.deps)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (babashka.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/reader.html">Reader Macros &amp; Interpolation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/image.html">Program Images (jolt.image)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/time.html">Date &amp; Time (jolt-lang/time)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/continuations.html">Continuations (jolt.continuations)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/util.html">Utilities (jolt.util)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li class="selected">
+        <a href="/docs/errors.html">Error Reference</a>
+      </li>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+  </aside>
+
+  <main class="docs-main">
+    <h1>Error Reference</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#reader">Reader</a><ol><li><a href="#%3Ccode%3Eread%2Fduplicate-key%3C%2Fcode%3E">read/duplicate-key</a></li><li><a href="#%3Ccode%3Eread%2Finvalid-character%3C%2Fcode%3E">read/invalid-character</a></li><li><a href="#%3Ccode%3Eread%2Finvalid-data-reader%3C%2Fcode%3E">read/invalid-data-reader</a></li><li><a href="#%3Ccode%3Eread%2Finvalid-syntax%3C%2Fcode%3E">read/invalid-syntax</a></li><li><a href="#%3Ccode%3Eread%2Finvalid-token%3C%2Fcode%3E">read/invalid-token</a></li><li><a href="#%3Ccode%3Eread%2Finvalid-unicode%3C%2Fcode%3E">read/invalid-unicode</a></li><li><a href="#%3Ccode%3Eread%2Fodd-entries-in-map%3C%2Fcode%3E">read/odd-entries-in-map</a></li></ol></li><li><a href="#analysis">Analysis</a><ol><li><a href="#%3Ccode%3Eanalyze%2Finternal-failure%3C%2Fcode%3E">analyze/internal-failure</a></li><li><a href="#%3Ccode%3Eanalyze%2Finvalid-arity%3C%2Fcode%3E">analyze/invalid-arity</a></li><li><a href="#%3Ccode%3Eanalyze%2Finvalid-binding%3C%2Fcode%3E">analyze/invalid-binding</a></li><li><a href="#%3Ccode%3Eanalyze%2Finvalid-def%3C%2Fcode%3E">analyze/invalid-def</a></li><li><a href="#%3Ccode%3Eanalyze%2Finvalid-fn-parameters%3C%2Fcode%3E">analyze/invalid-fn-parameters</a></li><li><a href="#%3Ccode%3Eanalyze%2Finvalid-if%3C%2Fcode%3E">analyze/invalid-if</a></li><li><a href="#%3Ccode%3Eanalyze%2Finvalid-macro-value%3C%2Fcode%3E">analyze/invalid-macro-value</a></li><li><a href="#%3Ccode%3Eanalyze%2Finvalid-member-access%3C%2Fcode%3E">analyze/invalid-member-access</a></li><li><a href="#%3Ccode%3Eanalyze%2Finvalid-method-reference%3C%2Fcode%3E">analyze/invalid-method-reference</a></li><li><a href="#%3Ccode%3Eanalyze%2Finvalid-recur%3C%2Fcode%3E">analyze/invalid-recur</a></li><li><a href="#%3Ccode%3Eanalyze%2Finvalid-set%3C%2Fcode%3E">analyze/invalid-set</a></li><li><a href="#%3Ccode%3Eanalyze%2Finvalid-try%3C%2Fcode%3E">analyze/invalid-try</a></li><li><a href="#%3Ccode%3Eanalyze%2Finvalid-var-reference%3C%2Fcode%3E">analyze/invalid-var-reference</a></li><li><a href="#%3Ccode%3Eanalyze%2Funresolved-symbol%3C%2Fcode%3E">analyze/unresolved-symbol</a></li><li><a href="#%3Ccode%3Eanalyze%2Funresolved-var%3C%2Fcode%3E">analyze/unresolved-var</a></li><li><a href="#%3Ccode%3Eanalyze%2Funsupported-form%3C%2Fcode%3E">analyze/unsupported-form</a></li><li><a href="#%3Ccode%3Eanalyze%2Funsupported-special-form%3C%2Fcode%3E">analyze/unsupported-special-form</a></li></ol></li><li><a href="#foreign_interface">Foreign interface</a><ol><li><a href="#%3Ccode%3Effi%2Finvalid-array%3C%2Fcode%3E">ffi/invalid-array</a></li><li><a href="#%3Ccode%3Effi%2Finvalid-field%3C%2Fcode%3E">ffi/invalid-field</a></li><li><a href="#%3Ccode%3Effi%2Finvalid-layout%3C%2Fcode%3E">ffi/invalid-layout</a></li><li><a href="#%3Ccode%3Effi%2Finvalid-option%3C%2Fcode%3E">ffi/invalid-option</a></li><li><a href="#%3Ccode%3Effi%2Finvalid-signature%3C%2Fcode%3E">ffi/invalid-signature</a></li><li><a href="#%3Ccode%3Effi%2Finvalid-type%3C%2Fcode%3E">ffi/invalid-type</a></li></ol></li></ol>
+    </nav>
+    
+    <div id="content">
+      <p>Every error Jolt raises carries a <strong>kind</strong> — a namespaced keyword identifying what went wrong, independent of the wording. The kind is what to search for, and what tooling should key on: the message beside it is free to improve, the kind is not.</p><pre><code>error&#91;analyze/invalid-def&#93;: First argument to def must be a Symbol
+  --&gt; ./src/app.clj:3:1
+   |
+ 3 | &#40;def :foo 2&#41;
+   |      &#94;&#94;&#94;&#94; the name must be a symbol
+</code></pre><p>Set <code>JOLT&#95;DIAG=edn</code> to get the same diagnostic as a single line of EDN — kind, position, the offending token and the surrounding source — for editors and other tooling.</p><p>This page is generated from <a href='https://github.com/jolt-lang/jolt/blob/main/test/conformance/error-kinds.edn'><code>test/conformance/error-kinds.edn</code></a>, which the build gates against the compiler's actual raise sites.</p><h2 id="reader">Reader</h2><p>Raised while reading source text into forms, before anything is compiled.</p><h3 id="%3Ccode%3Eread%2Fduplicate-key%3C%2Fcode%3E"><code>read/duplicate-key</code></h3><p>The same key twice in a map literal, or the same element twice in a set literal. An IllegalArgumentException on both runtimes.</p><h3 id="%3Ccode%3Eread%2Finvalid-character%3C%2Fcode%3E"><code>read/invalid-character</code></h3><p>A character literal that names nothing — an unknown <code>\name</code>, or an octal escape outside <code>&#91;0, 377&#93;</code>.</p><h3 id="%3Ccode%3Eread%2Finvalid-data-reader%3C%2Fcode%3E"><code>read/invalid-data-reader</code></h3><p>A <code>#tag</code> literal whose reader function is not registered in <code>&#42;data-readers&#42;</code>.</p><h3 id="%3Ccode%3Eread%2Finvalid-syntax%3C%2Fcode%3E"><code>read/invalid-syntax</code></h3><p>A read error with no more specific kind yet — the default for the reader's positioned raise. Narrowing one of these to its own kind is always an improvement; nothing depends on it staying general.</p><h3 id="%3Ccode%3Eread%2Finvalid-token%3C%2Fcode%3E"><code>read/invalid-token</code></h3><p>A token that is not a valid symbol or keyword: a leading or trailing slash, a bare <code>:</code> or <code>::</code>, or a keyword name beginning with a colon (<code>:::c</code>).</p><h3 id="%3Ccode%3Eread%2Finvalid-unicode%3C%2Fcode%3E"><code>read/invalid-unicode</code></h3><p>A \uXXXX escape that is not four hex digits, is not a valid code point, or is an unpaired surrogate.</p><h3 id="%3Ccode%3Eread%2Fodd-entries-in-map%3C%2Fcode%3E"><code>read/odd-entries-in-map</code></h3><p>A map literal with an odd number of forms, so some key has no value.</p><h2 id="analysis">Analysis</h2><p>Raised while analyzing a form — the compile-time errors.</p><h3 id="%3Ccode%3Eanalyze%2Finternal-failure%3C%2Fcode%3E"><code>analyze/internal-failure</code></h3><p>Anything else raised while analyzing a form, carrying the position of the innermost form under analysis. A diagnostic that reaches a user with this kind is a gap in the list above, not a category of its own.</p><h3 id="%3Ccode%3Eanalyze%2Finvalid-arity%3C%2Fcode%3E"><code>analyze/invalid-arity</code></h3><p>A special form applied to the wrong number of arguments.</p><h3 id="%3Ccode%3Eanalyze%2Finvalid-binding%3C%2Fcode%3E"><code>analyze/invalid-binding</code></h3><p>A <code>let&#42;</code>/<code>loop&#42;</code> binding whose left-hand side is not a symbol. Destructuring is a macro over these, so a pattern that reaches the special form directly is one the desugarer did not rewrite.</p><h3 id="%3Ccode%3Eanalyze%2Finvalid-def%3C%2Fcode%3E"><code>analyze/invalid-def</code></h3><p>A <code>def</code> whose first argument is not a symbol.</p><h3 id="%3Ccode%3Eanalyze%2Finvalid-fn-parameters%3C%2Fcode%3E"><code>analyze/invalid-fn-parameters</code></h3><p>A <code>fn&#42;</code> parameter list that is not a vector of symbols, or a rest parameter that is not a symbol.</p><h3 id="%3Ccode%3Eanalyze%2Finvalid-if%3C%2Fcode%3E"><code>analyze/invalid-if</code></h3><p>An <code>if</code> with fewer than two or more than three arguments.</p><h3 id="%3Ccode%3Eanalyze%2Finvalid-macro-value%3C%2Fcode%3E"><code>analyze/invalid-macro-value</code></h3><p>A macro's var used as a value. Macros exist only at compile time.</p><h3 id="%3Ccode%3Eanalyze%2Finvalid-member-access%3C%2Fcode%3E"><code>analyze/invalid-member-access</code></h3><p>A host interop form that does not parse: (. target member ...), (.method target ...) or (.-field target) with a missing or non-symbol member.</p><h3 id="%3Ccode%3Eanalyze%2Finvalid-method-reference%3C%2Fcode%3E"><code>analyze/invalid-method-reference</code></h3><p>A qualified instance method (Class/.method) used as a value rather than called.</p><h3 id="%3Ccode%3Eanalyze%2Finvalid-recur%3C%2Fcode%3E"><code>analyze/invalid-recur</code></h3><p>A <code>recur</code> that cannot reach its target: no enclosing loop or fn, the wrong argument count, across a <code>try</code>, or outside tail position.</p><h3 id="%3Ccode%3Eanalyze%2Finvalid-set%3C%2Fcode%3E"><code>analyze/invalid-set</code></h3><p>A <code>set!</code> whose target is not an assignable place — a local, a non-var, or a form that is neither a symbol nor a field access.</p><h3 id="%3Ccode%3Eanalyze%2Finvalid-try%3C%2Fcode%3E"><code>analyze/invalid-try</code></h3><p>A <code>try</code> whose clauses are out of order (a body form after a catch, a finally that is not last) or a catch clause that does not parse.</p><h3 id="%3Ccode%3Eanalyze%2Finvalid-var-reference%3C%2Fcode%3E"><code>analyze/invalid-var-reference</code></h3><p>A <code>var</code> special form whose argument is not a symbol.</p><h3 id="%3Ccode%3Eanalyze%2Funresolved-symbol%3C%2Fcode%3E"><code>analyze/unresolved-symbol</code></h3><p>A symbol that names neither a local, an interned var, nor an imported class. Carries :symbol, :suggestions and :ns alongside the position.</p><h3 id="%3Ccode%3Eanalyze%2Funresolved-var%3C%2Fcode%3E"><code>analyze/unresolved-var</code></h3><p>A <code>var</code> special form naming a var that does not exist.</p><h3 id="%3Ccode%3Eanalyze%2Funsupported-form%3C%2Fcode%3E"><code>analyze/unsupported-form</code></h3><p>A form the analyzer cannot classify at all — neither literal, symbol, collection, nor list.</p><h3 id="%3Ccode%3Eanalyze%2Funsupported-special-form%3C%2Fcode%3E"><code>analyze/unsupported-special-form</code></h3><p>A special-form head jolt's analyzer has no arm for.</p><h2 id="foreign_interface">Foreign interface</h2><p>Raised while checking a jolt.ffi layout, type or signature. These are compile-time like the analysis errors, but concern a foreign type description rather than Clojure itself.</p><h3 id="%3Ccode%3Effi%2Finvalid-array%3C%2Fcode%3E"><code>ffi/invalid-array</code></h3><p>A fixed array descriptor that is not <code>&#91;:array element-type positive-count&#93;</code>.</p><h3 id="%3Ccode%3Effi%2Finvalid-field%3C%2Fcode%3E"><code>ffi/invalid-field</code></h3><p>A struct or union field that is not <code>&#91;keyword type&#93;</code>, whose name is not an unqualified keyword, or that repeats a name already used.</p><h3 id="%3Ccode%3Effi%2Finvalid-layout%3C%2Fcode%3E"><code>ffi/invalid-layout</code></h3><p>A jolt.ffi layout that is not <code>&#91;:struct &#91;&#91;field type&#93; ...&#93;&#93;</code> or the <code>:union</code> equivalent, or one declaring no fields at all.</p><h3 id="%3Ccode%3Effi%2Finvalid-option%3C%2Fcode%3E"><code>ffi/invalid-option</code></h3><p>An unknown option key, an option key that is not an unqualified keyword, or an option combination the backend cannot honour — :capture-native-error on a :void or by-value return.</p><h3 id="%3Ccode%3Effi%2Finvalid-signature%3C%2Fcode%3E"><code>ffi/invalid-signature</code></h3><p>A foreign-fn or foreign-callable form whose shape does not parse.</p><h3 id="%3Ccode%3Effi%2Finvalid-type%3C%2Fcode%3E"><code>ffi/invalid-type</code></h3><p>A field or parameter type that is not a fixed-size scalar, a nested struct or union, or a fixed array.</p>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>
