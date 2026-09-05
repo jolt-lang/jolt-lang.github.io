@@ -258,6 +258,8 @@ code {
 .docs-sidebar {
   position: sticky; top: calc(var(--nav-h) + 24px);
   align-self: start; font-size: 0.9rem;
+  max-height: calc(100vh - var(--nav-h) - 48px);
+  overflow-y: auto; overscroll-behavior: contain;
 }
 .docs-sidebar h3 {
   font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em;
@@ -338,6 +340,6 @@ footer a:hover { text-decoration: underline; }
 @media (max-width: 760px) {
   .site-nav .nav-cta { display: none; }
   .docs-layout { grid-template-columns: 1fr; gap: 24px; }
-  .docs-sidebar { position: static; border-bottom: 1px solid var(--border); padding-bottom: 16px; }
+  .docs-sidebar { position: static; border-bottom: 1px solid var(--border); padding-bottom: 16px; max-height: none; overflow-y: visible; }
   nav .links { gap: 16px; }
 }
