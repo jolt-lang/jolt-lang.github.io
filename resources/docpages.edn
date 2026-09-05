@@ -29,6 +29,7 @@
   ["api/continuations.md"          "Continuations (jolt.continuations)" "api"]
   ["api/util.md"                   "Utilities (jolt.util)"             "api"]
 
+  ["errors.md"                    "Error Reference"                    "reference"]
   ["spec/README.md"               "Language Specification"             "reference"]
   ["tools-deps.md"                "deps.edn Internals"                 "reference"]
   ["MODULES.md"                   "Module Map (Contributors)"          "reference"]
