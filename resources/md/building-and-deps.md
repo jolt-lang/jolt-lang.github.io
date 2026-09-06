@@ -59,6 +59,9 @@ for the run. The CLI commands (`jolt.deps` + `jolt.main`):
 ```bash
 bin/jolt run -m NS [args]      # resolve deps.edn, load NS, call its -main
 bin/jolt run FILE              # resolve deps.edn, load a Clojure file
+bin/jolt FILE [args]           # the same with `run` left out — so a file whose
+                               # first line is `#!/usr/bin/env jolt` is a script
+bin/jolt -f FILE [args]        # load FILE even when its name is a command or task
 bin/jolt -M:alias [args]       # run the alias's :main-opts
 bin/jolt -A:alias [args]       # add the alias's paths/deps, then run the rest
 bin/jolt -X:alias [k v ...]    # call the alias's :exec-fn with :exec-args
@@ -203,7 +206,8 @@ A single-file script can declare its dependencies inline with
 The `jolt.version` property guard makes the script portable: on jolt it's
 always set, elsewhere the form is skipped; the same idiom babashka scripts
 use with `babashka.version`. See [Dependencies (jolt.deps)](/docs/api/deps.html)
-for the full API.
+for the full API, and [Running a script](/docs/getting-started.html#running_a_script)
+for shebang lines, arguments and exit codes.
 
 ## Building binaries
 
