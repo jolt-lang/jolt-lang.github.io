@@ -84,7 +84,7 @@ jolt -f build              # ...when the file's name is a command or a task
 jolt - < script.clj        # read the program from stdin
 ```
 
-So a first line of `#!/usr/bin/env jolt` makes the file an executable script, the way a `bb` one is — all it needs is a `jolt` on `PATH`. `#!` is a comment to end of line in Clojure's reader, so the line costs the program nothing:
+So a first line of `#!/usr/bin/env jolt` makes the file an executable script, the way a `bb` one is — all it needs is a `jolt` on `PATH`: an installed binary, or a symlink to a checkout's `bin/jolt`. `#!` is a comment to end of line in Clojure's reader, so the line costs the program nothing:
 
 ```bash
 $ cat hello
