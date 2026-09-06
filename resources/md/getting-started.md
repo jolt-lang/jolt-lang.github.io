@@ -74,6 +74,33 @@ You can also point Jolt at a directory of Clojure source with no dependency mach
 JOLT_PATH=/path/to/lib/src bin/jolt run myfile.clj
 ```
 
+## Running a script
+
+A file runs with `run` or without it, and needs no extension and no build step:
+
+```bash
+jolt script.clj            # load a file (`jolt run script.clj` is the same)
+jolt -f build              # ...when the file's name is a command or a task
+jolt - < script.clj        # read the program from stdin
+```
+
+So a first line of `#!/usr/bin/env jolt` makes the file an executable script, the way a `bb` one is — all it needs is a `jolt` on `PATH`. `#!` is a comment to end of line in Clojure's reader, so the line costs the program nothing:
+
+```bash
+$ cat hello
+#!/usr/bin/env jolt
+(println "hello" (first *command-line-args*))
+$ chmod +x hello
+$ ./hello world
+hello world
+```
+
+Arguments after the script are `*command-line-args*` — the first standalone `--` ends option parsing — `*file*` is the script, stdin is left for the program to read, and `(System/exit n)` sets the process's exit status (an uncaught exception exits 1). An `(ns …)` form with `:require`s is fine, and when the directory has a `deps.edn` the script sees the project's paths and dependencies, like any other run. A script can also declare its dependencies inline, with no `deps.edn` at all: see [Adding deps from a script](/docs/building-and-deps.html#adding_deps_from_a_script).
+
+A built-in command wins a name it shares with a file — `jolt build` is always the compiler — which is what `-f` is for. A task loses to one: a `greet` file on disk is what `jolt greet` means when the project also has a `greet` task. Windows has no kernel shebang, so there `jolt script` is how a script runs.
+
+Startup is Jolt's boot floor: the runtime and compiler image are instantiated on every run, which measures around 0.17s against babashka's 0.01s on the same machine. A script called in a loop is better compiled once — give it an `(ns …)` with a `-main` and [build it into a binary](#compiling_a_standalone_binary).
+
 ## Diagnostics
 
 Jolt has a few compile-time diagnostics beyond the default error report.
