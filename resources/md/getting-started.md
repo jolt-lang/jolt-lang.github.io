@@ -118,6 +118,67 @@ Unable to resolve symbol: prinltn in this context (did you mean print, printf, p
 
 **`JOLT_DEBUG`**: verbose dependency resolution (the fetching / using-cache / skipping progress lines that are otherwise quiet) plus the host static-shim drift warning. See [dependency resolution](#dependencies) below.
 
+## Memory
+
+Jolt bounds its heap the way the JVM does. By default the ceiling is **25% of
+physical memory** — the share the JVM's `MaxRAMPercentage` uses — and under a
+container limit it reads the container's memory rather than the host's, as
+`UseContainerSupport` does. Exceeding it raises `java.lang.OutOfMemoryError`, so
+it is catchable:
+
+```clojure
+(try
+  (doall (repeatedly 100000000 #(object-array 1024)))
+  (catch OutOfMemoryError e
+    (println "over the ceiling:" (.getMessage e))))
+```
+
+`(.maxMemory (Runtime/getRuntime))` reports the ceiling in bytes, and
+`totalMemory`/`freeMemory` report the heap inside it.
+
+**`JOLT_MAX_HEAP`** overrides the default, the way `-Xmx` does. An integer of
+bytes with an optional `k`, `m` or `g` suffix:
+
+```bash
+JOLT_MAX_HEAP=2g    jolt run build.clj    # cap at 2 GB
+JOLT_MAX_HEAP=512m  jolt run build.clj    # cap at 512 MB
+JOLT_MAX_HEAP=off   jolt run build.clj    # no ceiling
+```
+
+Raise it for a workload that legitimately needs more than a quarter of the
+machine — a large generative test suite, or compiling a big dependency tree.
+`off` restores the behaviour of releases before 0.8.5, where nothing bounded the
+heap at all.
+
+There is a floor. The runtime's own image is live before your program starts, so
+a ceiling under that cannot be satisfied and Jolt says so rather than failing
+somewhere inside namespace loading:
+
+```bash
+$ JOLT_MAX_HEAP=16m jolt -e '(println :hi)'
+JOLT_MAX_HEAP is smaller than the runtime's own live heap: asked for 16777216
+bytes, already using 125831840. Give it at least twice that, or
+JOLT_MAX_HEAP=off for no ceiling.
+```
+
+In practice **256 MB is the smallest useful setting**, and a built binary that
+embeds an application needs more than a bare `jolt` does.
+
+### Why there is a ceiling
+
+Chez grows its heap on demand and has no `-Xmx`, so before 0.8.5 a program that
+outgrew the machine was killed by the kernel's OOM killer: `SIGKILL`, no
+diagnostic, no stack, and an empty log, because the kill gives the process no
+chance to flush. The ceiling turns that into an error you can read, catch and
+act on.
+
+It also collects harder before giving up. Chez defers a maximum-generation
+collection until the live set has doubled, which is the wrong instinct when
+memory is tight, so above three quarters of the ceiling Jolt forces the
+collection that would otherwise have been deferred. A program that was merely
+holding reclaimable garbage keeps running; one that genuinely needs the memory
+gets the error.
+
 ## Compiling a standalone binary
 
 `bin/jolt build` ahead-of-time compiles a project into a single self-contained executable. The runtime, `clojure.core`, the standard library, and your application (together with its `deps.edn` dependencies) are linked in, so the result needs no Chez install, no JVM, and no source on disk to run.
