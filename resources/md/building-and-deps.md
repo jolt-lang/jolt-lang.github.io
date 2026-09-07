@@ -99,7 +99,7 @@ Every top-level key Jolt reads, and where each is covered in full:
 | `:mvn/repos` | extra Maven repositories, consulted after Clojars and Central |
 | `:mvn/local-repo` | relocate the local Maven repository (default `~/.m2/repository`) |
 | `:jolt/native` | shared libraries a project or library needs, loaded before its code ([Native interop](/docs/native-interop.html)) |
-| `:jolt/build` | `jolt build` options (`:opt`, `:direct-link`, `:tree-shake`, `:embed`, `:dynamic-natives`; [below](#deps.edn_build_options)) |
+| `:jolt/build` | `jolt build` options (`:opt`, `:direct-link`, `:tree-shake`, `:no-vfasl`, `:embed`, `:dynamic-natives`; [below](#deps.edn_build_options)) |
 | `:nrepl/middleware` | nREPL middleware a library contributes ([REPL-driven development](/docs/repl-driven-development.html)) |
 
 A user-level `deps.edn` (`$CLJ_CONFIG`, else `$XDG_CONFIG_HOME/clojure`, else
@@ -247,7 +247,8 @@ The build pipeline runs four steps, in order:
    load sequence, itself already cross-compiled) ahead of the emitted app forms, and
    append a launcher that calls the entry's `-main`.
 4. **Compile and link.** Feed the inlined source to Chez's native compiler
-   (`compile-file` → `make-boot-file`), embed the resulting boot as C bytes, and
+   (`compile-file` → `make-boot-file`), convert the boot to Chez's vfasl format
+   ([below](#the_boot_image)), embed the resulting boot as C bytes, and
    `cc`-link it against the Chez kernel (`libkernel.a`) into one self-contained
    executable. App libraries are baked in here, so the binary carries no on-disk source
    dependency.
@@ -258,6 +259,62 @@ when it can, so a closed-world binary is smaller. Second, because the whole prog
 visible at once, whole-program type inference runs across namespaces (field reads
 specialize, protocol calls devirtualize), something the per-form REPL path can't do.
 The modes below control how far that optimization goes.
+
+### The boot image
+
+Since 0.8.5 the embedded boot ships in Chez's **vfasl** format. An ordinary boot is a
+fasl stream the kernel walks object by object, allocating as it goes; a vfasl boot is a
+prebuilt image of what that walk would have produced, loaded straight into the static
+generation. The load stops allocating and the compaction that ends startup has far less
+to compact; together with no longer rebuilding the embedded source into the heap on
+every run, that is what halved a built binary's startup in 0.8.5.
+
+An image takes more room than the stream it replaces, so the default trades binary size
+for startup. **`--no-vfasl`** takes the other side of that trade and keeps the plain
+boot, for an app — typically a mobile one — whose download size matters more than its
+start:
+
+```bash
+jolt build -m myapp.core --no-vfasl
+```
+
+`JOLT_NO_VFASL=1` in the environment and `:jolt/build {:no-vfasl true}` in `deps.edn`
+do the same thing; the environment variable is the one a CI job can set without editing
+the build command.
+
+Measure both on your own target before choosing, because which way the trade falls
+depends on the app — and because the size cost is mostly the *compression codec's*
+rather than vfasl's. One app, one image, the three boots jolt can produce:
+
+| boot | binary | warm start |
+| --- | --- | --- |
+| vfasl, LZ4-compressed (the default) | 27.6 MB | 0.26 s |
+| vfasl, gzip-compressed | 16.8 MB | 0.44 s |
+| plain (`--no-vfasl`) | 26.0 MB | 0.50 s |
+
+On that app the gzip boot is smaller than the plain one *and* faster to load. Jolt does
+not yet let you ask for it directly; it reaches for gzip on its own in one case, below.
+
+#### The 256 MiB ceiling
+
+A Chez kernel cannot read back an LZ4-compressed fasl entry of 256 MiB or more: an
+integer overflow in its length check, which jolt cannot patch, since the Chez it links
+against is the one on your machine. It matters for boot images specifically: a vfasl boot is
+one entry per input boot file rather than one per top-level form, so a large enough
+program becomes a single oversized entry, and for one release that produced a binary
+that built cleanly and then died on startup.
+
+Builds now check for it and re-encode an over-ceiling image with gzip, which has no such
+limit, printing:
+
+```
+jolt build: note — the boot image is at or over Chez's 256MiB LZ4 fasl ceiling;
+  re-encoding it with gzip (slower to decompress, but it loads)
+```
+
+Nothing changes for an image under the ceiling. If you see that note, the binary is
+correct and starts more slowly than it otherwise would; `--no-vfasl` is the other way
+out of it.
 
 ### Build modes
 
@@ -315,6 +372,8 @@ The `:jolt/build` map in `deps.edn` accepts these keys:
 - **`:opt true`**: build in optimized mode (like `--opt`)
 - **`:direct-link true`**: closed-world direct linking (like `--direct-link`)
 - **`:tree-shake true`**: drop unreachable library code (like `--tree-shake`)
+- **`:no-vfasl true`**: keep the plain boot instead of the vfasl image (like
+  `--no-vfasl`) — a smaller binary, a slower start ([above](#the_boot_image))
 - **`:embed [dirs]`**: bake resource files into the binary so `io/resource` resolves
   with no files on disk
 - **`:dynamic-natives true`**: load native shared objects at runtime instead of

@@ -396,6 +396,13 @@ ship-the-binary-with-its-`resources/`-dir model also works. Files read through
 `io/file` (e.g. a `config.edn` a config library loads) stay external by design;
 edit them without rebuilding.
 
+The embedded boot ships as a prebuilt heap image (Chez's vfasl format), which is
+what makes a built binary start in a fraction of the time it takes to load an
+equivalent fasl stream. `--no-vfasl` (or `JOLT_NO_VFASL=1`, or `:jolt/build
+{:no-vfasl true}`) keeps the plain boot instead — a smaller binary and a slower
+start, for an app whose download size is the number that matters. See
+[The boot image](/docs/building-and-deps.html#the_boot_image).
+
 A standalone build needs Chez's kernel dev files (`libkernel.a`, `scheme.h`) and
 a C compiler; `JOLT_CHEZ_CSV` overrides the auto-detected `csv<ver>/<machine>`
 dir. `--opt` turns on the inference/flatten/scalar-replace passes; the default

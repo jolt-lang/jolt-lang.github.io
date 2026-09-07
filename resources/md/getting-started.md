@@ -207,6 +207,13 @@ You can set either in `deps.edn` instead of on the command line:
 {:jolt/build {:direct-link true :tree-shake true}}
 ```
 
+A third flag trades the other way. The boot image ships as a prebuilt heap image
+(*vfasl*), which starts faster and takes more room; `--no-vfasl` — or
+`JOLT_NO_VFASL=1`, or `:jolt/build {:no-vfasl true}` — keeps the plain boot instead, for
+an app whose download size matters more than its startup. Measure both on your target:
+which way the trade falls depends on the app. See
+[The boot image](/docs/building-and-deps.html#the_boot_image).
+
 Tree-shaking typically removes 1–2 MB. A small app pulls in a handful of `clojure.core` functions and a few functions per library, but a normal build bakes in all of them; tree-shaking keeps only what runs. For example, `malli-app` goes from ~10.0 MB to ~8.1 MB with identical behavior.
 
 ### Native libraries
