@@ -121,6 +121,8 @@ roots, and de-sugars the argv into a run:
 - `path` → print the resolved roots;
 - `build -m NS [-o OUT] [--opt|--dev]` → AOT-compile the app into a standalone binary;
 - `tasks` → list the project's tasks;
+- `completions zsh|bash|fish` → print a shell completion function to source
+  (see [Shell completion](#shell_completion));
 - `<task> [args]` → run a `bb.edn` / `deps.edn` `:tasks` entry (see below).
 
 The resolver lives in the overlay alongside the runtime, but the runtime's only
@@ -159,7 +161,11 @@ jolt test -v               # arguments after the name are *command-line-args*
 A task's value is either a map or the body on its own. The map keys are `:doc`,
 `:task` (the body), `:depends`, `:requires`, `:private` (kept out of the
 listing), `:extra-paths` / `:extra-deps` (roots and dependencies for that task
-alone), and `:override-builtin` (take a jolt command's name deliberately). The
+alone), and `:override-builtin` (take a jolt command's name deliberately). A
+name beginning with `-` is babashka's other spelling of `:private` and is
+hidden the same way. Both are hidden only from the listing: `jolt -dash` runs
+the task, and only the first line of a `:doc` is shown, since the listing puts
+one task on one line. The
 `:tasks` map itself takes `:init` (evaluated once before any task), `:requires`
 (for every task), and `:enter` / `:leave` (around each one).
 
@@ -191,6 +197,37 @@ point of the exercise is not to need a JVM. Prefer `jolt` in new task maps;
 `(shell "clojure" "-M:test")` still reaches the real Clojure CLI.
 
 `:pods` are not supported and say so when a `bb.edn` declares them.
+
+### Shell completion
+
+`jolt completions SHELL` prints a completion function for zsh, bash or fish.
+`jolt <TAB>` then offers jolt's commands and the project's tasks, and under zsh
+each task carries its `:doc`:
+
+```bash
+source <(jolt completions zsh)   # in ~/.zshrc, after compinit
+```
+
+Saving it as `_jolt` on `$fpath` works too. For bash, source `jolt completions
+bash` from `~/.bashrc`; for fish, save `jolt completions fish` as
+`~/.config/fish/completions/jolt.fish`.
+
+A snippet carries jolt's own commands directly, since those change only when
+the binary does. The project's tasks it fetches with `jolt completions tasks`,
+and the zsh and bash snippets cache them against the mtimes of `deps.edn` and
+`bb.edn` so a press costs nothing until one of those files moves — under zsh
+that path forks no process at all. Fish's completion function stays loaded for
+the shell session, so it caches in the shell's own variables, keyed on the
+directory it read them in; a task added mid-session wants a new shell.
+`JOLT_COMPLETION_NO_CACHE=1` bypasses the cache everywhere.
+
+`jolt completions tasks` is worth knowing on its own: one line per listable
+task, `name<TAB>doc`, the machine-readable form of what `jolt tasks` prints for
+a person. Anything scripting over a project's tasks should read that rather
+than parse the listing. One case differs from the listing on purpose — a task
+sharing a built-in command's name is offered only when it wins that name with
+`:override-builtin`, because a completion's description says what the word will
+do, and for a task that loses to a command the answer is the command.
 
 ### bb.edn and deps.edn together
 
@@ -343,7 +380,7 @@ still load it.
 
 `jolt build -m NS` compiles the app and every library into one executable (the
 runtime + compiler are baked in). Resolved `:jolt/native` libs are statically
-linked in (or loaded at startup; see [Native libraries](#native-libraries)), so
+linked in (or loaded at startup; see [Native libraries](#native_libraries)), so
 an FFI app (sockets, SQLite) runs with no jolt or Chez on the path.
 
 Output goes under the project's `target/`, cargo-style: `target/release/<project>`
