@@ -337,6 +337,27 @@ itself before the first use is unaffected. An older Jolt ignores the key, so a
 library can declare it without dropping 0.8.0 users. The design is
 [RFC 0014](/docs/rfc/0014-host-class-providers.html).
 
+## Extra reader features
+
+Jolt reads `#?()` against `#{:jolt :clj :default}`. A project can widen that set
+for the whole program:
+
+```clojure
+{:paths ["src"]
+ :jolt/features [:bb]}
+```
+
+The use for this is a script ported from babashka whose `:bb` branches are the
+ones you want; Jolt does not match `:bb` on its own, because a `:bb` branch is
+written for babashka's host model and not Jolt's. See
+[Cljc Interop](/docs/cljc-interop.html#jolt_does_not_satisfy_bb).
+
+The key is additive: it can add a key Jolt does not carry, never remove one, so
+`:clj` still reads and a `:jolt` clause still wins over both. Only the project
+may declare it — the feature set decides which branch every library in the
+program is read through, the same reason `:jolt/provides` refuses two claims on
+one class.
+
 ## Native libraries
 
 A library that binds C declares the shared objects it needs under `:jolt/native`,

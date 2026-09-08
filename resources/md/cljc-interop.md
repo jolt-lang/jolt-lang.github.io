@@ -2,13 +2,11 @@ Jolt is a Clojure-compatible host that runs on Scheme, not the JVM. Portable `.c
 
 The thread running through all of them is the reader-conditional feature set.
 
-## Reader conditionals: `:jolt`, `:bb`, `:clj`, `:default`
+## Reader conditionals: `:jolt`, `:clj`, `:default`
 
-Jolt's reader-conditional feature set is `#{:jolt :bb :clj :default}`. As on Clojure, the **first clause whose feature key the platform satisfies wins; matching is by clause order, not key priority.**
+Jolt's reader-conditional feature set is `#{:jolt :clj :default}`. As on Clojure, the **first clause whose feature key the platform satisfies wins; matching is by clause order, not key priority.**
 
-Because Jolt emulates `clojure.lang.*` and `java.*`, it satisfies `:clj`, so it reads the `:clj` branch of a `.cljc` library by default (the JVM code path its host shims target) and never the `:cljs` one.
-
-Jolt also satisfies `:bb`, exactly as babashka does (`#{:bb :clj}`): a library's `:bb` branch solves the same non-JVM problems Jolt has (no reflection, no JVM-only classes), and libraries list it ahead of `:clj` precisely so a bb-like host takes it. Code written for babashka usually does the right thing on Jolt through those branches. To give Jolt its own branch, place `:jolt` **before** `:bb` and `:clj`:
+Because Jolt emulates `clojure.lang.*` and `java.*`, it satisfies `:clj`, so it reads the `:clj` branch of a `.cljc` library by default (the JVM code path its host shims target) and never the `:cljs` one. To give Jolt its own branch, place `:jolt` **before** `:clj`:
 
 ```clojure
 (def backend
@@ -24,12 +22,25 @@ Jolt also satisfies `:bb`, exactly as babashka does (`#{:bb :clj}`): a library's
   [0 #?@(:jolt [1 2] :clj [1 2 3]) 9])
 ```
 
+### Jolt does not satisfy `:bb`
+
+Jolt is not babashka, and a `:bb` branch is not a "non-JVM host" branch — it is written for babashka's host model. Where that model differs from Jolt's, the branch is wrong here: it reaches for namespaces babashka supplies natively and Jolt does not (`cheshire.core`, where the `:clj` branch would have used `clojure.data.json`), asserts babashka's class model (classes as symbols in hierarchies, `sci.impl.fns` class names), and skips work Jolt can do because babashka can't (`java.nio`'s `DirectoryStream`, `LazilyPersistentVector`, `clojure.lang.Util`, `java.lang.reflect.Array` — Jolt shims all of them).
+
+Jolt matched `:bb` from 0.7.10 through 0.8.5 and no longer does. If you are porting a script whose `:bb` branches are the ones you want, ask for the key in your project's `deps.edn`:
+
+```clojure
+{:paths ["src"]
+ :jolt/features [:bb]}
+```
+
+That is additive — it widens the set, it cannot narrow it, so `:clj` still reads and a `:jolt` clause still wins over both. Only the **project** may declare it: the feature set decides which branch every library in the program is read through, so a dependency does not get to change it under you.
+
 Two Jolt-specific details worth knowing:
 
 - `:default` matches every platform, so it's the right key for "any Clojure" code.
 - Unlike the JVM reader, Jolt resolves `#?()` in **every** file type, not just `.cljc`. A `#?(:cljs …)` form with no `:clj`/`:jolt` branch simply reads as nothing, in a `.clj` or `.jolt` file as much as a `.cljc` one. (The reader spec allows this only when an implementation documents it; Jolt does; see [reader spec S18](/docs/spec/02-reader.html#s18_reader_conditionals).)
 
-Clause order is the whole mechanism: `:jolt` is checked before `:clj`, so a Jolt branch overrides the JVM one without affecting any other dialect.
+Clause order is the whole mechanism: a `:jolt` clause written before the `:clj` one overrides the JVM branch without affecting any other dialect.
 
 ## File precedence: `.jolt` over `.clj` over `.cljc`
 
@@ -68,9 +79,9 @@ The facade is a single `:require` that picks its implementation per dialect:
 ```clojure
 (ns clojurestar.deps
   (:require
-   #?(:bb   [babashka.deps :as implementation]
+   #?(:jolt [jolt.deps :as implementation]
+      :bb   [babashka.deps :as implementation]
       :glj  [glojure.deps :as implementation]
-      :jolt [jolt.deps :as implementation]
       :lg   [let-go.deps :as implementation]
       :clj  [grenadine.jvm :as implementation])))
 ```
