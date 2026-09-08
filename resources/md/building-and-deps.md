@@ -287,6 +287,11 @@ the same thing; the environment variable is the one a CI job can set without edi
 build command. `--no-vfasl` (with `JOLT_NO_VFASL=1` and `:jolt/build {:no-vfasl true}`)
 is an alias for `--boot plain`.
 
+Where more than one of them says something, the command line wins over `deps.edn`, which
+wins over the environment, and within each of those the explicit `--boot` spelling wins
+over the `--no-vfasl` alias. A blank environment variable reads as unset, so
+`JOLT_BOOT=` behaves as if it were not exported at all.
+
 **For a mobile app, `small` is usually the one, not `plain`.** The size cost is mostly
 the compression codec's rather than vfasl's, so a gzip image is smaller than the plain
 boot *and* still faster to start than one. Two apps, two machine types — binary size and
@@ -306,20 +311,26 @@ what the image holds rather than of the machine. The same three encodings applie
 Chez's own boots, which carry no jolt runtime, cost `fast` +37% and gain `small` only
 3–4%, with `small` there *slower* than `plain`.
 
-#### The 256 MiB ceiling
+#### The LZ4 entry ceiling
 
-A Chez kernel cannot read back an LZ4-compressed fasl entry of 256 MiB or more: an
-integer overflow in its length check, which jolt cannot patch, since the Chez it links
-against is the one on your machine. It matters for boot images specifically: a vfasl boot is
-one entry per input boot file rather than one per top-level form, so a large enough
-program becomes a single oversized entry, and for one release that produced a binary
-that built cleanly and then died on startup.
+A Chez kernel cannot read back a large enough LZ4-compressed fasl entry: an integer
+overflow in its length check, which jolt cannot patch, since the Chez it links against is
+the one on your machine. It matters for boot images specifically: a vfasl boot is one
+entry per input boot file rather than one per top-level form, so a large enough program
+becomes a single oversized entry, and for one release that produced a binary that built
+cleanly and then died on startup.
 
-Builds now check for it and re-encode an over-ceiling image with gzip, which has no such
-limit, printing:
+Where the limit falls is undefined behaviour in the kernel, so it is not the same
+everywhere: 256 MiB on some platforms and 512 MiB on others, decided by what the C
+compiler did with an overflowed multiplication. Builds re-encode at 256 MiB, the lower of
+the two, so nothing they leave on LZ4 can fail to load. On a platform whose real limit is
+512 MiB an image in between is re-encoded when it did not have to be, which costs
+decompression speed and nothing else.
+
+An over-ceiling image is re-encoded with gzip, which has no such limit, printing:
 
 ```
-jolt build: note — the boot image is at or over Chez's 256MiB LZ4 fasl ceiling;
+jolt build: note — the boot image is at or over Chez's LZ4 fasl ceiling;
   re-encoding it with gzip (slower to decompress, but it loads)
 ```
 
