@@ -99,7 +99,7 @@ Every top-level key Jolt reads, and where each is covered in full:
 | `:mvn/repos` | extra Maven repositories, consulted after Clojars and Central |
 | `:mvn/local-repo` | relocate the local Maven repository (default `~/.m2/repository`) |
 | `:jolt/native` | shared libraries a project or library needs, loaded before its code ([Native interop](/docs/native-interop.html)) |
-| `:jolt/build` | `jolt build` options (`:opt`, `:direct-link`, `:tree-shake`, `:no-vfasl`, `:embed`, `:dynamic-natives`; [below](#deps.edn_build_options)) |
+| `:jolt/build` | `jolt build` options (`:opt`, `:direct-link`, `:tree-shake`, `:boot`, `:embed`, `:dynamic-natives`; [below](#deps.edn_build_options)) |
 | `:nrepl/middleware` | nREPL middleware a library contributes ([REPL-driven development](/docs/repl-driven-development.html)) |
 
 A user-level `deps.edn` (`$CLJ_CONFIG`, else `$XDG_CONFIG_HOME/clojure`, else
@@ -270,30 +270,41 @@ to compact; together with no longer rebuilding the embedded source into the heap
 every run, that is what halved a built binary's startup in 0.8.5.
 
 An image takes more room than the stream it replaces, so the default trades binary size
-for startup. **`--no-vfasl`** takes the other side of that trade and keeps the plain
-boot, for an app — typically a mobile one — whose download size matters more than its
-start:
+for startup. **`--boot`** chooses where on that trade to sit:
+
+| `--boot` | boot image | for |
+| --- | --- | --- |
+| `fast` (default) | vfasl, LZ4-compressed | the fastest start |
+| `small` | vfasl, gzip-compressed | the smallest binary that still loads as an image |
+| `plain` | no vfasl | the pre-0.8.5 boot |
 
 ```bash
-jolt build -m myapp.core --no-vfasl
+jolt build -m myapp.core --boot small
 ```
 
-`JOLT_NO_VFASL=1` in the environment and `:jolt/build {:no-vfasl true}` in `deps.edn`
-do the same thing; the environment variable is the one a CI job can set without editing
-the build command.
+`JOLT_BOOT=small` in the environment and `:jolt/build {:boot :small}` in `deps.edn` do
+the same thing; the environment variable is the one a CI job can set without editing the
+build command. `--no-vfasl` (with `JOLT_NO_VFASL=1` and `:jolt/build {:no-vfasl true}`)
+is an alias for `--boot plain`.
 
-Measure both on your own target before choosing, because which way the trade falls
-depends on the app — and because the size cost is mostly the *compression codec's*
-rather than vfasl's. One app, one image, the three boots jolt can produce:
+**For a mobile app, `small` is usually the one, not `plain`.** The size cost is mostly
+the compression codec's rather than vfasl's, so a gzip image is smaller than the plain
+boot *and* still faster to start than one. Two apps, two machine types — binary size and
+warm start, against the plain boot as the baseline:
 
-| boot | binary | warm start |
-| --- | --- | --- |
-| vfasl, LZ4-compressed (the default) | 27.6 MB | 0.26 s |
-| vfasl, gzip-compressed | 16.8 MB | 0.44 s |
-| plain (`--no-vfasl`) | 26.0 MB | 0.50 s |
+| app / target | `plain` | `fast` | `small` |
+| --- | --- | --- | --- |
+| hello, host `ta6le` | 25,919,203 · 495 ms | +5.5% · 249 ms | **−35.7% · 429 ms** |
+| build-app, host `ta6le` | 26,062,746 · 502 ms | +5.8% · 250 ms | **−35.5% · 434 ms** |
+| hello, target `tpb64l` | 24,873,035 | +5.8% | **−38.1%** |
 
-On that app the gzip boot is smaller than the plain one *and* faster to load. Jolt does
-not yet let you ask for it directly; it reaches for gzip on its own in one case, below.
+`plain` remains available because a target that cannot vfasl at all still needs it — not
+because it is the size answer.
+
+Measure your own app rather than quoting those ratios, because they are a property of
+what the image holds rather than of the machine. The same three encodings applied to
+Chez's own boots, which carry no jolt runtime, cost `fast` +37% and gain `small` only
+3–4%, with `small` there *slower* than `plain`.
 
 #### The 256 MiB ceiling
 
@@ -313,8 +324,8 @@ jolt build: note — the boot image is at or over Chez's 256MiB LZ4 fasl ceiling
 ```
 
 Nothing changes for an image under the ceiling. If you see that note, the binary is
-correct and starts more slowly than it otherwise would; `--no-vfasl` is the other way
-out of it.
+correct and starts more slowly than it otherwise would — `--boot small` asks for the
+same encoding deliberately, and `--boot plain` opts out of images entirely.
 
 ### Build modes
 
@@ -372,8 +383,9 @@ The `:jolt/build` map in `deps.edn` accepts these keys:
 - **`:opt true`**: build in optimized mode (like `--opt`)
 - **`:direct-link true`**: closed-world direct linking (like `--direct-link`)
 - **`:tree-shake true`**: drop unreachable library code (like `--tree-shake`)
-- **`:no-vfasl true`**: keep the plain boot instead of the vfasl image (like
-  `--no-vfasl`) — a smaller binary, a slower start ([above](#the_boot_image))
+- **`:boot :fast|:small|:plain`**: how the boot image is encoded (like `--boot`) —
+  startup against binary size ([above](#the_boot_image)). `:no-vfasl true` is an
+  alias for `:boot :plain`.
 - **`:embed [dirs]`**: bake resource files into the binary so `io/resource` resolves
   with no files on disk
 - **`:dynamic-natives true`**: load native shared objects at runtime instead of

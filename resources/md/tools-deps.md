@@ -398,9 +398,10 @@ edit them without rebuilding.
 
 The embedded boot ships as a prebuilt heap image (Chez's vfasl format), which is
 what makes a built binary start in a fraction of the time it takes to load an
-equivalent fasl stream. `--no-vfasl` (or `JOLT_NO_VFASL=1`, or `:jolt/build
-{:no-vfasl true}`) keeps the plain boot instead — a smaller binary and a slower
-start, for an app whose download size is the number that matters. See
+equivalent fasl stream. `--boot` trades that against binary size: `small`
+(or `JOLT_BOOT=small`, or `:jolt/build {:boot :small}`) keeps the image but
+gzip-compresses it — about a third smaller than a plain boot and still faster to
+start — and `plain` (alias `--no-vfasl`) drops the image entirely. See
 [The boot image](/docs/building-and-deps.html#the_boot_image).
 
 A standalone build needs Chez's kernel dev files (`libkernel.a`, `scheme.h`) and
