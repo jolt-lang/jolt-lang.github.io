@@ -184,7 +184,7 @@
     
     <nav class="toc">
       <h2>Contents</h2>
-      <ol class="contents"><li><a href="#building_and_dependencies">Building and dependencies</a></li><li><a href="#running">Running</a></li><li><a href="#how_namespaces_are_found">How namespaces are found</a></li><li><a href="#dependencies_via_deps.edn">Dependencies via deps.edn</a><ol><li><a href="#deps.edn_keys_at_a_glance">deps.edn keys at a glance</a></li><li><a href="#what%27s_supported">What's supported</a></li><li><a href="#running_a_function_directly">Running a function directly</a></li><li><a href="#what%27s_not">What's not</a></li><li><a href="#adding_deps_from_a_script">Adding deps from a script</a></li></ol></li><li><a href="#building_binaries">Building binaries</a><ol><li><a href="#how_aot_compilation_works">How AOT compilation works</a></li><li><a href="#the_boot_image">The boot image</a></li><li><a href="#build_modes">Build modes</a></li><li><a href="#typed_arithmetic_and_inference">Typed arithmetic and inference</a></li><li><a href="#deps.edn_build_options">deps.edn build options</a></li></ol></li></ol>
+      <ol class="contents"><li><a href="#building_and_dependencies">Building and dependencies</a></li><li><a href="#running">Running</a></li><li><a href="#how_namespaces_are_found">How namespaces are found</a></li><li><a href="#dependencies_via_deps.edn">Dependencies via deps.edn</a><ol><li><a href="#inspecting_a_resolution">Inspecting a resolution</a></li><li><a href="#deps.edn_keys_at_a_glance">deps.edn keys at a glance</a></li><li><a href="#what%27s_supported">What's supported</a></li><li><a href="#running_a_function_directly">Running a function directly</a></li><li><a href="#what%27s_not">What's not</a></li><li><a href="#adding_deps_from_a_script">Adding deps from a script</a></li></ol></li><li><a href="#building_binaries">Building binaries</a><ol><li><a href="#how_aot_compilation_works">How AOT compilation works</a></li><li><a href="#the_boot_image">The boot image</a></li><li><a href="#build_modes">Build modes</a></li><li><a href="#typed_arithmetic_and_inference">Typed arithmetic and inference</a></li><li><a href="#deps.edn_build_options">deps.edn build options</a></li></ol></li></ol>
     </nav>
     
     <div id="content">
@@ -207,7 +207,25 @@ bin/jolt repl                  # start a line REPL &#40;project deps + native li
 bin/jolt nrepl-server &#91;port&#93;   # start an nREPL server &#40;default 7888&#41; for editors
 bin/jolt path                  # print the resolved source roots &#40;':'-joined&#41;
 bin/jolt &lt;task&gt;                # run a deps.edn :tasks entry
-</code></pre><p>Example <code>deps.edn</code>:</p><pre><code class="clojure">{:paths &#91;&quot;src&quot;&#93;
+</code></pre><h3 id="inspecting_a_resolution">Inspecting a resolution</h3><p>The report options answer something about the project and run nothing. Each takes the aliases around it, so <code>-A:test -Spath</code> and <code>-Spath -M:test</code> both report on the resolution that run would use:</p><pre><code class="bash">bin/jolt -Spath                # the resolved source roots &#40;':'-joined&#41;
+bin/jolt -Stree                # the dependency tree, tools.deps format
+bin/jolt -Sgraph               # the dependency tree as an indented graph
+bin/jolt -Soutdated            # the same graph, marking available updates
+bin/jolt -Strace               # write the dependency expansion to trace.edn
+bin/jolt -Sdescribe            # the environment as an edn map
+bin/jolt -P                    # fetch every dependency, then stop
+</code></pre><p><code>-Stree</code> and <code>-Sgraph</code> answer different questions about the same resolution. <code>-Stree</code> prints what <code>clojure -Stree</code> prints — the expansion trace, where every candidate appears and the ones that lost are marked <code>X</code> with the reason:</p><pre><code class="text">org.clojure/data.json 2.4.0
+rewrite-clj/rewrite-clj 1.1.47
+  X org.clojure/tools.reader 1.3.6 :use-top
+org.clojure/tools.reader 1.3.6
+</code></pre><p>That tells you how the resolution got where it did. <code>-Sgraph</code> answers the other question — what does this program actually depend on — over the edges that were selected. A library reached through two parents is expanded once and marked <code>&#40;already shown&#41;</code> after that, and a coordinate that reaches itself is marked <code>&#40;cycle&#41;</code>, so a wide graph stays readable:</p><pre><code class="text">├── org.clojure/data.json 2.4.0
+├── org.clojure/tools.reader 1.3.6
+└── rewrite-clj/rewrite-clj 1.1.47
+    └── org.clojure/tools.reader 1.3.6 &#40;already shown&#41;
+</code></pre><p><code>-Soutdated</code> renders that same graph and appends <code>-&gt; VERSION</code> to every Maven library with a newer release available:</p><pre><code class="text">├── org.clojure/data.json 2.4.0 -&gt; 2.5.2
+└── rewrite-clj/rewrite-clj 1.1.47 -&gt; 1.2.57
+    └── org.clojure/tools.reader 1.3.6 -&gt; 1.6.0
+</code></pre><p>It is a separate option rather than a flag on <code>-Sgraph</code> because it is the only one that goes to the network: it asks each library's repositories for their metadata, which costs a round-trip apiece, while <code>-Sgraph</code> reads the resolution jolt already has. A lookup that fails warns on stderr and leaves that library unmarked rather than failing the report, so one unreachable repository does not cost you the rest of it. <code>:git/url</code> and <code>:local/root</code> coordinates are printed but have no newer version to report, and the <code>org.clojure/clojure</code> branch is left out of both graphs.</p><p>Example <code>deps.edn</code>:</p><pre><code class="clojure">{:paths &#91;&quot;src&quot;&#93;
  :deps {weavejester/medley {:git/url &quot;https://github.com/weavejester/medley&quot;
                             :git/sha &quot;&lt;full-sha&gt;&quot;}
         my/helpers          {:local/root &quot;../helpers&quot;}}}
