@@ -96,8 +96,7 @@ aren't a separate task form.
 `:deps/prep-lib` is recognized but never run: jolt has no prep step, so a
 library needing one is named in a warning instead of silently producing a
 half-built root. Maven `:classifier`/`:extension` coordinates, `pom.xml` as a
-project manifest, `-Stree` output, and the `:deps/manifest` override are not
-implemented.
+project manifest, and the `:deps/manifest` override are not implemented.
 
 ## How the CLI ties it together
 
@@ -119,6 +118,9 @@ roots, and de-sugars the argv into a run:
 - `-Sdeps '<edn>'` → merge an extra `deps.edn` map, then run the rest;
 - `repl` → a line REPL;
 - `path` → print the resolved roots;
+- the report options — `-Spath`, `-Stree`, `-Sgraph`, `-Soutdated`, `-Strace`,
+  `-Sdescribe`, `-P` → answer something about the project and run nothing (see
+  [Inspecting a resolution](/docs/building-and-deps.html#inspecting_a_resolution));
 - `build -m NS [-o OUT] [--opt|--dev]` → AOT-compile the app into a standalone binary;
 - `tasks` → list the project's tasks;
 - `completions zsh|bash|fish` → print a shell completion function to source

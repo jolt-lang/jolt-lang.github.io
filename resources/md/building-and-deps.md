@@ -73,6 +73,64 @@ bin/jolt path                  # print the resolved source roots (':'-joined)
 bin/jolt <task>                # run a deps.edn :tasks entry
 ```
 
+### Inspecting a resolution
+
+The report options answer something about the project and run nothing. Each
+takes the aliases around it, so `-A:test -Spath` and `-Spath -M:test` both
+report on the resolution that run would use:
+
+```bash
+bin/jolt -Spath                # the resolved source roots (':'-joined)
+bin/jolt -Stree                # the dependency tree, tools.deps format
+bin/jolt -Sgraph               # the dependency tree as an indented graph
+bin/jolt -Soutdated            # the same graph, marking available updates
+bin/jolt -Strace               # write the dependency expansion to trace.edn
+bin/jolt -Sdescribe            # the environment as an edn map
+bin/jolt -P                    # fetch every dependency, then stop
+```
+
+`-Stree` and `-Sgraph` answer different questions about the same resolution.
+`-Stree` prints what `clojure -Stree` prints — the expansion trace, where every
+candidate appears and the ones that lost are marked `X` with the reason:
+
+```text
+org.clojure/data.json 2.4.0
+rewrite-clj/rewrite-clj 1.1.47
+  X org.clojure/tools.reader 1.3.6 :use-top
+org.clojure/tools.reader 1.3.6
+```
+
+That tells you how the resolution got where it did. `-Sgraph` answers the other
+question — what does this program actually depend on — over the edges that were
+selected. A library reached through two parents is expanded once and marked
+`(already shown)` after that, and a coordinate that reaches itself is marked
+`(cycle)`, so a wide graph stays readable:
+
+```text
+├── org.clojure/data.json 2.4.0
+├── org.clojure/tools.reader 1.3.6
+└── rewrite-clj/rewrite-clj 1.1.47
+    └── org.clojure/tools.reader 1.3.6 (already shown)
+```
+
+`-Soutdated` renders that same graph and appends `-> VERSION` to every Maven
+library with a newer release available:
+
+```text
+├── org.clojure/data.json 2.4.0 -> 2.5.2
+└── rewrite-clj/rewrite-clj 1.1.47 -> 1.2.57
+    └── org.clojure/tools.reader 1.3.6 -> 1.6.0
+```
+
+It is a separate option rather than a flag on `-Sgraph` because it is the only
+one that goes to the network: it asks each library's repositories for their
+metadata, which costs a round-trip apiece, while `-Sgraph` reads the resolution
+jolt already has. A lookup that fails warns on stderr and leaves that library
+unmarked rather than failing the report, so one unreachable repository does not
+cost you the rest of it. `:git/url` and `:local/root` coordinates are printed
+but have no newer version to report, and the `org.clojure/clojure` branch is
+left out of both graphs.
+
 Example `deps.edn`:
 
 ```clojure
