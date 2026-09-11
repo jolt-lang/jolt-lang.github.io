@@ -20,7 +20,7 @@ sources, and process: [`0001-language-specification.md`](/docs/rfc/0001-language
 | [grammar.ebnf](/grammar.ebnf) | reader surface syntax (EBNF), companion to `02-reader.md` | reference |
 
 Regenerate the dashboard after surface changes:
-`python3 tools/spec_coverage.py` (reads `tools/clojuredocs-export.json` and
+`jolt run tools/spec_coverage.clj` (reads `tools/clojuredocs-export.json` and
 probes a working jolt checkout via `bin/jolt`).
 
 The [coverage dashboard](/docs/spec/coverage.html) is the source of truth for

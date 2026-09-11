@@ -85,4 +85,4 @@ and in the cross-dialect clojure-test-suite.
 | 7 | `07-polymorphism.md` | planned |
 | 8 | `08-macros.md` | planned |
 | 9 | `09-core-library.md` | **exemplars written** (`first`, `reduce`, `parse-uuid`) |
-| A | `coverage.md` | **generated** (regenerate: `python3 tools/spec_coverage.py`) |
+| A | `coverage.md` | **generated** (regenerate: `jolt run tools/spec_coverage.clj`) |
