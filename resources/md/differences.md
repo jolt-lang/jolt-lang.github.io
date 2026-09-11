@@ -55,7 +55,7 @@ Patterns compile through [irregex](https://github.com/ashinn/irregex) (vendored)
 
 ## The reader
 
-Reader conditionals (`#?(…)`) are read by default; on the JVM they need `{:read-cond :allow}` and throw otherwise. `:bb` is matched ahead of `:clj`, which is how a library ships a Jolt-specific branch — see [Cljc Interop](/docs/cljc-interop.html).
+Reader conditionals (`#?(…)`) are read by default; on the JVM they need `{:read-cond :allow}` and throw otherwise. The feature set is `#{:jolt :clj :default}`, so a `:jolt` clause written before the `:clj` one is how a library ships a Jolt-specific branch — see [Cljc Interop](/docs/cljc-interop.html).
 
 Three more reader differences, all in the direction of reading something the JVM refuses:
 
