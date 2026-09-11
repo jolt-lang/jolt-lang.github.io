@@ -1,14 +1,14 @@
 # Appendix A — Coverage Dashboard (generated)
 
-Generated 2026-09-09 by `tools/spec_coverage.clj` — do not edit by hand.
+Generated 2026-09-11 by `tools/spec_coverage.clj` — do not edit by hand.
 
 Surface: **694** clojure.core vars (ClojureDocs export; 648 with
 community examples). jolt interns 659 of them.
 
 | Status | Count | Meaning |
 |---|---|---|
-| implemented+tested | 638 | in jolt and exercised by spec/conformance |
-| implemented-untested | 21 | in jolt, no direct test — spec entries will add them |
+| implemented+tested | 640 | in jolt and exercised by spec/conformance |
+| implemented-untested | 19 | in jolt, no direct test — spec entries will add them |
 | resolvable-not-interned | 0 | works in code but invisible to ns introspection (conformance finding) |
 | missing-portable | 0 | portable semantics, jolt lacks it — implementation gap |
 | special-form | 15 | specified in §3, not a library var |
@@ -184,7 +184,7 @@ UNVERIFIED field; that column will be added as entries land.
 | `chunked-seq?` | implemented+tested | ✓ |
 | `class` | implemented+tested | ✓ |
 | `class?` | implemented+tested | ✓ |
-| `clear-agent-errors` | implemented-untested |  |
+| `clear-agent-errors` | implemented+tested |  |
 | `clojure-version` | implemented+tested | ✓ |
 | `coll?` | implemented+tested | ✓ |
 | `comment` | implemented+tested | ✓ |
@@ -583,7 +583,7 @@ UNVERIFIED field; that column will be added as entries land.
 | `set-agent-send-executor!` | implemented-untested | ✓ |
 | `set-agent-send-off-executor!` | implemented-untested | ✓ |
 | `set-error-handler!` | implemented+tested | ✓ |
-| `set-error-mode!` | implemented-untested | ✓ |
+| `set-error-mode!` | implemented+tested | ✓ |
 | `set-validator!` | implemented+tested | ✓ |
 | `set?` | implemented+tested | ✓ |
 | `short` | implemented+tested | ✓ |
