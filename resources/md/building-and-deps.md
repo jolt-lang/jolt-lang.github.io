@@ -312,9 +312,13 @@ The build pipeline runs four steps, in order:
    dependency.
 
 Two consequences are worth knowing. First, an app that never reaches `eval`,
-`load-string`, `load-file` or an image restore ships *without* the compiler image and
-boots from `petite.boot` alone: every build walks the program's call graph and takes
-that verdict, whether or not it was asked to prune. Second, because the whole program
+`load-string`, `load-file`, `compile`, an image restore, or a `require` whose argument
+the build cannot read ships *without* the compiler image and boots from `petite.boot`
+alone: every build walks the program's call graph and takes that verdict, whether or
+not it was asked to prune. A `require` the build can read — every `ns` clause, every
+`(require 'a.b)` — is baked into the binary and no-ops at startup; `(require (symbol
+nm))`, a plugin loaded by name, is a load from source at run time and keeps the
+compiler for it. Second, because the whole program
 is visible at once, whole-program type inference runs across namespaces (field reads
 specialize, protocol calls devirtualize), something the per-form REPL path can't do.
 The modes below control how far that optimization goes.
@@ -433,6 +437,40 @@ cannot reach.
 
 `--dev` produces a debug binary under `target/debug/` (const-fold + numeric annotate
 only), typically used during development for faster build times.
+
+### Closed-world builds and `:allow-dynamic`
+
+`--closed-world` (`--tree-shake` is the older spelling, still accepted) walks the call
+graph across your app, its libraries and `clojure.core`, drops everything unreachable
+from `-main`, and typically removes 1–2 MB. It stays sound by bailing out — keeping
+everything, and naming the def responsible — when reachable code resolves vars by name
+at run time (`eval`, `resolve`, `ns-resolve`, `requiring-resolve`, `ns-publics`, an
+image restore, a `require` whose argument the build cannot read).
+
+When the site it names is dead in a built binary and you can say why — spec's `res`
+only qualifies a symbol for a description, spec.gen's `dynaload` sits behind a `delay`
+nothing forces — a `deps.edn` can vouch for it and the shake proceeds past it, keeping
+nothing extra:
+
+```clojure
+:jolt/tree-shake {:allow-dynamic [clojure.spec.alpha/res
+                                  clojure.spec.gen.alpha/dynaload]}
+```
+
+The key is read from the app's `deps.edn`, the user-level one, `-Sdeps`, and every
+library's, and the lists union, so a library ships its list once for every app that
+uses it. The bail message ends with the exact line to paste for the sites that remain;
+paste what it prints, because the def to name is the one the lookup ended up in after
+inlining, which may be the caller of the fn that wrote it.
+
+A vouch covers a *resolution* the graph cannot follow — `resolve`, `ns-publics`,
+`requiring-resolve` — and only that. A def that runs the compiler (`eval`,
+`load-string`, an image restore, a computed `require`) bails whatever the list says,
+because the compiler image is direct-linked against the whole of `clojure.core` and
+cannot run over a pruned one. Vouching wrongly does not fail the build — it moves the
+failure into the binary, where the lookup sees only what the shake kept: a `resolve`
+of a def the shake dropped answers `nil` where the unshaken binary answers the var,
+silently. Name a site only when you can say why it is dead.
 
 ### Typed arithmetic and inference
 

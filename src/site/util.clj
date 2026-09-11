@@ -50,15 +50,19 @@
 
 (defn fix-heading-ids
   "markdown-clj derives a heading's id from its RENDERED text, so a heading
-   holding inline markup gets the tags in its id (id=\"<code>:varargs</code>\").
-   Rewrite those to a slug of the text. The table of contents reads ids back
-   out of this HTML, so both sides stay in agreement."
+   holding inline markup gets the tags in its id (id=\"<code>:varargs</code>\")
+   — URL-encoded since markdown-clj 1.12 (id=\"%3Ccode%3E%3Avarargs%3C%2Fcode%3E\"),
+   which is why the check decodes first. Rewrite those to a slug of the text.
+   The table of contents reads ids back out of this HTML, so both sides stay in
+   agreement; a heading without markup keeps markdown-clj's id, which existing
+   links point at."
   [html]
   (s/replace html #"<h([123]) id=\"([^\"]*)\">"
              (fn [[whole level id]]
-               (if (s/includes? id "<")
-                 (str "<h" level " id=\"" (slugify (s/replace id #"<[^>]*>" "")) "\">")
-                 whole))))
+               (let [decoded (java.net.URLDecoder/decode id "UTF-8")]
+                 (if (s/includes? decoded "<")
+                   (str "<h" level " id=\"" (slugify (s/replace decoded #"<[^>]*>" "")) "\">")
+                   whole)))))
 
 (defn parse-doc [name]
   (-> (md/md-to-html-string
