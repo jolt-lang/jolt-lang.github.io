@@ -351,7 +351,7 @@ the API reference.
 
 A syscall that fails reports *how* through `errno`, and `errno` is not a
 global: every modern libc keeps a per-thread slot behind a function
-(`__error` on macOS, `__errno_location` on Linux, `_errno` on Windows).
+(`__error` on macOS, `__errno_location` on glibc, `__errno` on Android's bionic, `_errno` on Windows).
 `jolt.ffi/errno` reads the calling thread's slot through the right one, so
 it is correct under threads, and under fibers, whose syscall and errno read
 both run on the fiber's carrier thread. `errno-message` renders a code (or
