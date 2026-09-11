@@ -51,7 +51,7 @@ Strings are Chez strings: codepoint-indexed, with no UTF-16 surrogate pairs. `co
 
 ## Regex engine
 
-Patterns compile through [irregex](https://github.com/ashinn/irregex) (vendored), not `java.util.regex`. `re-find`, `re-matches`, `re-seq`, the `clojure.string` regex functions, and `#"…"` literals all work for common patterns, but Java-specific regex features can differ at the edges.
+Patterns compile through [irregex](https://github.com/ashinn/irregex) (vendored), not `java.util.regex`, behind a translator that reads Java's grammar: `\p{…}` classes, the line-terminator set `\n \r \r\n NEL LS PS` for `.` `^` `$` (with `(?d)` narrowing it to `\n`), the inline flags, look-around, atomic groups, back-references, `\Q…\E`, and a `Matcher`'s `find(int)` / `region`. Capturing patterns use irregex's backtracking matcher, which is the JVM's own engine, so submatch semantics agree; group-free patterns get a DFA when it is affordable and the same backtracker when it is not. Divergences that remain are recorded in `known-divergences.edn`; the one most likely to be met is that a lone surrogate code point has no representation in a code-point string (see above), so `(format "%c" 0xD800)` prints U+FFFD.
 
 ## The reader
 
@@ -83,6 +83,8 @@ Quoted lists carry no source position: `(meta '(foo))` is `nil` where the JVM an
 Treat privacy as documentation on Jolt. Code that *relies* on the JVM refusing is the code to watch, and a library that reaches into another's private var will keep working here and break when run on the JVM.
 
 `ns-aliases` takes no argument here and one on the JVM.
+
+**A `require` cycle on one thread loads.** `a.core` requiring `b.core`, whose `ns` form requires `a.core` back, is the JVM's `Cyclic load dependency` error; Jolt's loader is modeled on Java class initialization instead, so the thread that owns an in-progress load and asks for it again gets the partially loaded namespace and continues. `b.core` sees whatever `a.core` had defined before the `require`. The same machinery detects a cross-thread or cross-fiber load deadlock the JVM cannot, and raises there instead. Code that relies on the JVM refusing its own cycle does not get the refusal here.
 
 ## Concurrency
 

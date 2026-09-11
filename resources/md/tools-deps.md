@@ -163,7 +163,11 @@ jolt test -v               # arguments after the name are *command-line-args*
 A task's value is either a map or the body on its own. The map keys are `:doc`,
 `:task` (the body), `:depends`, `:requires`, `:private` (kept out of the
 listing), `:extra-paths` / `:extra-deps` (roots and dependencies for that task
-alone), and `:override-builtin` (take a jolt command's name deliberately). A
+alone), and `:override-builtin` (take a jolt command's name deliberately — a task
+that shares a command's name and does not claim it loses to the command, and jolt
+says so when that happens, since the command answering in a project that declares
+the task otherwise reads like the task went missing; `jolt run <task>` reaches it
+either way). A
 name beginning with `-` is babashka's other spelling of `:private` and is
 hidden the same way. Both are hidden only from the listing: `jolt -dash` runs
 the task, and only the first line of a `:doc` is shown, since the listing puts
@@ -442,22 +446,26 @@ into `clojure.core` stay indirect in every mode.
 
 ## Tree-shaking
 
-`--tree-shake` (or `:jolt/build {:tree-shake true}`) ships only the code reachable
-from `-main`. The build constructs one call graph spanning the app, every resolved
+`--closed-world` (or `:jolt/build {:closed-world true}`; `--tree-shake` and
+`:tree-shake true` are the older spellings, still accepted) ships only the code
+reachable from `-main`. The build constructs one call graph spanning the app, every resolved
 library, and the `clojure.core`/stdlib prelude, then keeps `-main`, every
 side-effecting top-level form (so a `defmethod`/`defrecord`/protocol registration
 keeps its targets live), and everything reachable from those, dropping the rest. A
 reference counts whether it's a call or a value (`#'x`, a fn passed to `map`, a fn
 stored in a map): any reference keeps its target live, so nothing reachable is ever
-dropped. An app that never compiles at runtime (no reachable `eval`/`load-string`)
-also drops the analyzer and back end from the binary. Typical savings are 1–2 MB;
-behaviour is unchanged.
+dropped. Typical savings are 1–2 MB; behaviour is unchanged. (Dropping the
+compiler from a binary that never compiles at run time is not this flag's doing —
+every build takes that verdict; see [Building](/docs/building-and-deps.html).)
 
 **It bails (keeps everything) when reachable code resolves a var by name at
 runtime** (`eval`, `resolve`, `ns-resolve`, `requiring-resolve`, `find-var`,
-`intern`, `load-string`, `load-file`). A static call graph can't follow a runtime
-`resolve`, so dropping anything would be unsound. The build prints which definitions
-forced the bail:
+`intern`, `ns-publics` and its siblings, `load-string`, `load-file`, an image
+restore, a `require` whose argument is computed). A static call graph can't follow
+a runtime `resolve`, so dropping anything would be unsound. The build prints which
+definitions forced the bail, and ends with the `:jolt/tree-shake {:allow-dynamic
+[…]}` line to paste when you can say why a site is dead (see
+[Closed-world builds](/docs/building-and-deps.html#closed_world_builds_and_allow_dynamic)):
 
 ```
 jolt build: tree-shake skipped (reachable code resolves vars at runtime):

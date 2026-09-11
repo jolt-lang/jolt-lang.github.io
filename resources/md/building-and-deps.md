@@ -157,7 +157,7 @@ Every top-level key Jolt reads, and where each is covered in full:
 | `:mvn/repos` | extra Maven repositories, consulted after Clojars and Central |
 | `:mvn/local-repo` | relocate the local Maven repository (default `~/.m2/repository`) |
 | `:jolt/native` | shared libraries a project or library needs, loaded before its code ([Native interop](/docs/native-interop.html)) |
-| `:jolt/build` | `jolt build` options (`:opt`, `:direct-link`, `:tree-shake`, `:boot`, `:embed`, `:dynamic-natives`; [below](#deps.edn_build_options)) |
+| `:jolt/build` | `jolt build` options (`:opt`, `:direct-link`, `:closed-world`, `:boot`, `:embed`, `:dynamic-natives`; [below](#deps.edn_build_options)) |
 | `:nrepl/middleware` | nREPL middleware a library contributes ([REPL-driven development](/docs/repl-driven-development.html)) |
 
 A user-level `deps.edn` (`$CLJ_CONFIG`, else `$XDG_CONFIG_HOME/clojure`, else
@@ -296,7 +296,7 @@ The build pipeline runs four steps, in order:
 
 1. **Assemble.** Starting from the entry namespace's `-main`, load the transitive
    `require` graph and collect every reachable top-level form, in dependency order, with
-   its compile namespace. `:tree-shake` (below) prunes unreachable forms in this step.
+   its compile namespace. `--closed-world` (below) prunes unreachable forms in this step.
 2. **Emit.** Run `analyze → emit` for each surviving form under the selected mode's
    optimization knobs (the `clojure.core` overlay prelude first, in tier order), emitting
    Scheme and concatenating it into a single program source. This step is *strict*: a
@@ -311,12 +311,23 @@ The build pipeline runs four steps, in order:
    executable. App libraries are baked in here, so the binary carries no on-disk source
    dependency.
 
-Two consequences are worth knowing. First, an app that never calls `eval`/`load-string`
-ships *without* the compiler image; the build detects those calls and drops the compiler
-when it can, so a closed-world binary is smaller. Second, because the whole program is
-visible at once, whole-program type inference runs across namespaces (field reads
+Two consequences are worth knowing. First, an app that never reaches `eval`,
+`load-string`, `load-file`, `compile`, an image restore, or a `require` whose argument
+the build cannot read ships *without* the compiler image and boots from `petite.boot`
+alone: every build walks the program's call graph and takes that verdict, whether or
+not it was asked to prune. A `require` the build can read — every `ns` clause, every
+`(require 'a.b)` — is baked into the binary and no-ops at startup; `(require (symbol
+nm))`, a plugin loaded by name, is a load from source at run time and keeps the
+compiler for it. Second, because the whole program
+is visible at once, whole-program type inference runs across namespaces (field reads
 specialize, protocol calls devirtualize), something the per-form REPL path can't do.
 The modes below control how far that optimization goes.
+
+The runtime half of the binary — `clojure.core`, the runtime, the loader — is compiled
+without Chez inspector information in every mode: nothing in a built binary reads it
+for those frames, and it was 57% of a release binary. The app half keeps it in release
+(a frame's return-point source is what recovers inlined frames and exact lines in an
+error report) and drops it under `--opt`.
 
 ### The boot image
 
@@ -402,22 +413,64 @@ Three modes control which optimization passes apply. A mode is selected by the C
 `--opt`, `--dev`, or by the `:jolt/build {:opt true}` key in `deps.edn`; the default is
 `release`. CLI flags win over `deps.edn`.
 
-| Mode | `--opt` / `{:opt true}` | `--dev` | Release (default) |
-|------|--------------------------|---------|-------------------|
+| Mode | Release (default) | `--opt` / `{:opt true}` | `--dev` |
+|------|-------------------|--------------------------|---------|
 | const-fold | yes | yes | yes |
 | numeric-annotate | yes | yes | yes |
-| type inference (run-inference) | yes | - | yes |
-| record-shape + protocol-method caches | yes | - | yes |
-| inline + scalar-replace fixpoint | with `--direct-link` | - | - |
+| type inference (run-inference) | yes | yes | - |
+| record-shape + protocol-method caches | yes | yes | - |
+| app defs direct-linked, inline + scalar-replace fixpoint | yes | yes | - |
+| Chez inspector information in the app half | yes | - | yes |
 
-`--opt` enables the annotation-producing passes (type inference, PIC/devirtualization,
-record-ctor caches) for better runtime performance without committing to a closed world.
-Add `--direct-link` to also enable the inline + scalar-replace fixpoint; this gives the
-best performance but gives up runtime redefinition of direct-linked vars. For fully
-closed-world binaries, combine `--opt --direct-link --tree-shake` to drop dead code.
+Release and `--opt` emit the same code; `--opt` only drops the app half's inspector
+information (smaller, and an error report then places a frame on its `defn` line rather
+than the exact call site). `--no-direct-link` keeps every app var redefinable at
+runtime, giving up the inline + scalar-replace fixpoint. `clojure.core` itself is
+direct-linked in every mode — a core->core call applies the callee's binding directly,
+as it does on the JVM — and stays redefinable: a `def`, `alter-var-root` or
+`with-redefs` of a core fn writes through to the binding its callers apply.
+
+Three modes, then: `--dev` / `--no-direct-link` (everything of yours redefinable), the
+default (your defs direct-linked over a direct-linked core; `^:redef` / `^:dynamic`
+opt a def out), and `--closed-world` (below), which also prunes every def `-main`
+cannot reach.
 
 `--dev` produces a debug binary under `target/debug/` (const-fold + numeric annotate
 only), typically used during development for faster build times.
+
+### Closed-world builds and `:allow-dynamic`
+
+`--closed-world` (`--tree-shake` is the older spelling, still accepted) walks the call
+graph across your app, its libraries and `clojure.core`, drops everything unreachable
+from `-main`, and typically removes 1–2 MB. It stays sound by bailing out — keeping
+everything, and naming the def responsible — when reachable code resolves vars by name
+at run time (`eval`, `resolve`, `ns-resolve`, `requiring-resolve`, `ns-publics`, an
+image restore, a `require` whose argument the build cannot read).
+
+When the site it names is dead in a built binary and you can say why — spec's `res`
+only qualifies a symbol for a description, spec.gen's `dynaload` sits behind a `delay`
+nothing forces — a `deps.edn` can vouch for it and the shake proceeds past it, keeping
+nothing extra:
+
+```clojure
+:jolt/tree-shake {:allow-dynamic [clojure.spec.alpha/res
+                                  clojure.spec.gen.alpha/dynaload]}
+```
+
+The key is read from the app's `deps.edn`, the user-level one, `-Sdeps`, and every
+library's, and the lists union, so a library ships its list once for every app that
+uses it. The bail message ends with the exact line to paste for the sites that remain;
+paste what it prints, because the def to name is the one the lookup ended up in after
+inlining, which may be the caller of the fn that wrote it.
+
+A vouch covers a *resolution* the graph cannot follow — `resolve`, `ns-publics`,
+`requiring-resolve` — and only that. A def that runs the compiler (`eval`,
+`load-string`, an image restore, a computed `require`) bails whatever the list says,
+because the compiler image is direct-linked against the whole of `clojure.core` and
+cannot run over a pruned one. Vouching wrongly does not fail the build — it moves the
+failure into the binary, where the lookup sees only what the shake kept: a `resolve`
+of a def the shake dropped answers `nil` where the unshaken binary answers the var,
+silently. Name a site only when you can say why it is dead.
 
 ### Typed arithmetic and inference
 
@@ -451,7 +504,8 @@ The `:jolt/build` map in `deps.edn` accepts these keys:
 
 - **`:opt true`**: build in optimized mode (like `--opt`)
 - **`:direct-link true`**: closed-world direct linking (like `--direct-link`)
-- **`:tree-shake true`**: drop unreachable library code (like `--tree-shake`)
+- **`:closed-world true`**: drop every def `-main` cannot reach, core included (like
+  `--closed-world`); `:tree-shake true` is the older spelling
 - **`:boot :fast|:small|:plain`**: how the boot image is encoded (like `--boot`) —
   startup against binary size ([above](#the_boot_image)). `:no-vfasl true` is an
   alias for `:boot :plain`.
@@ -466,6 +520,6 @@ Example:
 {:paths ["src"]
  :jolt/build {:opt true
               :direct-link true
-              :tree-shake true
+              :closed-world true
               :embed ["resources"]}}
 ```
