@@ -15,6 +15,16 @@ Set `JOLT_DIAG=edn` to get the same diagnostic as a single line of EDN
 — kind, position, the offending token and the surrounding source —
 for editors and other tooling.
 
+The diagnostic's `ex-data` also carries the reference's spelling of its
+phase and position — `:clojure.error/phase` (`:read-source`,
+`:compile-syntax-check`, or for what a macro's own run raised
+`:macro-syntax-check` / `:macroexpansion` with `:clojure.error/symbol`
+naming the macro), `:clojure.error/line`, `:clojure.error/column` and
+`:clojure.error/source` — and `Throwable->map` lifts the phase to a
+top-level `:phase`, so `clojure.main/ex-triage` and everything built on it
+(REPL `:caught` hooks, test runners, editor middleware) reads a Jolt error
+the way it reads a JVM one.
+
 This page is generated from
 [`test/conformance/error-kinds.edn`](https://github.com/jolt-lang/jolt/blob/main/test/conformance/error-kinds.edn),
 which the build gates against the compiler's actual raise sites.
@@ -33,9 +43,23 @@ literal. An IllegalArgumentException on both runtimes.
 A character literal that names nothing — an unknown `\name`, or an octal escape
 outside `[0, 377]`.
 
+### `read/invalid-constituent`
+
+An `@`, `` ` `` or `~` read as EDN (`clojure.edn`). EDN has no reader macros,
+and those three are refused outright rather than ending the token they sit in:
+inside or after a token it is an `Invalid constituent character`, where a form
+should start an `Invalid leading character`. A `RuntimeException` on both
+runtimes. Source reading is unaffected — there they are ordinary macro
+characters.
+
 ### `read/invalid-data-reader`
 
 A `#tag` literal whose reader function is not registered in `*data-readers*`.
+
+### `read/invalid-number`
+
+A token that starts like a number but is not one — `1a`, `08`, `0x2g`, `2r2`.
+A `NumberFormatException` on both runtimes.
 
 ### `read/invalid-syntax`
 
@@ -121,6 +145,20 @@ that is not last) or a catch clause that does not parse.
 ### `analyze/invalid-var-reference`
 
 A `var` special form whose argument is not a symbol.
+
+### `analyze/unknown-namespace`
+
+A qualified symbol whose namespace half is namespace-shaped — dotted, with a
+lowercase segment after the last dot — and names no loaded namespace at all: a
+missing `require`, or a typo in the namespace part. The JVM reports the same
+thing, as `No such namespace`. Two neighbouring cases are deliberately NOT
+this error, and both report at the call instead. A LOADED namespace missing
+only the var stays late-bound, because that is how jolt-core reaches its host
+contract (`jolt.host/…`) across boots that load different host files; its
+compile-time guard is the static one in `host/chez/jolt-host-manifest.txt`, and
+the miss reads `No such var: ns/name`. And a name with no dot (`str/join`) may
+be an `:import`-ed class short name whose provider has not autoloaded yet.
+Carries :symbol, :namespace and :ns alongside the position.
 
 ### `analyze/unresolved-symbol`
 
