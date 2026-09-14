@@ -395,11 +395,14 @@ footer a:hover { text-decoration: underline; }
   .hero-actions { justify-content: center; }
 }
 @media (max-width: 760px) {
-  :root { --nav-h: 100px; }
+  :root { --nav-h: 92px; }
   .site-nav .nav-cta { display: none; }
-  .site-nav .inner { flex-wrap: wrap; height: auto; min-height: 56px; padding: 0 16px; }
+  .site-nav .inner {
+    flex-wrap: wrap; align-content: center; row-gap: 4px;
+    height: auto; min-height: var(--nav-h); padding: 0 16px;
+  }
   .site-nav .inner > .nav-search { order: 1; margin-left: 12px; }
-  .site-nav .links { order: 2; flex-basis: 100%; justify-content: center; gap: 2px 16px; padding-bottom: 8px; }
+  .site-nav .links { order: 2; flex-basis: 100%; justify-content: center; gap: 2px 16px; }
   .docs-layout { grid-template-columns: 1fr; gap: 24px; }
   .docs-sidebar { position: static; border-bottom: 1px solid var(--border); padding-bottom: 16px; max-height: none; overflow-y: visible; }
   .docs-sidebar-toggle { display: flex; }
