@@ -25,6 +25,19 @@
           <li ><a href="/docs/get-involved.html">Get Involved</a></li>
           <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
         </ul>
+        <div class="nav-search" id="nav-search">
+          <button type="button" class="search-toggle" id="search-toggle" aria-label="Open search" aria-expanded="false">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </button>
+          <div class="search-popover">
+            <div class="search-field">
+              <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <input type="search" id="search-input" placeholder="Search docs" autocomplete="off" spellcheck="false" aria-label="Search documentation">
+              <kbd class="search-kbd">/</kbd>
+            </div>
+            <div class="search-results" id="search-results" role="listbox" aria-label="Search results" hidden></div>
+          </div>
+        </div>
         <a class="btn btn-primary nav-cta" href="/docs/getting-started.html">Get Started</a>
       </div>
     </nav>
@@ -329,6 +342,8 @@
 
     <script src="/js/highlight.pack.js" type="application/javascript"></script>
     <script src="/js/site.js" type="application/javascript"></script>
+    <script src="/js/lunr.min.js" type="application/javascript"></script>
+    <script src="/js/search.js" type="application/javascript"></script>
     
 <script src="/js/docs.js" type="application/javascript"></script>
 
