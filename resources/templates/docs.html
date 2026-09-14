@@ -5,6 +5,11 @@
 {% block content %}
 <div class="docs-layout">
   <aside class="docs-sidebar">
+    <button type="button" class="docs-sidebar-toggle" aria-expanded="false" aria-controls="docs-menu">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      Menu
+    </button>
+    <div class="docs-menu" id="docs-menu">
     <h3>Documentation</h3>
     <ul>
       {% for topic in topics %}
@@ -36,6 +41,7 @@
       {% endfor %}
     </ul>
     {% endif %}
+    </div>
   </aside>
 
   <main class="docs-main">

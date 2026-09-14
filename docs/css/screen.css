@@ -40,17 +40,16 @@ a { color: var(--orange); }
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 24px; height: var(--nav-h);
 }
-.site-nav .brand { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; }
+.site-nav .brand { display: inline-flex; align-items: center; text-decoration: none; }
 .site-nav .brand-logo {
   height: 36px; width: auto;
   animation: pulse 3s ease-in-out infinite;
 }
-.site-nav .brand-name { font-weight: 700; font-size: 1.1rem; letter-spacing: -0.01em; color: var(--text); }
-.site-nav .nav-cta { padding: 7px 16px; font-size: 0.85rem; border-radius: 8px; }
-.site-nav .links { display: flex; gap: 26px; list-style: none; align-items: center; }
+.site-nav .nav-cta { padding: 7px 16px; font-size: 0.85rem; border-radius: 8px; white-space: nowrap; }
+.site-nav .links { display: flex; flex-wrap: wrap; gap: 10px 26px; list-style: none; align-items: center; }
 .site-nav .links a {
   color: var(--muted); text-decoration: none; font-size: 0.92rem; font-weight: 500;
-  padding: 6px 2px; position: relative; transition: color .15s;
+  padding: 6px 2px; position: relative; transition: color .15s; white-space: nowrap;
 }
 .site-nav .links a::after {
   content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px;
@@ -298,6 +297,16 @@ code {
 .diff-table td, .docs-main td { color: var(--muted); }
 .diff-table td:first-child { color: var(--text); font-weight: 500; white-space: nowrap; }
 
+.docs-sidebar-toggle {
+  display: none; align-items: center; justify-content: flex-start; gap: 8px;
+  width: 100%; margin-bottom: 12px; padding: 9px 12px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+  color: var(--muted); font: inherit; font-size: 0.9rem; font-weight: 500;
+  cursor: pointer;
+}
+.docs-sidebar-toggle:hover { color: var(--text); border-color: rgba(255,85,0,0.5); }
+.docs-sidebar.open .docs-sidebar-toggle { color: var(--text); border-color: rgba(255,85,0,0.5); }
+
 /* ── Docs layout ─────────────────────────────────────────────────────────── */
 .docs-layout {
   max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px;
@@ -386,10 +395,16 @@ footer a:hover { text-decoration: underline; }
   .hero-actions { justify-content: center; }
 }
 @media (max-width: 760px) {
+  :root { --nav-h: 100px; }
   .site-nav .nav-cta { display: none; }
+  .site-nav .inner { flex-wrap: wrap; height: auto; min-height: 56px; padding: 0 16px; }
+  .site-nav .inner > .nav-search { order: 1; margin-left: 12px; }
+  .site-nav .links { order: 2; flex-basis: 100%; justify-content: center; gap: 2px 16px; padding-bottom: 8px; }
   .docs-layout { grid-template-columns: 1fr; gap: 24px; }
   .docs-sidebar { position: static; border-bottom: 1px solid var(--border); padding-bottom: 16px; max-height: none; overflow-y: visible; }
-  nav .links { gap: 16px; }
+  .docs-sidebar-toggle { display: flex; }
+  .docs-sidebar.menu-collapsible .docs-menu { display: none; }
+  .docs-sidebar.menu-collapsible.open .docs-menu { display: block; }
   .search-popover { position: fixed; top: var(--nav-h); left: 0; right: 0; width: auto; border-radius: 0; border-left: none; border-right: none; }
   .nav-search .search-field .search-kbd { display: none; }
 }
