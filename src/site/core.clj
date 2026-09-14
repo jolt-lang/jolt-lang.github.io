@@ -10,7 +10,8 @@
     [ring.adapter.jetty :as jetty]
     [ring.middleware.file :refer [wrap-file]]
     [ring.middleware.content-type :refer [wrap-content-type]]
-    [ring.middleware.not-modified :refer [wrap-not-modified]]))
+    [ring.middleware.not-modified :refer [wrap-not-modified]]
+    [site.search :as search]))
 
 (parser/set-resource-path! (clojure.java.io/resource "templates"))
 
@@ -54,8 +55,10 @@
 (defn generate! []
   (fs/delete-dir output-dir)
   (fs/copy-dir "resources/static" output-dir)
-  (doseq [page (pages (util/generate-docs))]
-    (render-page page)))
+  (let [docs (util/generate-docs)]
+    (spit (str output-dir "/search-documents.json") (search/build-documents docs))
+    (doseq [page (pages docs)]
+      (render-page page))))
 
 (defn wrap-index [handler]
   (fn [request]

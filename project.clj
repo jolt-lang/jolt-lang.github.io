@@ -4,6 +4,7 @@
   :license {:name "Eclipse Public License 1.0"
             :url  "https://opensource.org/licenses/EPL-1.0"}
   :dependencies [[org.clojure/clojure "1.11.1"]
+                 [org.clojure/data.json "2.5.0"]
                  [hiccup "1.0.5"]
                  [markdown-clj "1.12.10"]
                  [crouton "0.1.2"]
