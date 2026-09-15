@@ -1,4 +1,4 @@
-# jolt-lang.github.io
+# [jolt-lang.net](https://jolt-lang.net/)
 
 Website and documentation for [Jolt](https://github.com/jolt-lang/jolt), a
 Clojure implementation on Chez Scheme. A small Clojure static-site generator
