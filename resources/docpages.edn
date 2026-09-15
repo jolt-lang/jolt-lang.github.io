@@ -15,6 +15,7 @@
   ["scheme-backends.md"            "Scheme Backends"                   "topic"]
   ["fibers.md"                     "Fibers"                            "topic"]
   ["extension-points.md"           "Extension Points"                  "topic"]
+  ["embedding-sci.md"              "Embedding SCI"                     "topic"]
   ["numeric-performance.md"        "Numeric Performance"               "topic"]
   ["libraries.md"                  "Libraries"                          "topic"]
 
