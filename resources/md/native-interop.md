@@ -400,7 +400,7 @@ pair the code with, so it is rejected on `:void` and on by-value struct returns.
 
 ## Calling into Jolt from C
 
-`bin/jolt build --library` (see the README) produces a shared object whose
+`jolt build --library` (see the README) produces a shared object whose
 entry points you reach through a C ABI instead of JVM-style interop. The Jolt
 side uses `jolt.ffi/export!`; the C side uses `jolt_library_init` +
 `jolt_lookup`. This is the inverse of `foreign-fn`: `foreign-fn` calls *out* of

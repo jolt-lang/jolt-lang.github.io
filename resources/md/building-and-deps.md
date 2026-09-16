@@ -47,30 +47,30 @@ So you can point Jolt at a directory of Clojure source with no deps machinery at
 all:
 
 ```bash
-JOLT_PATH=/path/to/lib/src bin/jolt run myfile.clj
+JOLT_PATH=/path/to/lib/src jolt run myfile.clj
 ```
 
 ## Dependencies via deps.edn
 
-`bin/jolt` reads a `deps.edn` in the current directory, fetches its
+`jolt` reads a `deps.edn` in the current directory, fetches its
 dependencies, and prepends the resolved source directories to the source roots
 for the run. The CLI commands (`jolt.deps` + `jolt.main`):
 
 ```bash
-bin/jolt run -m NS [args]      # resolve deps.edn, load NS, call its -main
-bin/jolt run FILE              # resolve deps.edn, load a Clojure file
-bin/jolt FILE [args]           # the same with `run` left out — so a file whose
-                               # first line is `#!/usr/bin/env jolt` is a script
-bin/jolt -f FILE [args]        # load FILE even when its name is a command or task
-bin/jolt -M:alias [args]       # run the alias's :main-opts
-bin/jolt -A:alias [args]       # add the alias's paths/deps, then run the rest
-bin/jolt -X:alias [k v ...]    # call the alias's :exec-fn with :exec-args
-bin/jolt -T:alias [k v ...]    # like -X, with the project's paths/deps replaced
-bin/jolt -Sdeps '<edn>' ...    # merge an extra deps.edn map, then run the rest
-bin/jolt repl                  # start a line REPL (project deps + native libs loaded)
-bin/jolt nrepl-server [port]   # start an nREPL server (default 7888) for editors
-bin/jolt path                  # print the resolved source roots (':'-joined)
-bin/jolt <task>                # run a deps.edn :tasks entry
+jolt run -m NS [args]      # resolve deps.edn, load NS, call its -main
+jolt run FILE              # resolve deps.edn, load a Clojure file
+jolt FILE [args]           # the same with `run` left out — so a file whose
+                           # first line is `#!/usr/bin/env jolt` is a script
+jolt -f FILE [args]        # load FILE even when its name is a command or task
+jolt -M:alias [args]       # run the alias's :main-opts
+jolt -A:alias [args]       # add the alias's paths/deps, then run the rest
+jolt -X:alias [k v ...]    # call the alias's :exec-fn with :exec-args
+jolt -T:alias [k v ...]    # like -X, with the project's paths/deps replaced
+jolt -Sdeps '<edn>' ...    # merge an extra deps.edn map, then run the rest
+jolt repl                  # start a line REPL (project deps + native libs loaded)
+jolt nrepl-server [port]   # start an nREPL server (default 7888) for editors
+jolt path                  # print the resolved source roots (':'-joined)
+jolt <task>                # run a deps.edn :tasks entry
 ```
 
 ### Inspecting a resolution
@@ -80,13 +80,13 @@ takes the aliases around it, so `-A:test -Spath` and `-Spath -M:test` both
 report on the resolution that run would use:
 
 ```bash
-bin/jolt -Spath                # the resolved source roots (':'-joined)
-bin/jolt -Stree                # the dependency tree, tools.deps format
-bin/jolt -Sgraph               # the dependency tree as an indented graph
-bin/jolt -Soutdated            # the same graph, marking available updates
-bin/jolt -Strace               # write the dependency expansion to trace.edn
-bin/jolt -Sdescribe            # the environment as an edn map
-bin/jolt -P                    # fetch every dependency, then stop
+jolt -Spath                # the resolved source roots (':'-joined)
+jolt -Stree                # the dependency tree, tools.deps format
+jolt -Sgraph               # the dependency tree as an indented graph
+jolt -Soutdated            # the same graph, marking available updates
+jolt -Strace               # write the dependency expansion to trace.edn
+jolt -Sdescribe            # the environment as an edn map
+jolt -P                    # fetch every dependency, then stop
 ```
 
 `-Stree` and `-Sgraph` answer different questions about the same resolution.
@@ -141,7 +141,7 @@ Example `deps.edn`:
 ```
 
 ```bash
-bin/jolt run -m myapp.main
+jolt run -m myapp.main
 ```
 
 ### deps.edn keys at a glance
@@ -208,7 +208,7 @@ a half-built source root.
   Selecting an alias that isn't declared is an error rather than a silent no-op.
 - **tasks**: `:tasks {clean "rm -rf target" test {:main-opts ["-m" "…"]}}`.
   A string task is a shell command; a map task runs jolt with its `:main-opts`.
-  Run one with `bin/jolt <taskname>`.
+  Run one with `jolt <taskname>`.
 
 `deps.edn` files merge like tools.deps: a user-level file (`$CLJ_CONFIG`, else
 `$XDG_CONFIG_HOME/clojure`, else `~/.clojure`) sits under the project's, and
@@ -229,9 +229,9 @@ Git clones land in a global, sha-immutable cache shared across projects:
 ```
 
 ```bash
-bin/jolt -X:build                       # (myapp.build/deploy {:env "staging"})
-bin/jolt -X:build :env '"prod"' :n 3    # k v pairs merge over :exec-args
-bin/jolt -X:build myapp.build/other     # an explicit ns/fn wins over :exec-fn
+jolt -X:build                       # (myapp.build/deploy {:env "staging"})
+jolt -X:build :env '"prod"' :n 3    # k v pairs merge over :exec-args
+jolt -X:build myapp.build/other     # an explicit ns/fn wins over :exec-fn
 ```
 
 `-T` is the same, except the project's own `:paths` and `:deps` are replaced by
@@ -272,7 +272,7 @@ for shebang lines, arguments and exit codes.
 `jolt build` compiles a namespace and its dependencies into a standalone binary:
 
 ```bash
-JOLT_PWD=/path/to/project bin/jolt build -m my.app
+JOLT_PWD=/path/to/project jolt build -m my.app
 ```
 
 The binary contains the runtime + app forms + native launcher, with no Jolt source or Chez

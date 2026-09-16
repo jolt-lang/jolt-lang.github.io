@@ -28,7 +28,7 @@ In a consuming project's `deps.edn`:
 Then run it:
 
 ```bash
-bin/jolt run -m myapp.main
+jolt run -m myapp.main
 ```
 
 ### Git dependencies
@@ -60,7 +60,7 @@ Tasks are named shell commands or Jolt invocations:
          test  {:main-opts ["-m" "my-lib.test-runner"]}}}
 ```
 
-Run one with `bin/jolt <taskname>`.
+Run one with `jolt <taskname>`.
 
 ## What works as a dependency
 

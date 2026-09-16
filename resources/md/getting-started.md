@@ -44,34 +44,34 @@ bin/jolt -e '(+ 1 2)'        # => 3
 
 The submodules pull the vendored regex and SCI sources used by the tests. (The conformance test suite additionally uses Clojure on the JVM as an oracle, but running Jolt does not.)
 
-The examples below use `bin/jolt` from a clone; with the installed binary the command is just `jolt`.
+The examples below assume the installed `jolt`; from a clone, run `bin/jolt` instead.
 
 ## Evaluating code
 
-`bin/jolt -e EXPR` evaluates a Clojure expression and prints the result:
+`jolt -e EXPR` evaluates a Clojure expression and prints the result:
 
 ```bash
-$ bin/jolt -e '(->> (range 10) (filter even?) (map (fn [x] (* x x))) (reduce +))'
+$ jolt -e '(->> (range 10) (filter even?) (map (fn [x] (* x x))) (reduce +))'
 120
-$ bin/jolt -e '(/ 1 2)'
+$ jolt -e '(/ 1 2)'
 1/2
 ```
 
 ## Running a project
 
-`bin/jolt` is both the runtime and the dependency front-end. Point it at a file, a namespace, or a `deps.edn` project:
+`jolt` is both the runtime and the dependency front-end. Point it at a file, a namespace, or a `deps.edn` project:
 
 ```bash
-bin/jolt run FILE          # run a Clojure file
-bin/jolt run -m myapp.core # resolve deps.edn, load the ns, call -main
-bin/jolt -M:alias [args]   # run an alias's :main-opts
-bin/jolt path              # print the resolved source roots
+jolt run FILE          # run a Clojure file
+jolt run -m myapp.core # resolve deps.edn, load the ns, call -main
+jolt -M:alias [args]   # run an alias's :main-opts
+jolt path              # print the resolved source roots
 ```
 
 You can also point Jolt at a directory of Clojure source with no dependency machinery, using `JOLT_PATH` (a colon-separated list of directories, like a classpath):
 
 ```bash
-JOLT_PATH=/path/to/lib/src bin/jolt run myfile.clj
+JOLT_PATH=/path/to/lib/src jolt run myfile.clj
 ```
 
 ## Running a script
@@ -108,7 +108,7 @@ Jolt has a few compile-time diagnostics beyond the default error report.
 **"Did you mean?"**: when a bare symbol doesn't resolve, the error lists the closest in-scope names by edit distance (current-namespace vars, `clojure.core` publics, and lexical locals):
 
 ```bash
-$ bin/jolt -e '(prinltn 1)'
+$ jolt -e '(prinltn 1)'
 Unable to resolve symbol: prinltn in this context (did you mean print, printf, println?)
 ```
 
@@ -181,11 +181,11 @@ gets the error.
 
 ## Compiling a standalone binary
 
-`bin/jolt build` ahead-of-time compiles a project into a single self-contained executable. The runtime, `clojure.core`, the standard library, and your application (together with its `deps.edn` dependencies) are linked in, so the result needs no Chez install, no JVM, and no source on disk to run.
+`jolt build` ahead-of-time compiles a project into a single self-contained executable. The runtime, `clojure.core`, the standard library, and your application (together with its `deps.edn` dependencies) are linked in, so the result needs no Chez install, no JVM, and no source on disk to run.
 
 ```bash
-bin/jolt build -m myapp.core -o myapp   # compile myapp.core's -main into ./myapp
-./myapp arg1 arg2                        # runs anywhere; args reach -main
+jolt build -m myapp.core -o myapp   # compile myapp.core's -main into ./myapp
+./myapp arg1 arg2                    # runs anywhere; args reach -main
 ```
 
 Three build modes trade dynamism for speed:
@@ -244,16 +244,16 @@ Unreached code that uses `resolve` is fine; it's shaken away like anything else 
 ## REPL and editor integration
 
 ```bash
-bin/jolt                       # no arguments starts a REPL, like bb or clj
-bin/jolt repl                  # the same, explicitly
-bin/jolt nrepl-server [port]   # an nREPL server (default port 7888)
+jolt                       # no arguments starts a REPL, like bb or clj
+jolt repl                  # the same, explicitly
+jolt nrepl-server [port]   # an nREPL server (default port 7888)
 ```
 
 `nrepl-server` writes a `.nrepl-port` file and auto-resolves a `deps.edn` in the directory, so the server starts with your app and its dependencies loaded. Connect CIDER, Calva, or Cursive to the port. See [REPL-Driven Development](/docs/repl-driven-development.html) for the full workflow.
 
 ## Dependencies
 
-`bin/jolt` reads a `deps.edn` in the current directory, fetches its dependencies, and prepends the resolved source directories to the load path for the run. Git, local, and Maven dependencies are supported (a Maven jar carries Clojure source, which is what Jolt loads):
+`jolt` reads a `deps.edn` in the current directory, fetches its dependencies, and prepends the resolved source directories to the load path for the run. Git, local, and Maven dependencies are supported (a Maven jar carries Clojure source, which is what Jolt loads):
 
 ```clojure
 {:paths ["src"]
@@ -264,7 +264,7 @@ bin/jolt nrepl-server [port]   # an nREPL server (default port 7888)
 ```
 
 ```bash
-bin/jolt run -m myapp.main
+jolt run -m myapp.main
 ```
 
 As in tools.deps, a git dependency whose lib name encodes a host can omit `:git/url`; `io.github.OWNER/REPO` (and the `com.github.`, `io.gitlab.`/`com.gitlab.`, `io.bitbucket.`/`org.bitbucket.`, and `ht.sr.~OWNER` prefixes) derives the clone URL from the name, so `io.github.paintparty/lasertag {:git/sha "aa898c1967d10fc198385f1914893b9c75410d16"}` resolves with no URL. The `:git/sha` (a full commit SHA) is still required.
