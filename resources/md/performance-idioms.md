@@ -46,7 +46,18 @@ Trying an anchored pattern at 1,000 positions of a 12 KB string:
 | `(re-find re (subs txt pos (+ pos 2048)))` | 850 µs | 8.4 MB |
 | `(.region m pos len)` + `(re-find m)` | 463 µs | 940 KB |
 
-A matcher is one small object per input; share it across attempts, not across threads (each holds its own cursor).
+A matcher is one small object per input that keeps its own match state, so repeated finds allocate only the result; share it across attempts, not across threads (each holds its own cursor).
+
+## Write `(?:…)` for a group you never read
+
+On the JVM a capturing group costs nothing you can measure. On Jolt it chooses the engine: a pattern with a capturing group runs irregex's backtracking matcher, because that is what gives `java.util.regex`'s leftmost-first group semantics, while a group-free pattern compiles to a DFA. If the code only looks at the whole match, `(?:…)` keeps the same result on the faster engine:
+
+| pattern, trying a 4-char token at a position | time | allocated |
+| --- | ---: | ---: |
+| `#"^(##)?(tok)"` — capturing, backtracker | 482 ns | 1,344 B |
+| `#"^(?:##)?(?:tok)"` — non-capturing, DFA | 351 ns | 512 B |
+
+`re-find` on a capturing pattern also builds the groups vector; a group-free one returns the match string.
 
 ## Prefer keyword keys and literal maps
 
@@ -62,6 +73,7 @@ Small maps are array maps (up to 8 keys of any kind, up to 64 when every key is 
 - **GC settings.** The collector is generational and its cost is the survivors, not the nursery size. Raising the nursery from 16 MB to 256 MB on an allocation-heavy formatter (475 MB per run) left the wall clock flat while the process high-water mark went from 143 MB to 362 MB. Reduce allocation instead; the two idioms above are where most of it was.
 - **Escape continuations.** `jolt.continuations/letcc` is 34 ns and 144 bytes per capture-and-escape; using it for early exit inside a parser is fine. See [Continuations](/docs/api/continuations.html).
 - **`clojure.string/index-of`, `last-index-of`, `starts-with?`, `ends-with?` and `includes?`** are native scans on Jolt and allocate nothing, including the `from` arities.
+- **`mapv`, `vec`, `into []` and `(apply vector …)` on large inputs** build the vector's trie in bulk (9 bytes per element past the tail); `mapv` over one collection is the transient fold, as in Clojure.
 
 ## Measuring
 
