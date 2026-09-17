@@ -16,6 +16,7 @@
   ["fibers.md"                     "Fibers"                            "topic"]
   ["extension-points.md"           "Extension Points"                  "topic"]
   ["numeric-performance.md"        "Numeric Performance"               "topic"]
+  ["performance-idioms.md"         "Performance Idioms"                "topic"]
   ["libraries.md"                  "Libraries"                          "topic"]
 
   ["api/deps.md"                   "Dependencies (jolt.deps)"          "api"]

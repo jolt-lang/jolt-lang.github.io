@@ -41,6 +41,7 @@ Read the Differences page before assuming a JVM behaviour holds.
 - [Fibers](https://jolt-lang.github.io/docs/fibers.html): lightweight concurrency.
 - [Extension Points](https://jolt-lang.github.io/docs/extension-points.html): the registries jolt exposes for libraries to extend.
 - [Numeric Performance](https://jolt-lang.github.io/docs/numeric-performance.html): unboxed flonum/fixnum arithmetic and type hints.
+- [Performance Idioms](https://jolt-lang.github.io/docs/performance-idioms.html): strings are flat 32-bit arrays (build with StringBuilder, not str in a loop), region matchers instead of subs, keyword-keyed literals and lookup-site caching, what GC settings don't buy, how to measure allocation.
 - [Scheme Backends](https://jolt-lang.github.io/docs/scheme-backends.html): Chez versus Gambit, and the browser build.
 - [Libraries](https://jolt-lang.github.io/docs/libraries.html): the ported and native library ecosystem.
 
