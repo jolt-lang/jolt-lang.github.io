@@ -45,6 +45,7 @@ Third-party Clojure/JVM libraries confirmed to run on Jolt.
 - **[ring-codec](https://github.com/ring-clojure/ring-codec)**: URL/form encoding.
 - **[ring-defaults](https://github.com/ring-clojure/ring-defaults)**: the standard middleware stack (params, static resources + content-type, session, security headers); session/CSRF crypto via [crypto](https://github.com/jolt-lang/crypto).
 - **[reitit-core](https://github.com/metosin/reitit)**: data-driven routing; the `reitit.Trie` Java class is mirrored by [router](https://github.com/jolt-lang/router).
+- **[ruuter](https://github.com/askonomm/ruuter)**: a zero-dependency, runtime-agnostic router.
 - **[integrant](https://github.com/weavejester/integrant)**: data-driven system configuration (`#ig/ref`), with its [dependency](https://github.com/weavejester/dependency) and [meta-merge](https://github.com/weavejester/meta-merge) deps.
 
 ### Data and schemas
