@@ -177,7 +177,40 @@ collection until the live set has doubled, which is the wrong instinct when
 memory is tight, so above three quarters of the ceiling Jolt forces the
 collection that would otherwise have been deferred. A program that was merely
 holding reclaimable garbage keeps running; one that genuinely needs the memory
-gets the error.
+gets the error. When even a full collection leaves the live data above that
+three-quarter mark, the next forced one waits until half the remaining room is
+used, so a program working close to the ceiling keeps making progress instead of
+collecting after every allocation burst.
+
+### Tuning the collector
+
+The nursery, the space new objects are allocated in between collections, is
+sized automatically. It starts at 16 MB and grows while collection takes a large
+share of the run time, bounded by how much data the program actually keeps, so a
+program that allocates heavily but holds little does not pay for a large nursery
+in memory. A program that allocates little never leaves 16 MB.
+
+The defaults suit most programs. For the rest, each knob is named after the JVM
+flag it mirrors:
+
+| Variable | JVM flag | Default | Meaning |
+|---|---|---|---|
+| `JOLT_MAX_HEAP` | `-Xmx` | 25% of RAM | the heap ceiling, above |
+| `JOLT_MAX_RAM_PERCENTAGE` | `-XX:MaxRAMPercentage` | `25` | the ceiling as a percentage of RAM (or of the cgroup limit), when `JOLT_MAX_HEAP` is not set |
+| `JOLT_GC_TIME_RATIO` | `-XX:GCTimeRatio` | `9` | aim for at most 1/(1+N) of the time in collection; lower it to trade memory for speed |
+| `JOLT_MAX_HEAP_FREE_RATIO` | `-XX:MaxHeapFreeRatio` | `50` | how much of the heap may be nursery headroom over the live data (50 = a nursery up to the size of the live data); raise it to trade memory for speed |
+| `JOLT_NEW_SIZE` | `-XX:NewSize` | `16m` | the smallest nursery |
+| `JOLT_MAX_NEW_SIZE` | `-XX:MaxNewSize` | `1g` | the largest nursery (never more than an eighth of the ceiling) |
+| `JOLT_GC_TRIP_BYTES` | | | pin the nursery at this size and turn the sizing off |
+
+The headroom bound is soft: when collection keeps taking more than twice the
+target share even at the bound, the nursery grows past it, since that is a
+program the larger nursery is for. Sizes take a `k`, `m` or `g` suffix. A value
+Jolt cannot read is refused at startup with its name, rather than ignored.
+
+`JOLT_GC_LOG=1` prints one line per collection to stderr, the way `-verbose:gc`
+does: how long it took, its share of the time, the heap after it, the nursery,
+and whether a full collection was forced.
 
 ## Compiling a standalone binary
 
