@@ -355,7 +355,7 @@ namespace: type inference and emitting.
 | --- | --- |
 | `JOLT_BUILD_CACHE=0` | compile every unit, cache nothing |
 | `JOLT_BUILD_CACHE_DIR` | where units are cached (default `~/.jolt/build-cache`) |
-| `JOLT_BUILD_CACHE_MB` | the unit cache's size budget; oldest entries go first (default 2048) |
+| `JOLT_BUILD_CACHE_MB` | the unit cache's size budget; the least recently used entries go first (default 2048) |
 | `JOLT_BUILD_JOBS` | the most compile workers at once (default: the CPU count, at most 8); `1` compiles in the `jolt` process |
 | `JOLT_RUNTIME_CACHE=0` | recompile the runtime half every build |
 | `JOLT_BUILD_PROFILE=1` | print each build phase's time, including how many units were compiled |
