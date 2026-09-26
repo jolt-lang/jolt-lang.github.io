@@ -217,10 +217,23 @@ spending more than `JOLT_GC_TIME_LIMIT` percent of its time collecting with less
 `JOLT_GC_HEAP_FREE_LIMIT` percent of the ceiling free, it gets an `OutOfMemoryError`
 ("GC overhead limit exceeded") instead of running on at a crawl.
 
-The headroom bound is soft: when collection keeps taking more than twice the
-target share even at the bound, the nursery grows past it, since that is a
-program the larger nursery is for. Sizes take a `k`, `m` or `g` suffix. A value
-Jolt cannot read is refused at startup with its name, rather than ignored.
+The headroom bound is soft: when collection takes more than twice the target
+share three collections running at the bound, the nursery doubles past it, since
+that is a program the larger nursery is for. That growth is checked: if the share
+of time spent collecting over the next eight collections rose by more than a tenth,
+the nursery tries one jump to 8x, since some programs only gain once most of a big
+window dies, and otherwise goes back and holds at the old size for a while. Sizes
+take a `k`, `m` or `g` suffix. A value Jolt cannot read is refused at startup with
+its name, rather than ignored.
+
+The older generations are collected once the heap grows past twice what was live
+after the last full collection (and at least 64 MB past it), so garbage promoted
+out of the nursery does not wait for a schedule. When full collections take more
+than the target share of the time, that allowance grows by half at a time, up to
+8x the live data, and it shrinks back toward 2x when they get cheap. A program that
+promotes a lot of medium-lived data runs far fewer full collections that way, at
+the cost of a higher peak. `System/gc` and `(.gc (Runtime/getRuntime))` run a full
+collection and re-measure the live data the allowance is sized from.
 
 `JOLT_GC_LOG=1` prints one line per collection to stderr, the way `-verbose:gc`
 does: how long it took, its share of the time, the heap after it, the nursery,
