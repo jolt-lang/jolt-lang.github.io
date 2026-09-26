@@ -133,8 +133,14 @@ it is catchable:
     (println "over the ceiling:" (.getMessage e))))
 ```
 
-`(.maxMemory (Runtime/getRuntime))` reports the ceiling in bytes, and
-`totalMemory`/`freeMemory` report the heap inside it.
+The ceiling bounds the heap's **total** size, as `-Xmx` does: the live data, the
+space new objects are allocated in, and the free memory the collector keeps. Near
+the ceiling Jolt allocates in smaller windows and hands free memory back to the
+operating system rather than growing past it; the error is raised only when the
+live data itself no longer fits. `(.maxMemory (Runtime/getRuntime))` reports the
+ceiling in bytes, and `totalMemory`/`freeMemory` report the heap inside it.
+Unlike the JVM's collector, Chez's cannot compact in place, so near the ceiling a
+collection needs some working room: the total stays within about 10% of it.
 
 **`JOLT_MAX_HEAP`** overrides the default, the way `-Xmx` does. An integer of
 bytes with an optional `k`, `m` or `g` suffix:
@@ -195,13 +201,21 @@ flag it mirrors:
 
 | Variable | JVM flag | Default | Meaning |
 |---|---|---|---|
-| `JOLT_MAX_HEAP` | `-Xmx` | 25% of RAM | the heap ceiling, above |
+| `JOLT_MAX_HEAP` | `-Xmx` | 25% of RAM | the heap ceiling (its total size), above |
 | `JOLT_MAX_RAM_PERCENTAGE` | `-XX:MaxRAMPercentage` | `25` | the ceiling as a percentage of RAM (or of the cgroup limit), when `JOLT_MAX_HEAP` is not set |
 | `JOLT_GC_TIME_RATIO` | `-XX:GCTimeRatio` | `9` | aim for at most 1/(1+N) of the time in collection; lower it to trade memory for speed |
 | `JOLT_MAX_HEAP_FREE_RATIO` | `-XX:MaxHeapFreeRatio` | `50` | how much of the heap may be nursery headroom over the live data (50 = a nursery up to the size of the live data); raise it to trade memory for speed |
 | `JOLT_NEW_SIZE` | `-XX:NewSize` | `16m` | the smallest nursery |
 | `JOLT_MAX_NEW_SIZE` | `-XX:MaxNewSize` | `1g` | the largest nursery (never more than an eighth of the ceiling) |
 | `JOLT_GC_TRIP_BYTES` | | | pin the nursery at this size and turn the sizing off |
+| `JOLT_GC_OVERHEAD_LIMIT` | `-XX:-UseGCOverheadLimit` | on | `off` turns off the GC overhead limit below |
+| `JOLT_GC_TIME_LIMIT` | `-XX:GCTimeLimit` | `98` | the share of time in collection, over the long term, that counts as overhead |
+| `JOLT_GC_HEAP_FREE_LIMIT` | `-XX:GCHeapFreeLimit` | `2` | the free share of the ceiling below which it counts |
+
+The GC overhead limit is the JVM's: when five collections in a row find the program
+spending more than `JOLT_GC_TIME_LIMIT` percent of its time collecting with less than
+`JOLT_GC_HEAP_FREE_LIMIT` percent of the ceiling free, it gets an `OutOfMemoryError`
+("GC overhead limit exceeded") instead of running on at a crawl.
 
 The headroom bound is soft: when collection keeps taking more than twice the
 target share even at the bound, the nursery grows past it, since that is a
