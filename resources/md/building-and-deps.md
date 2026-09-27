@@ -304,12 +304,13 @@ The build pipeline runs four steps, in order:
 3. **Inline the runtime.** Textually splice the compiler/stdlib runtime (the `cli.ss`
    load sequence, itself already cross-compiled) ahead of the emitted app forms, and
    append a launcher that calls the entry's `-main`.
-4. **Compile and link.** Feed the inlined source to Chez's native compiler
+4. **Compile and link.** Feed the emitted source to Chez's native compiler
    (`compile-file` → `make-boot-file`), convert the boot to Chez's vfasl format
    ([below](#the_boot_image)), embed the resulting boot as C bytes, and
    `cc`-link it against the Chez kernel (`libkernel.a`) into one self-contained
    executable. App libraries are baked in here, so the binary carries no on-disk source
-   dependency.
+   dependency. The runtime and each app namespace compile as separate units, which is
+   what lets a rebuild reuse the ones that did not change ([below](#build_caches)).
 
 Two consequences are worth knowing. First, an app that never reaches `eval`,
 `load-string`, `load-file`, `compile`, an image restore, or a `require` whose argument
@@ -328,6 +329,42 @@ without Chez inspector information in every mode: nothing in a built binary read
 for those frames, and it was 57% of a release binary. The app half keeps it in release
 (a frame's return-point source is what recovers inlined frames and exact lines in an
 error report) and drops it under `--opt`.
+
+### Build caches
+
+A rebuild does not start from scratch. Three caches, all keyed on content, so a stale
+entry is never served:
+
+- **The AOT namespace cache** (`~/.jolt/aot-cache`, the one `jolt run` uses). The build
+  loads the app before emitting it, and a namespace whose source is unchanged loads from
+  its cached compiled form instead of being recompiled.
+- **The runtime cache** (`~/.jolt/runtime-cache`). The runtime half of a binary is the
+  same for every app a given jolt builds, so it is compiled and converted to vfasl once.
+- **The unit cache** (`~/.jolt/build-cache`). Each app namespace is its own compile
+  unit, cached on its emitted Scheme together with the compile settings and the jolt
+  that built it. Editing one namespace recompiles that namespace, plus any other whose
+  emitted code the edit changed (a caller of a function whose inferred type moved, say);
+  the rest are copies. Units that do miss compile in parallel, in child processes of
+  the running `jolt`.
+
+A 231-namespace app went from 128s per build to 55s on a cold unit cache and 35–38s on
+a rebuild. What remains of a rebuild is whole-program work that has to see every
+namespace: type inference and emitting.
+
+| variable | effect |
+| --- | --- |
+| `JOLT_BUILD_CACHE=0` | compile every unit, cache nothing |
+| `JOLT_BUILD_CACHE_DIR` | where units are cached (default `~/.jolt/build-cache`) |
+| `JOLT_BUILD_CACHE_MB` | the unit cache's size budget; the least recently used entries go first (default 2048) |
+| `JOLT_BUILD_JOBS` | the most compile workers at once (default: the CPU count, at most 8); `1` compiles in the `jolt` process |
+| `JOLT_RUNTIME_CACHE=0` | recompile the runtime half every build |
+| `JOLT_BUILD_PROFILE=1` | print each build phase's time, including how many units were compiled |
+
+Inlining (release and `--opt`) is bounded per top-level form: a form grows by at most 400
+IR nodes of spliced callee bodies, after which its remaining calls stay calls. A function
+that calls a mid-size helper from hundreds of sites (a test full of `is` assertions) no
+longer multiplies into megabytes of Scheme. `JOLT_INLINE_GROWTH=<nodes>` sets the bound
+at build time.
 
 ### The boot image
 
@@ -384,10 +421,10 @@ Chez's own boots, which carry no jolt runtime, cost `fast` +37% and gain `small`
 
 A Chez kernel cannot read back a large enough LZ4-compressed fasl entry: an integer
 overflow in its length check, which jolt cannot patch, since the Chez it links against is
-the one on your machine. It matters for boot images specifically: a vfasl boot is one
-entry per input boot file rather than one per top-level form, so a large enough program
-becomes a single oversized entry, and for one release that produced a binary that built
-cleanly and then died on startup.
+the one on your machine. It matters for boot images specifically: a vfasl entry is an image of a whole
+compile unit rather than of one top-level form, and before builds split the app into one
+unit per namespace a large enough program became a single oversized entry — for one
+release that produced a binary that built cleanly and then died on startup.
 
 Where the limit falls is undefined behaviour in the kernel, so it is not the same
 everywhere: 256 MiB on some platforms and 512 MiB on others, decided by what the C
