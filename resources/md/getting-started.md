@@ -186,7 +186,10 @@ holding reclaimable garbage keeps running; one that genuinely needs the memory
 gets the error. When even a full collection leaves the live data above that
 three-quarter mark, the next forced one waits until half the remaining room is
 used, so a program working close to the ceiling keeps making progress instead of
-collecting after every allocation burst.
+collecting after every allocation burst. Below the mark it waits for a quarter of
+the room, which leaves the collection space to work in. When the older
+generations hold more than the free room, that collection also goes a generation
+at a time, so it never holds copies of all of them at once.
 
 ### Tuning the collector
 
@@ -239,8 +242,21 @@ the cost of a higher peak. `System/gc` and `(.gc (Runtime/getRuntime))` run a fu
 collection and re-measure the live data the allowance is sized from.
 
 `JOLT_GC_LOG=1` prints one line per collection to stderr, the way `-verbose:gc`
-does: how long it took, its share of the time, the heap after it, the nursery,
-and whether a full collection was forced.
+does:
+
+```
+gc: 57ms (88% of 65ms) heap 159MB total 204MB peak 268MB live-after-full 159MB trip 24MB full:ceiling 34ms old-x2.0
+```
+
+That is how long the collection took and its share of the time since the last
+one; the heap in use after it and the total the collector holds from the
+operating system; `peak`, the most the process has held so far, so the
+collection that set a high-water mark is the one where it jumps; the live data
+after the last full collection; and `trip`, the nursery it leaves. A trailing
+`full:` says the policy also collected every generation, and why: `grown` when
+the heap passed its allowance over the live data, `ceiling` when it passed three
+quarters of the ceiling. It then gives that collection's time and the current
+allowance factor.
 
 ## Compiling a standalone binary
 
