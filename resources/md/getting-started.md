@@ -133,8 +133,14 @@ it is catchable:
     (println "over the ceiling:" (.getMessage e))))
 ```
 
-`(.maxMemory (Runtime/getRuntime))` reports the ceiling in bytes, and
-`totalMemory`/`freeMemory` report the heap inside it.
+The ceiling bounds the heap's **total** size, as `-Xmx` does: the live data, the
+space new objects are allocated in, and the free memory the collector keeps. Near
+the ceiling Jolt allocates in smaller windows and hands free memory back to the
+operating system rather than growing past it; the error is raised only when the
+live data itself no longer fits. `(.maxMemory (Runtime/getRuntime))` reports the
+ceiling in bytes, and `totalMemory`/`freeMemory` report the heap inside it.
+Unlike the JVM's collector, Chez's cannot compact in place, so near the ceiling a
+collection needs some working room: the total stays within about 10% of it.
 
 **`JOLT_MAX_HEAP`** overrides the default, the way `-Xmx` does. An integer of
 bytes with an optional `k`, `m` or `g` suffix:
@@ -177,7 +183,64 @@ collection until the live set has doubled, which is the wrong instinct when
 memory is tight, so above three quarters of the ceiling Jolt forces the
 collection that would otherwise have been deferred. A program that was merely
 holding reclaimable garbage keeps running; one that genuinely needs the memory
-gets the error.
+gets the error. When even a full collection leaves the live data above that
+three-quarter mark, the next forced one waits until half the remaining room is
+used, so a program working close to the ceiling keeps making progress instead of
+collecting after every allocation burst.
+
+### Tuning the collector
+
+The nursery, the space new objects are allocated in between collections, is
+sized automatically. It starts at 16 MB and grows while collection takes a large
+share of the run time, bounded by how much data the program actually keeps, so a
+program that allocates heavily but holds little does not pay for a large nursery
+in memory. A program that allocates little never leaves 16 MB. As with the JVM's
+adaptive sizing, nothing is resized until five collections have been seen, and
+the share of time counts each collection by how long it ran, so a short program
+is not moved off 16 MB by the first collection after startup.
+
+The defaults suit most programs. For the rest, each knob is named after the JVM
+flag it mirrors:
+
+| Variable | JVM flag | Default | Meaning |
+|---|---|---|---|
+| `JOLT_MAX_HEAP` | `-Xmx` | 25% of RAM | the heap ceiling (its total size), above |
+| `JOLT_MAX_RAM_PERCENTAGE` | `-XX:MaxRAMPercentage` | `25` | the ceiling as a percentage of RAM (or of the cgroup limit), when `JOLT_MAX_HEAP` is not set |
+| `JOLT_GC_TIME_RATIO` | `-XX:GCTimeRatio` | `9` | aim for at most 1/(1+N) of the time in collection; lower it to trade memory for speed |
+| `JOLT_MAX_HEAP_FREE_RATIO` | `-XX:MaxHeapFreeRatio` | `50` | how much of the heap may be nursery headroom over the live data (50 = a nursery up to the size of the live data); raise it to trade memory for speed |
+| `JOLT_NEW_SIZE` | `-XX:NewSize` | `16m` | the smallest nursery |
+| `JOLT_MAX_NEW_SIZE` | `-XX:MaxNewSize` | `1g` | the largest nursery (never more than an eighth of the ceiling) |
+| `JOLT_GC_TRIP_BYTES` | | | pin the nursery at this size and turn the sizing off |
+| `JOLT_GC_OVERHEAD_LIMIT` | `-XX:-UseGCOverheadLimit` | on | `off` turns off the GC overhead limit below |
+| `JOLT_GC_TIME_LIMIT` | `-XX:GCTimeLimit` | `98` | the share of time in collection, over the long term, that counts as overhead |
+| `JOLT_GC_HEAP_FREE_LIMIT` | `-XX:GCHeapFreeLimit` | `2` | the free share of the ceiling below which it counts |
+
+The GC overhead limit is the JVM's: when five collections in a row find the program
+spending more than `JOLT_GC_TIME_LIMIT` percent of its time collecting with less than
+`JOLT_GC_HEAP_FREE_LIMIT` percent of the ceiling free, it gets an `OutOfMemoryError`
+("GC overhead limit exceeded") instead of running on at a crawl.
+
+The headroom bound is soft: when collection takes more than twice the target
+share three collections running at the bound, the nursery doubles past it, since
+that is a program the larger nursery is for. That growth is checked: if the share
+of time spent collecting over the next eight collections rose by more than a tenth,
+the nursery tries one jump to 8x, since some programs only gain once most of a big
+window dies, and otherwise goes back and holds at the old size for a while. Sizes
+take a `k`, `m` or `g` suffix. A value Jolt cannot read is refused at startup with
+its name, rather than ignored.
+
+The older generations are collected once the heap grows past twice what was live
+after the last full collection (and at least 64 MB past it), so garbage promoted
+out of the nursery does not wait for a schedule. When full collections take more
+than the target share of the time, that allowance grows by half at a time, up to
+8x the live data, and it shrinks back toward 2x when they get cheap. A program that
+promotes a lot of medium-lived data runs far fewer full collections that way, at
+the cost of a higher peak. `System/gc` and `(.gc (Runtime/getRuntime))` run a full
+collection and re-measure the live data the allowance is sized from.
+
+`JOLT_GC_LOG=1` prints one line per collection to stderr, the way `-verbose:gc`
+does: how long it took, its share of the time, the heap after it, the nursery,
+and whether a full collection was forced.
 
 ## Compiling a standalone binary
 
