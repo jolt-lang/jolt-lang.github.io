@@ -51,9 +51,10 @@
     nodes))
 
 (defn doc-sections
-  "Split a rendered doc page into searchable sections: an intro section
-   (content before the first heading) plus one section per h2, with h3
-   subsections nested under their parent h2's heading path."
+  "Split a rendered doc page into searchable sections: a page section
+   linking to the top of the page (carrying any content before the first
+   heading) plus one section per h2, with h3 subsections nested under their
+   parent h2's heading path."
   [doc-id title html]
   (let [nodes (vec (body-content
                      (:content (html/parse (java.io.ByteArrayInputStream. (.getBytes html))))))
@@ -61,8 +62,7 @@
         intro (take split nodes)]
     (for [{:keys [anchor heading text]}
           (concat
-            (when-not (s/blank? (collect-text intro))
-              [{:anchor nil :heading title :text (collect-text intro)}])
+            [{:anchor nil :heading title :text (collect-text intro)}]
             (mapcat
               (fn [{:keys [id heading content]}]
                 (let [own (take-while (complement h3?) content)
