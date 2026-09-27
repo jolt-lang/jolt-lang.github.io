@@ -6,7 +6,7 @@
     <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
     <meta name="description" content="Jolt is a Clojure implementation on Scheme: Chez natively, Gambit for JavaScript. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
     <meta name="canonical" content="https://jolt-lang.github.io">
-    <title>Spec: Front Matter: Jolt</title>
+    <title>Embedding SCI: Jolt</title>
     <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
     <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
     <link href="/css/screen.css" rel="stylesheet" type="text/css" />
@@ -106,7 +106,7 @@
         <a href="/docs/extension-points.html">Extension Points</a>
       </li>
       
-      <li >
+      <li class="selected">
         <a href="/docs/embedding-sci.html">Embedding SCI</a>
       </li>
       
@@ -206,30 +206,74 @@
   </aside>
 
   <main class="docs-main">
-    <h1>Spec: Front Matter</h1>
+    <h1>Embedding SCI</h1>
     
     <nav class="toc">
       <h2>Contents</h2>
-      <ol class="contents"><li><a href="#clojure_language_specification_%E2%80%94_front_matter">Clojure Language Specification — Front Matter</a></li><li><a href="#1._conformance_terminology">1. Conformance terminology</a></li><li><a href="#2._classification_of_the_core_surface">2. Classification of the core surface</a></li><li><a href="#3._the_normative_entry_format">3. The normative entry format</a></li><li><a href="#4._evidence_and_verification">4. Evidence and verification</a></li><li><a href="#5._chapter_plan">5. Chapter plan</a></li></ol>
+      <ol class="contents"><li><a href="#embedding_sci">Embedding SCI</a></li><li><a href="#sharing_functions_and_values">Sharing functions and values</a></li><li><a href="#sharing_a_protocol">Sharing a protocol</a></li></ol>
     </nav>
     
     <div id="content">
-      <h1 id="clojure_language_specification_%E2%80%94_front_matter">Clojure Language Specification — Front Matter</h1><p><strong>Edition</strong>: Draft 1 · <strong>Describes</strong>: Clojure 1.12 (reference) · <strong>Status</strong>: in progress</p><p>This document specifies the Clojure programming language independently of any implementation. See <code>docs/rfc/0001-language-specification.md</code> for motivation, process, and scope.</p><h2 id="1._conformance_terminology">1. Conformance terminology</h2><p>The key words <strong>MUST</strong>, <strong>MUST NOT</strong>, <strong>SHOULD</strong>, <strong>SHOULD NOT</strong>, and <strong>MAY</strong> are to be interpreted as described in RFC 2119.</p><ul><li>A statement marked <strong>MUST</strong> is normative: a conforming implementation  exhibits exactly this behavior, and the conformance suite tests it.</li><li><strong>implementation-defined</strong> marks behavior a conforming implementation must  document but may choose (e.g. the concrete error type thrown where the  reference throws a JVM exception class).</li><li><strong>host-defined</strong> marks behavior delegated to the host platform (e.g. what  <code>slurp</code> accepts as a source).</li><li><strong>⚠ reference-divergence</strong> marks a place where this spec deliberately  differs from observed reference behavior, with rationale; the reference  behavior is always recorded alongside.</li></ul><h2 id="2._classification_of_the_core_surface">2. Classification of the core surface</h2><p>Every <code>clojure.core</code> var carries exactly one classification (dashboard: <code>coverage.md</code>):</p><table><thead><tr><th>Class</th><th>Meaning</th><th>Spec treatment</th></tr></thead><tbody><tr><td><strong>portable</strong></td><td>semantics independent of host</td><td>full normative entry (§9)</td></tr><tr><td><strong>host-dependent</strong></td><td>portable <em>interface</em>, host-defined behavior</td><td>interface entry; behavior host-defined</td></tr><tr><td><strong>JVM-specific</strong></td><td>meaningful only on the JVM</td><td>catalogued in Appendix; not specified</td></tr></tbody></table><p>Initial classifications are mechanical and reviewable; reclassification is an ordinary spec change.</p><h2 id="3._the_normative_entry_format">3. The normative entry format</h2><p>Each special form (§3) and portable var (§9) is specified as:</p><pre><code>### name                                 — since &lt;version&gt;
-&#40;signature ...&#41;  &#40;signature ...&#41;
+      <h1 id="embedding_sci">Embedding SCI</h1><p><a href='https://github.com/babashka/sci'>SCI</a> — the Small Clojure Interpreter behind babashka — runs on Jolt as an ordinary dependency, and a Jolt program can use it the way a JVM program does: to evaluate user-supplied code, plugins or extensions in a sandboxed context. This page covers the one place where an embedder has to know something Jolt-specific: <strong>sharing a host protocol</strong> with the code SCI evaluates. Everything else — <code>sci/init</code>, <code>sci/eval-string&#42;</code>, <code>:classes</code>, <code>:namespaces</code>, <code>copy-var&#42;</code> of functions and values — works as documented by SCI.</p><pre><code class="clojure">{:deps {org.babashka/sci {:mvn/version &quot;0.13.53&quot;}}}
+</code></pre><h2 id="sharing_functions_and_values">Sharing functions and values</h2><p><code>sci/copy-var&#42;</code> and <code>:namespaces</code> work as on the JVM:</p><pre><code class="clojure">&#40;require '&#91;sci.core :as sci&#93;&#41;
 
-Semantics
-  S1. &lt;numbered normative statement, MUST/SHOULD/MAY&gt;
-  S2. ...
-Edge cases
-  E1. &lt;nil / empty / bounds / wrong-type behavior — normative&gt;
-Errors
-  X1. &lt;what MUST throw; error TYPE is implementation-defined unless stated&gt;
-Examples
-  &lt;executable; verified against the reference; sourced from ClojureDocs
-   where community-validated&gt;
-Conformance
-  S1 → &lt;suite&gt;/&lt;test id&gt;; E1 → ...   &#40;statements without a test: UNVERIFIED&#41;
-</code></pre><p>The <strong>Conformance</strong> field is load-bearing: every numbered statement names the test(s) that verify it. A normative statement with no test is labeled <code>UNVERIFIED</code> and is a defect in the spec.</p><h2 id="4._evidence_and_verification">4. Evidence and verification</h2><p>Behavioral questions are settled in this order: differential testing against the reference implementation → cross-dialect agreement in clojure-test-suite → ClojureDocs community examples (verified before inclusion) → reference source (for intent). Conformance tests live in this repository (the corpus <code>test/chez/corpus.edn</code>, run on Chez via <code>host/chez/run-corpus.ss</code> and certified against reference JVM Clojure by <code>test/conformance/certify.clj</code>) and in the cross-dialect clojure-test-suite.</p><h2 id="5._chapter_plan">5. Chapter plan</h2><table><thead><tr><th>§</th><th>File</th><th>Status</th></tr></thead><tbody><tr><td>1</td><td><code>01-evaluation.md</code></td><td>planned</td></tr><tr><td>2</td><td><code>02-reader.md</code></td><td><strong>drafted</strong> (grammar + reader-macro catalog; 2 divergences open)</td></tr><tr><td>3</td><td><code>03-special-forms.md</code></td><td><strong>exemplars written</strong> (<code>if</code>, <code>let&#42;</code>); catalog complete</td></tr><tr><td>4</td><td><code>04-data-types.md</code></td><td>planned (numeric-tower design note required)</td></tr><tr><td>5</td><td><code>05-sequences.md</code></td><td>planned (laziness contract)</td></tr><tr><td>6</td><td><code>06-namespaces-vars.md</code></td><td>planned</td></tr><tr><td>7</td><td><code>07-polymorphism.md</code></td><td>planned</td></tr><tr><td>8</td><td><code>08-macros.md</code></td><td>planned</td></tr><tr><td>9</td><td><code>09-core-library.md</code></td><td><strong>exemplars written</strong> (<code>first</code>, <code>reduce</code>, <code>parse-uuid</code>)</td></tr><tr><td>A</td><td><code>coverage.md</code></td><td><strong>generated</strong> (regenerate: <code>jolt run tools/spec&#95;coverage.clj</code>)</td></tr></tbody></table>
+&#40;def my-ns &#40;sci/create-ns 'my.api&#41;&#41;
+&#40;def ctx &#40;sci/init {:namespaces {'my.api {'greet &#40;sci/copy-var&#42; #'greet my-ns&#41;}}}&#41;&#41;
+&#40;sci/eval-string&#42; ctx &quot;&#40;my.api/greet \&quot;world\&quot;&#41;&quot;&#41;
+</code></pre><h2 id="sharing_a_protocol">Sharing a protocol</h2><p>SCI has one model of a protocol: a map <code>{:methods #{…} :ns &lt;sci namespace&gt;}</code> whose methods are <strong>multimethods dispatching on <code>sci.impl.types/type-impl</code></strong>. That is what <code>defrecord</code>, <code>deftype</code>, <code>extend-type</code> and <code>extend-protocol</code> evaluated inside SCI register into — one <code>defmethod</code> per method, keyed by the SCI type. A host protocol var copied in as-is (<code>sci/copy-var&#42;</code> on <code>#'P</code>) is not that shape on any host: Jolt's protocol value has no <code>:ns</code> and its methods are plain dispatch functions, and the JVM's has no <code>:ns</code> either. SCI cannot name the methods it generates, and a record implementing the protocol fails in analysis (<code>Unable to resolve symbol: m</code>). On babashka it <em>appears</em> to work only because babashka's own <code>defprotocol</code> is SCI's.</p><p>The supported way to share a host protocol is the one babashka itself uses for <code>clojure.core.protocols</code> (<code>babashka.impl.protocols</code>): one multimethod per method whose <code>:default</code> answers through the host protocol, a SCI-side protocol map naming them, and — for the other direction — the host protocol extended to SCI's record and type classes, routing back through the multimethods. It is host-agnostic: the same code runs on Jolt and on the JVM.</p><pre><code class="clojure">&#40;ns my.plugins
+  &#40;:require &#91;sci.core :as sci&#93;
+            &#91;sci.impl.types :as types&#93;&#41;&#41;
+
+;; the host protocol
+&#40;defprotocol Shape
+  &#40;area &#91;this&#93;&#41;
+  &#40;scaled &#91;this k&#93;&#41;&#41;
+
+;; SCI-side methods: dispatch on SCI's notion of a value's type. A value SCI
+;; did not build — a host record, a string — falls to the host protocol.
+&#40;defmulti sci-area types/type-impl&#41;
+&#40;defmulti sci-scaled types/type-impl&#41;
+&#40;defmethod sci-area :default &#91;x&#93; &#40;area x&#41;&#41;
+&#40;defmethod sci-scaled :default &#91;x k&#93; &#40;scaled x k&#41;&#41;
+
+;; the other direction: a SCI record or type reaching the HOST protocol answers
+;; through the method its defrecord/deftype registered. Only a method the type
+;; registered counts — the :default is the host protocol itself, and answering
+;; through it here would loop.
+&#40;defn- sci-method &#91;mm this&#93;
+  &#40;let &#91;f &#40;get-method mm &#40;types/type-impl this&#41;&#41;&#93;
+    &#40;when-not &#40;identical? f &#40;get-method mm :default&#41;&#41; f&#41;&#41;&#41;
+&#40;defn- via-sci &#91;mm&#93;
+  &#40;fn &#91;this &amp; args&#93;
+    &#40;if-let &#91;f &#40;sci-method mm this&#41;&#93;
+      &#40;apply f this args&#41;
+      &#40;throw &#40;IllegalArgumentException.
+              &#40;str &quot;No implementation of method: &quot; mm &quot; for SCI type: &quot;
+                   &#40;types/type-impl this&#41;&#41;&#41;&#41;&#41;&#41;&#41;
+&#40;doseq &#91;c &#91;sci.impl.records.SciRecord sci.impl.deftype.SciType&#93;&#93;
+  &#40;extend c Shape {:area &#40;via-sci sci-area&#41; :scaled &#40;via-sci sci-scaled&#41;}&#41;&#41;
+
+;; the SCI namespace: the protocol map plus its methods
+&#40;def shapes-ns &#40;sci/create-ns 'shapes&#41;&#41;
+&#40;def ctx
+  &#40;sci/init {:namespaces
+             {'shapes {'Shape &#40;sci/new-var 'shapes/Shape
+                                           {:methods #{sci-area sci-scaled}
+                                            :ns shapes-ns
+                                            :name 'shapes/Shape
+                                            :protocol Shape}
+                                           {:ns shapes-ns}&#41;
+                       'area &#40;sci/copy-var&#42; #'sci-area shapes-ns&#41;
+                       'scaled &#40;sci/copy-var&#42; #'sci-scaled shapes-ns&#41;}}}&#41;&#41;
+</code></pre><p>With that in place, code evaluated in the context implements the protocol the usual ways, and values it builds answer the host protocol when they come back:</p><pre><code class="clojure">&#40;sci/eval-string&#42; ctx
+  &quot;&#40;defrecord Sq &#91;s&#93; shapes/Shape &#40;area &#91;&#95;&#93; &#40;&#42; s s&#41;&#41; &#40;scaled &#91;&#95; k&#93; &#40;-&gt;Sq &#40;&#42; s k&#41;&#41;&#41;&#41;
+   &#40;deftype Rect &#91;w h&#93; shapes/Shape &#40;area &#91;&#95;&#93; &#40;&#42; w h&#41;&#41; &#40;scaled &#91;&#95; k&#93; &#40;-&gt;Rect &#40;&#42; w k&#41; &#40;&#42; h k&#41;&#41;&#41;&#41;
+   &#40;extend-type String shapes/Shape &#40;area &#91;s&#93; &#40;count s&#41;&#41; &#40;scaled &#91;s k&#93; &#40;apply str &#40;repeat k s&#41;&#41;&#41;&#41;
+   &#40;shapes/area &#40;-&gt;Sq 3&#41;&#41;&quot;&#41;                                   ; =&gt; 9
+
+&#40;area &#40;sci/eval-string&#42; ctx &quot;&#40;-&gt;Rect 2 5&#41;&quot;&#41;&#41;                   ; =&gt; 10, from the host side
+&#40;satisfies? Shape &#40;sci/eval-string&#42; ctx &quot;&#40;-&gt;Sq 1&#41;&quot;&#41;&#41;           ; =&gt; true
+</code></pre><p>Inside SCI, <code>satisfies?</code>, <code>extends?</code> and <code>instance?</code> on <code>shapes/Shape</code> read the <code>:methods</code> set, so they answer for SCI records, types and <code>extend-type</code> targets alike. A SCI record whose type does not implement the protocol is refused by the host protocol with <code>IllegalArgumentException</code>, the same exception the reference raises for a missing implementation.</p><p><code>extend-type</code> on a host class <em>inside</em> SCI (<code>String</code> above) registers into the SCI multimethod only; the host protocol called from host code on a string does not see it. That is how babashka behaves too, and it keeps a sandboxed context from extending the host's protocols behind its back.</p><p>This recipe is pinned by Jolt's <code>scifunctional</code> gate (<code>test/chez/sci-functional-test.clj</code>), which runs it end to end on every build.</p>
     </div>
   </main>
 </div>
