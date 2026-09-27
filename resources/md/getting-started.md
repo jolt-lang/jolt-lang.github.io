@@ -194,7 +194,10 @@ The nursery, the space new objects are allocated in between collections, is
 sized automatically. It starts at 16 MB and grows while collection takes a large
 share of the run time, bounded by how much data the program actually keeps, so a
 program that allocates heavily but holds little does not pay for a large nursery
-in memory. A program that allocates little never leaves 16 MB.
+in memory. A program that allocates little never leaves 16 MB. As with the JVM's
+adaptive sizing, nothing is resized until five collections have been seen, and
+the share of time counts each collection by how long it ran, so a short program
+is not moved off 16 MB by the first collection after startup.
 
 The defaults suit most programs. For the rest, each knob is named after the JVM
 flag it mirrors:
