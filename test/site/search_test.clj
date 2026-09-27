@@ -51,7 +51,7 @@
               {:content "<h2 id=\"overview\">Overview</h2><p>Fibers are lightweight concurrency.</p>"}}
         documents (json/read-str (search/build-documents docs))]
     (is (vector? documents))
-    (is (= 5 (count documents)))
+    (is (= 6 (count documents)))
     (is (every? #(set/subset? #{"title" "heading" "href" "text"} (set (keys %)))
                 documents))
     (is (= (mapv #(% "href") documents)
@@ -62,3 +62,14 @@
       (is (= "Fibers" (overview "title")))
       (is (= "Overview" (overview "heading")))
       (is (= "Fibers are lightweight concurrency." (overview "text"))))))
+
+(deftest doc-sections-always-has-a-page-entry
+  (testing "a page that opens with a heading still gets an entry linking to its top"
+    (let [sections (search/doc-sections "fibers.md" "Fibers"
+                                        "<h2 id=\"overview\">Overview</h2><p>Fibers are lightweight.</p>")
+          {:keys [title heading href text]} (first sections)]
+      (is (= 2 (count sections)))
+      (is (= "Fibers" title))
+      (is (= "Fibers" heading))
+      (is (= "/docs/fibers.html" href))
+      (is (= "" text)))))
