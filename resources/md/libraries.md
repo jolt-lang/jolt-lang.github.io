@@ -23,17 +23,38 @@ First-party libraries from the jolt-lang org.
 - **[time](https://github.com/jolt-lang/time)**: the formatting and zone layer of `java.time` (`DateTimeFormatter`, `ZoneOffset`/`ZoneId`, `ZonedDateTime`/`OffsetDateTime`, localized formatting, `java.util.Locale`) plus [tick](https://github.com/juxt/tick)'s idiomatic API. The base value types (`Instant`, `LocalDate`, `Duration`, `Period`, `Year`/`YearMonth`, ...) are in core with no dependency; this library adds the rest (RFC 0008).
 - **[transit-jolt](https://github.com/jolt-lang/transit-jolt)**: Transit (JSON) read/write.
 - **[jolt-fressian](https://github.com/jolt-lang/jolt-fressian)**: [Fressian](https://github.com/Datomic/fressian) binary serialization, the format Datomic and `clojure.data.fressian` use. Wire-compatible both ways, gated against a real JVM Fressian reader and writer.
-- **[instaparse](https://github.com/jolt-lang/instaparse)**: context-free grammars (EBNF/ABNF) turned into parsers, a port of [Engelberg/instaparse](https://github.com/Engelberg/instaparse): left-recursive and ambiguous grammars, PEG-style lookahead, hiccup and enlive output, detailed error reporting.
 - **[router](https://github.com/jolt-lang/router)**: a routing trie that mirrors `reitit.Trie`, so reitit runs on Jolt.
 - **[logging](https://github.com/jolt-lang/logging)**: logging API with a native backend (drives `clojure.tools.logging`).
 - **[otel](https://github.com/jolt-lang/otel)**: OpenTelemetry SDK: tracing (`with-span`, W3C Trace Context propagation) and metrics (counters, histograms), exported over OTLP via [http-client](https://github.com/jolt-lang/http-client). Reads the standard `OTEL_*` environment variables; every API has a no-op fallback.
-- **[mulog](https://github.com/jolt-lang/mulog)**: structured event logging and tracing, a port of [BrunoBonacci/mulog](https://github.com/BrunoBonacci/mulog): `log` events with global/lexical context, `trace` with flake trace IDs, duration, and error capture, buffered dispatch to publishers (console built in). The Java classes it bundles (flake event IDs, NanoClock, the timer pool) are supplied as portable Jolt registrations; flakes are bit-for-bit with the JVM's.
 - **[nrepl](https://github.com/jolt-lang/nrepl)**: nREPL server and client for editor connections.
 - **[glimmer](https://github.com/jolt-lang/glimmer)**: reactive UI toolkit: Reagent-style reactive atoms, components that return hiccup, and a reconciler that patches the live widget tree in place (positional and keyed). Widgets come from a backend, so the same components render as GTK widgets or as text in a terminal.
 - **[glimmer-gtk](https://github.com/jolt-lang/glimmer-gtk)**: the GTK4 backend for glimmer: widget constructors, prop setters and `:on-*` signals bound through the FFI, Pango markup from hiccup, and the `g_application_run` app loop (including the main-thread marshalling that keeps nREPL-driven UI development safe).
 - **[glimmer-tui](https://github.com/jolt-lang/glimmer-tui)**: the terminal backend for glimmer, over ncursesw: a widget set, box layout, painting, and an input loop with keyboard focus and mouse support. Binds only the ncurses 6.0 API, which macOS and Linux already ship, so a terminal UI needs nothing installed. A screen abstraction with an in-memory implementation lets an interactive app be mounted, typed into, and asserted on without a tty.
 - **[glimmer-gl](https://github.com/jolt-lang/glimmer-gl)**: OpenGL primitives for glimmer: composable 3D geometry and shaders-as-data, plus `:gl-area` and `:scale` widgets registered into glimmer-gtk so a GL pane lives in the same reactive tree.
 - **[ring-chez-adapter](https://github.com/jolt-lang/ring-chez-adapter)**: Ring adapter for serving HTTP, with the middleware whose Ring originals need a JVM library: file uploads (an RFC 7578 `multipart/form-data` parser ported from [defnull/multipart](https://github.com/defnull/multipart), incremental or all at once), gzip, and static files.
+
+## Community libraries
+
+Community-maintained libraries and tools from the [jlt-commons](https://jlt-commons.github.io) org.
+
+- **[awesome-jolt](https://github.com/jlt-commons/awesome-jolt)**: the community's curated list of Jolt tools and libraries.
+- **[aws-api-jolt](https://github.com/jlt-commons/aws-api-jolt)**: [cognitect aws-api](https://github.com/cognitect-labs/aws-api) running on Jolt, the unmodified Maven release against real AWS.
+- **[duratom](https://github.com/jlt-commons/duratom)**: durable atoms that persist to disk, a port of [jimpil/duratom](https://github.com/jimpil/duratom).
+- **[ebb](https://github.com/jlt-commons/ebb)**: a functional effect and streaming system, a port of [leonoel/missionary](https://github.com/leonoel/missionary).
+- **[ensemble](https://github.com/jlt-commons/ensemble)**: lightweight Erlang-style actors with mailboxes and supervisors, a port of [puniverse/pulsar](https://github.com/puniverse/pulsar).
+- **[ftxui-jolt](https://github.com/jlt-commons/ftxui-jolt)**: a functional terminal UI built on [FTXUI](https://github.com/ArthurSonzogni/FTXUI).
+- **[glitter](https://github.com/jlt-commons/glitter)**: a [Replicant](https://github.com/cjohansen/replicant)-style GTK4 renderer: one state atom, a pure state-to-hiccup view, and event handlers as data.
+- **[glitter-core](https://github.com/jlt-commons/glitter-core)**: the natives-free core of glitter: the reconciler and the IRender/IMemory protocol seam.
+- **[glitter-gl](https://github.com/jlt-commons/glitter-gl)**: OpenGL for glitter: composable meshes, shaders as data, and a `:gl-area` GTK4 widget.
+- **[glitter-uikit](https://github.com/jlt-commons/glitter-uikit)**: an AppKit renderer for glitter driving native macOS views; see [uikit-demo](https://github.com/jlt-commons/uikit-demo).
+- **[instaparse](https://github.com/jlt-commons/instaparse)**: context-free grammars (EBNF/ABNF) turned into parsers, a port of [Engelberg/instaparse](https://github.com/Engelberg/instaparse): left-recursive and ambiguous grammars, PEG-style lookahead, hiccup and enlive output, detailed error reporting.
+- **[lev](https://github.com/jlt-commons/lev)**: a Jolt implementation of Laya's non-autoregressive System 1 decision engine.
+- **[mulog](https://github.com/jlt-commons/mulog)**: structured event logging and tracing, a port of [BrunoBonacci/mulog](https://github.com/BrunoBonacci/mulog): `log` events with global/lexical context, `trace` with flake trace IDs, duration, and error capture, buffered dispatch to publishers (console built in). The Java classes it bundles (flake event IDs, NanoClock, the timer pool) are supplied as portable Jolt registrations; flakes are bit-for-bit with the JVM's.
+- **[nexus-jolt](https://github.com/jlt-commons/nexus-jolt)**: data-driven action, effect, and placeholder dispatch, a port of [cjohansen/nexus](https://github.com/cjohansen/nexus).
+- **[raygui-jlt](https://github.com/jlt-commons/raygui-jlt)**: 24 [raygui](https://github.com/raysan5/raygui) examples: raylib's immediate-mode GUI called from Jolt over the C ABI.
+- **[raylib-jlt](https://github.com/jlt-commons/raylib-jlt)**: 187 raylib examples binding libraylib 6.0 directly over its C ABI; the same scenes run on [iPhone](https://github.com/jlt-commons/raylib-ios) and [Android](https://github.com/jlt-commons/raylib-android) as native code.
+- **[tapestry](https://github.com/jlt-commons/tapestry)**: structured concurrency: a `fiber` is a derefable handle to a unit of concurrent work on its own thread, and results, errors, timeouts, and cancellation all flow through that handle. Cancellation is cooperative, over `core.async`, since Jolt has no JVM thread interruption.
+- **[writ](https://github.com/jlt-commons/writ)**: checks plain Clojure against a spec of what the code is for: signatures for the public functions and laws that say what the results mean. Built for LLM-written code, the spec is written first, the implementation second, and writ is the gate between them. Laws run on generated inputs and are proved by rewriting, induction, or a solver.
 
 ## JVM libraries
 
