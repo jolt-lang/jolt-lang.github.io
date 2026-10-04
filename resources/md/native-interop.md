@@ -438,6 +438,17 @@ Things to keep in mind across the boundary:
   with a trailing `:collect-safe` (`export!` accepts it; same rule as
   [`foreign-callable`](/docs/api/ffi.html)) so the entry activates the calling
   thread on the way in. Call `jolt_library_shutdown` to tear it down.
+- **The init thread stays active until you release it.** After
+  `jolt_library_init` returns, its thread is still an active runtime thread, and
+  the collector waits for every active thread to reach a safe point. Parked in
+  host code (a GUI run loop, a game's frame loop, a `pthread_join`), it never
+  does, so the first `:collect-safe` call from another thread that needs to
+  collect waits forever, with the two-second stall report on stderr as the only
+  sign. Call `jolt_library_release_thread()` once after init to hand the thread
+  back. From then on every call in, from that thread too, goes through a
+  `:collect-safe` export. An embedder whose init thread keeps calling exports
+  (an `update` every frame) reaches a safe point on each call and does not need
+  it.
 - **Pointer lifetimes.** A value returned as `:pointer`/`:void*` is not GC-tracked
   by the caller; if Jolt hands back a pointer into managed memory you must keep
   it alive on the Jolt side (e.g. hold it in a top-level ref) for as long as C
@@ -449,13 +460,14 @@ Things to keep in mind across the boundary:
 
 ### The ABI surface
 
-Three C symbols are the whole documented ABI:
+Four C symbols are the whole documented ABI:
 
 | Symbol | Signature | When |
 |---|---|---|
 | `jolt_library_init` | `int (int argc, char **argv)` | once, before anything else; returns 0 on success, non-zero if the runtime failed to come up. A `NULL` `argv` is fine and means no args. |
 | `jolt_lookup` | `void *(const char *name)` | after a successful init; returns the entry point registered by `export!` under `name`, or `NULL` if there is none. |
-| `jolt_library_shutdown` | `void (void)` | once, last, from the owner thread. |
+| `jolt_library_release_thread` | `void (void)` | optional, after a successful init, from the init thread; deactivates it so host code there cannot stall other threads' collections. Afterwards call in only through `:collect-safe` exports. Repeating it is a no-op. |
+| `jolt_library_shutdown` | `void (void)` | once, last, from the owner thread; reactivates that thread first if it was released. |
 
 Everything else the shared object exports is an implementation detail. The link
 folds Chez's `libkernel.a` into the object, so the symbol table also carries the
@@ -464,7 +476,7 @@ own stub internals (`jolt_set_lookup_addr`). Those are not part of the ABI —
 they are not versioned, they are specific to the Chez backend, and calling them
 behind the runtime's back is undefined. Reach the runtime through `jolt_lookup`
 and the exports you declared with `export!`; anything the host needs that the
-three symbols above don't cover is an `export!` away.
+four symbols above don't cover is an `export!` away.
 
 ### Collection and memory pressure
 
