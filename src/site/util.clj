@@ -64,13 +64,22 @@
                    (str "<h" level " id=\"" (slugify (s/replace decoded #"<[^>]*>" "")) "\">")
                    whole)))))
 
+(defn wrap-tables
+  "Wrap each table in a scroll container, so a table wider than a narrow
+   viewport scrolls on its own instead of widening the whole page."
+  [html]
+  (-> html
+      (s/replace "<table>" "<div class=\"table-scroll\"><table>")
+      (s/replace "</table>" "</table></div>")))
+
 (defn parse-doc [name]
   (-> (md/md-to-html-string
        (slurp-resource (str "md/" name))
        :heading-anchors true
        :code-style #(str "class=\"" % "\"")
        :replacement-transformers (conj markdown.transformers/transformer-vector remove-div-spans))
-      fix-heading-ids))
+      fix-heading-ids
+      wrap-tables))
 
 (defn get-headings [content]
   (reduce

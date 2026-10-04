@@ -23,6 +23,7 @@ body {
   color: var(--text);
   line-height: 1.6;
   overflow-x: hidden;
+  overflow-wrap: break-word;
   padding-top: var(--nav-h);
 }
 
@@ -301,6 +302,9 @@ code {
 .diff-table th, .docs-main th { color: var(--text); font-weight: 600; }
 .diff-table td, .docs-main td { color: var(--muted); }
 .diff-table td:first-child { color: var(--text); font-weight: 500; white-space: nowrap; }
+.table-scroll { overflow-x: auto; margin: 16px 0; }
+.table-scroll table { margin: 0; }
+.docs-main td code { white-space: nowrap; }
 
 .docs-sidebar-toggle {
   display: none; align-items: center; justify-content: flex-start; gap: 8px;
@@ -411,6 +415,7 @@ footer a:hover { text-decoration: underline; }
   .docs-layout { grid-template-columns: 1fr; gap: 24px; }
   .docs-sidebar { position: static; border-bottom: 1px solid var(--border); padding-bottom: 16px; max-height: none; overflow-y: visible; }
   .docs-sidebar-toggle { display: flex; }
+  .table-scroll th, .table-scroll td { min-width: 10rem; }
   .docs-sidebar.menu-collapsible .docs-menu { display: none; }
   .docs-sidebar.menu-collapsible.open .docs-menu { display: block; }
   .search-popover { position: fixed; top: var(--nav-h); left: 0; right: 0; width: auto; border-radius: 0; border-left: none; border-right: none; }

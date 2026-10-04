@@ -1,6 +1,7 @@
 (ns site.templates-test
   (:require [clojure.test :refer [deftest is testing]]
-            [selmer.parser :as parser]))
+            [selmer.parser :as parser]
+            [site.util :as util]))
 
 (parser/set-resource-path! (clojure.java.io/resource "templates"))
 
@@ -34,3 +35,10 @@
     (let [html (render :toc "<ol><li><a href=\"#x\">X</a></li></ol>")]
       (is (re-find #"class=\"toc\"" html))
       (is (re-find #"docs-menu" html)))))
+
+(deftest content-does-not-widen-the-page
+  (testing "tables scroll inside their own container and long words wrap"
+    (is (= "<div class=\"table-scroll\"><table><tr><td>x</td></tr></table></div>"
+           (util/wrap-tables "<table><tr><td>x</td></tr></table>")))
+    (is (re-find #"\.table-scroll \{[^\}]*overflow-x:\s*auto" (slurp "resources/static/css/screen.css")))
+    (is (re-find #"body \{[^\}]*overflow-wrap:\s*break-word" (slurp "resources/static/css/screen.css")))))
