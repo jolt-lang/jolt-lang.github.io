@@ -157,7 +157,7 @@ Every top-level key Jolt reads, and where each is covered in full:
 | `:mvn/repos` | extra Maven repositories, consulted after Clojars and Central |
 | `:mvn/local-repo` | relocate the local Maven repository (default `~/.m2/repository`) |
 | `:jolt/native` | shared libraries a project or library needs, loaded before its code ([Native interop](/docs/native-interop.html)) |
-| `:jolt/build` | `jolt build` options (`:opt`, `:direct-link`, `:closed-world`, `:boot`, `:embed`, `:dynamic-natives`; [below](#deps.edn_build_options)) |
+| `:jolt/build` | `jolt build` options (`:opt`, `:direct-link`, `:closed-world`, `:boot`, `:embed`, `:exclude-resources`, `:dynamic-natives`; [below](#deps.edn_build_options)) |
 | `:nrepl/middleware` | nREPL middleware a library contributes ([REPL-driven development](/docs/repl-driven-development.html)) |
 
 A user-level `deps.edn` (`$CLJ_CONFIG`, else `$XDG_CONFIG_HOME/clojure`, else
@@ -548,6 +548,8 @@ The `:jolt/build` map in `deps.edn` accepts these keys:
   alias for `:boot :plain`.
 - **`:embed [dirs]`**: bake resource files into the binary so `io/resource` resolves
   with no files on disk
+- **`:exclude-resources [globs]`**: leave dependency files out of the binary
+  ([below](#leaving_dependency_files_out))
 - **`:dynamic-natives true`**: load native shared objects at runtime instead of
   statically linking
 
@@ -560,3 +562,35 @@ Example:
               :closed-world true
               :embed ["resources"]}}
 ```
+
+#### Leaving dependency files out
+
+A built binary carries its dependencies' resources, the way an uberjar packs the
+classpath, so a library that reads its own files at runtime still finds them.
+Compiled `.class` files and ClojureScript sources are left out, since jolt loads
+neither. Anything else a dependency ships gets baked in, including files no jolt
+program reads. ClojureScript externs are the usual case, and they can be large:
+`com.widdindustries/cljs.java-time`, pulled in through tick, ships an 11 MB
+js-joda externs file.
+
+`:exclude-resources` lists files to leave out. Each pattern is a glob matched
+against the path `io/resource` asks for:
+
+| Pattern | Matches |
+|---|---|
+| `*` | any run of characters within one directory |
+| `**` | any run of characters across directories (`**/` also matches the top level) |
+| `?` | one character other than `/` |
+| trailing `/` | everything under that directory |
+
+```clojure
+{:jolt/build {:exclude-resources ["**.ext.js"     ; ClojureScript externs
+                                  "cljsjs/"]}}    ; a whole directory
+```
+
+An excluded file is gone from the binary, and `io/resource` answers `nil` for it,
+so exclude only what nothing in the program reads. A `.js` file can be a resource
+the app serves, which is why jolt doesn't skip `.js` on its own. Only the
+project's own `deps.edn` is read for this key, and it applies to dependency
+files, not to the project's `:embed` dirs. A pattern that isn't a string fails
+the build.
