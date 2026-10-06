@@ -16,7 +16,7 @@ This is handy for a quick poke at a namespace, but the real workflow is driving 
 
 ## Starting an nREPL server
 
-`jolt nrepl-server [port]` starts an [nREPL](https://nrepl.org/) server your editor connects to. It defaults to port 7888 (override with the argument or `JOLT_NREPL_PORT`), resolves the project's `deps.edn`, loads the source roots and native libraries, and writes a `.nrepl-port` file in the project directory so editors auto-detect the port.
+`jolt nrepl-server [port]` starts an [nREPL](https://nrepl.org/) server your editor connects to. It defaults to port 7888 (override with the argument or `JOLT_NREPL_PORT`), resolves the project's `deps.edn`, loads the source roots and native libraries, and writes a `.nrepl-port` file in the project directory so editors auto-detect the port. A port of `0` asks the OS for any free port, and the banner and `.nrepl-port` then report the port actually bound.
 
 ```bash
 $ cd myapp
@@ -26,6 +26,25 @@ nREPL server started on port 7888 (127.0.0.1); .nrepl-port written
 ```
 
 Leave it running. Everything you do from here on happens in your editor, against this live process.
+
+### Starting a server from code
+
+The same server is available programmatically, which is how a host application or a library embeds a REPL into a running jolt process:
+
+```clojure
+(def stop (jolt.nrepl/start 7888))
+```
+
+`start` binds the socket synchronously, so a startup failure such as an in-use port throws to the caller rather than dying on a background thread, then accepts connections and returns immediately. The port argument takes `0` to ask the OS for a free port. The second argument composes deps.edn `:nrepl/middleware` symbols over the built-in handler ([Middleware](#middleware)); the third is an opts map:
+
+- `:port-file` — where to write the bound port so an editor can find the server. Defaults to `.nrepl-port` in the working directory; `nil` writes no file. A program that starts its own server from somewhere other than the project root — a host application loading a `--library` build, say — points this at the project's `.nrepl-port`.
+
+The return value is a zero-arg stop fn: it stops the accept loop, closes the listen socket, frees the port, and removes the port file it wrote. Calling it more than once is a no-op. Its metadata carries `:port`, the port actually bound (the OS's pick when you asked for `0`), and `:port-file`, the absolute path written or nil:
+
+```clojure
+(meta stop)  ; => {:port 7888, :port-file "…/myapp/.nrepl-port"}
+(stop)
+```
 
 ### Connecting your editor
 

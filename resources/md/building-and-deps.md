@@ -509,6 +509,18 @@ failure into the binary, where the lookup sees only what the shake kept: a `reso
 of a def the shake dropped answers `nil` where the unshaken binary answers the var,
 silently. Name a site only when you can say why it is dead.
 
+### Signable binaries
+
+A self-contained jolt's default executable output has most of its bytes outside its own Mach-O/PE/ELF image — the boot is appended as raw data past the end of the launcher. That is fast to produce, but a strict signature check (`codesign --verify --strict` on macOS) correctly refuses it, since nothing in the file's structure describes the trailing data. `--signable` builds a structurally complete executable instead, one a strict check accepts:
+
+```bash
+JOLT_PWD=/path/to/project jolt build -m my.app --signable
+```
+
+The flag forces the cc-linked build path. A self-contained jolt — the distributed binary, which embeds the Chez boots, `scheme.h` and `libkernel.a` — compiles in process and needs only a C compiler at build time (`JOLT_CC`, or `cc` on `PATH`; on macOS, `xcode-select --install`). A jolt without the embedded kernel, such as a dev build from a source checkout, still spawns an external Chez install for the compile and behaves as before.
+
+`--library` output is always structurally complete, and a `--target` cross-compile already takes this path, so the flag affects neither.
+
 ### Typed arithmetic and inference
 
 Numeric code compiles to raw Chez flonum/fixnum operations (`fl*`, `fx+`) when
