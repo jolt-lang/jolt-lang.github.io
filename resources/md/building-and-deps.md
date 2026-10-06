@@ -157,7 +157,7 @@ Every top-level key Jolt reads, and where each is covered in full:
 | `:mvn/repos` | extra Maven repositories, consulted after Clojars and Central |
 | `:mvn/local-repo` | relocate the local Maven repository (default `~/.m2/repository`) |
 | `:jolt/native` | shared libraries a project or library needs, loaded before its code ([Native interop](/docs/native-interop.html)) |
-| `:jolt/build` | `jolt build` options (`:opt`, `:direct-link`, `:closed-world`, `:boot`, `:embed`, `:dynamic-natives`; [below](#deps.edn_build_options)) |
+| `:jolt/build` | `jolt build` options (`:opt`, `:direct-link`, `:closed-world`, `:boot`, `:embed`, `:exclude-resources`, `:dynamic-natives`; [below](#deps.edn_build_options)) |
 | `:nrepl/middleware` | nREPL middleware a library contributes ([REPL-driven development](/docs/repl-driven-development.html)) |
 
 A user-level `deps.edn` (`$CLJ_CONFIG`, else `$XDG_CONFIG_HOME/clojure`, else
@@ -509,6 +509,18 @@ failure into the binary, where the lookup sees only what the shake kept: a `reso
 of a def the shake dropped answers `nil` where the unshaken binary answers the var,
 silently. Name a site only when you can say why it is dead.
 
+### Signable binaries
+
+A self-contained jolt's default executable output has most of its bytes outside its own Mach-O/PE/ELF image — the boot is appended as raw data past the end of the launcher. That is fast to produce, but a strict signature check (`codesign --verify --strict` on macOS) correctly refuses it, since nothing in the file's structure describes the trailing data. `--signable` builds a structurally complete executable instead, one a strict check accepts:
+
+```bash
+JOLT_PWD=/path/to/project jolt build -m my.app --signable
+```
+
+The flag forces the cc-linked build path. A self-contained jolt — the distributed binary, which embeds the Chez boots, `scheme.h` and `libkernel.a` — compiles in process and needs only a C compiler at build time (`JOLT_CC`, or `cc` on `PATH`; on macOS, `xcode-select --install`). A jolt without the embedded kernel, such as a dev build from a source checkout, still spawns an external Chez install for the compile and behaves as before.
+
+`--library` output is always structurally complete, and a `--target` cross-compile already takes this path, so the flag affects neither.
+
 ### Typed arithmetic and inference
 
 Numeric code compiles to raw Chez flonum/fixnum operations (`fl*`, `fx+`) when
@@ -548,6 +560,8 @@ The `:jolt/build` map in `deps.edn` accepts these keys:
   alias for `:boot :plain`.
 - **`:embed [dirs]`**: bake resource files into the binary so `io/resource` resolves
   with no files on disk
+- **`:exclude-resources [globs]`**: leave dependency files out of the binary
+  ([below](#leaving_dependency_files_out))
 - **`:dynamic-natives true`**: load native shared objects at runtime instead of
   statically linking
 
@@ -560,3 +574,35 @@ Example:
               :closed-world true
               :embed ["resources"]}}
 ```
+
+#### Leaving dependency files out
+
+A built binary carries its dependencies' resources, the way an uberjar packs the
+classpath, so a library that reads its own files at runtime still finds them.
+Compiled `.class` files and ClojureScript sources are left out, since jolt loads
+neither. Anything else a dependency ships gets baked in, including files no jolt
+program reads. ClojureScript externs are the usual case, and they can be large:
+`com.widdindustries/cljs.java-time`, pulled in through tick, ships an 11 MB
+js-joda externs file.
+
+`:exclude-resources` lists files to leave out. Each pattern is a glob matched
+against the path `io/resource` asks for:
+
+| Pattern | Matches |
+|---|---|
+| `*` | any run of characters within one directory |
+| `**` | any run of characters across directories (`**/` also matches the top level) |
+| `?` | one character other than `/` |
+| trailing `/` | everything under that directory |
+
+```clojure
+{:jolt/build {:exclude-resources ["**.ext.js"     ; ClojureScript externs
+                                  "cljsjs/"]}}    ; a whole directory
+```
+
+An excluded file is gone from the binary, and `io/resource` answers `nil` for it,
+so exclude only what nothing in the program reads. A `.js` file can be a resource
+the app serves, which is why jolt doesn't skip `.js` on its own. Only the
+project's own `deps.edn` is read for this key, and it applies to dependency
+files, not to the project's `:embed` dirs. A pattern that isn't a string fails
+the build.
