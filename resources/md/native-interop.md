@@ -443,8 +443,8 @@ Things to keep in mind across the boundary:
   the collector waits for every active thread to reach a safe point. Parked in
   host code (a GUI run loop, a game's frame loop, a `pthread_join`), it never
   does, so the first `:collect-safe` call from another thread that needs to
-  collect waits forever, with the two-second stall report on stderr as the only
-  sign. Call `jolt_library_release_thread()` once after init to hand the thread
+  collect waits forever. Run with `JOLT_GC_STALL=1` and stderr says so after two
+  seconds. Call `jolt_library_release_thread()` once after init to hand the thread
   back. From then on every call in, from that thread too, goes through a
   `:collect-safe` export. An embedder whose init thread keeps calling exports
   (an `update` every frame) reaches a safe point on each call and does not need

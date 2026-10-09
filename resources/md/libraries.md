@@ -73,7 +73,7 @@ Third-party Clojure/JVM libraries confirmed to run on Jolt.
 
 - **[malli](https://github.com/metosin/malli)**: data schema validation, on the [malli-app example](https://github.com/jolt-lang/examples/tree/main/malli-app).
 - **[honeysql](https://github.com/seancorfield/honeysql)**: SQL formatter and helpers.
-- **[clojure.data.json](https://github.com/clojure/data.json)**: JSON reading and writing.
+- **[clojure.data.json](https://github.com/clojure/data.json)**: JSON reading and writing; needs `java.time` at load, which [time](https://github.com/jolt-lang/time) provides.
 - **[clojure.spec.alpha](https://github.com/clojure/spec.alpha)**: data specs.
 - **[core.match](https://github.com/clojure/core.match)**: pattern matching.
 - **[core.cache](https://github.com/clojure/core.cache)**: caching (Basic/FIFO/LRU/LU/TTL/Soft + wrapped), over [data.priority-map](https://github.com/clojure/data.priority-map).
