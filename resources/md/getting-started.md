@@ -118,6 +118,10 @@ Unable to resolve symbol: prinltn in this context (did you mean print, printf, p
 
 **`JOLT_DEBUG`**: verbose dependency resolution (the fetching / using-cache / skipping progress lines that are otherwise quiet) plus the host static-shim drift warning. See [dependency resolution](#dependencies) below.
 
+**`JOLT_WARNINGS=1`**: the runtime's own warnings about the process: a library claiming a class this jolt already provides, a registration dropped because another dependency declares the class, a native symbol defined by two declared libraries (`jolt.ffi/defining-libraries` answers that without it), a `data_readers` namespace that failed to load, a missing OS entropy source. Off by default, because stderr belongs to your program: a full-screen TUI can't intercept them and can't live with them interleaved into its frames. Errors and uncaught-exception reports are not affected.
+
+**`JOLT_GC_STALL`**: report a garbage collection stalled by a thread parked in a foreign call that isn't `:blocking` (see [native interop](/docs/native-interop.html)). `JOLT_GC_STALL=1` reports after two seconds; `JOLT_GC_STALL=<seconds>` sets the threshold (`1.0` for one second). Off by default; the stall itself is the same either way.
+
 ## Memory
 
 Jolt bounds its heap the way the JVM does. By default the ceiling is **25% of
