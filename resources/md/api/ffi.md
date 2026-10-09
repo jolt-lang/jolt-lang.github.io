@@ -31,7 +31,7 @@ short list of places they still differ, and why.
 - `defcfn` also has a **wrapper form**: a symbol after the return type names the
   raw binding, and the rest is an ordinary `fn` tail — the shape for an
   out-parameter or an error code callers should never see.
-- A trailing `:blocking` marks a call that may wait — network I/O, a lock, a sleep, a UI run loop you never return from. The call is emitted collect-safe so a thread parked inside it does not pin the garbage collector. An unmarked call stops collection process-wide for as long as it runs: other threads halt at their next allocation, far from the call responsible, while the parked thread itself looks healthy. Mark anything that can block; leave pure, fast calls unmarked.
+- A trailing `:blocking` marks a call that may wait — network I/O, a lock, a sleep, a UI run loop you never return from. The call is emitted collect-safe so a thread parked inside it does not pin the garbage collector. An unmarked call stops collection process-wide for as long as it runs: other threads halt at their next allocation, far from the call responsible, while the parked thread itself looks healthy. Mark anything that can block; leave pure, fast calls unmarked. The jolt release binaries carry a Chez kernel patch that makes the collect-safe transition two compare-and-swaps with no shared lock: a `:blocking` call costs about 5 ns more than a plain one, with no contention between threads. A jolt built on a stock Chez (Homebrew, a distro package) pays about 60 ns, and more when several threads make such calls at once.
 
 ```clojure
 (ffi/defcfn c-connect "connect" [:int :pointer :int] :int :blocking)
