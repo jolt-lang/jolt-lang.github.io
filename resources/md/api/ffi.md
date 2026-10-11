@@ -32,6 +32,7 @@ short list of places they still differ, and why.
   raw binding, and the rest is an ordinary `fn` tail — the shape for an
   out-parameter or an error code callers should never see.
 - A trailing `:blocking` marks a call that may wait — network I/O, a lock, a sleep, a UI run loop you never return from. The call is emitted collect-safe so a thread parked inside it does not pin the garbage collector. An unmarked call stops collection process-wide for as long as it runs: other threads halt at their next allocation, far from the call responsible, while the parked thread itself looks healthy. Mark anything that can block; leave pure, fast calls unmarked.
+- A collection stalled behind an unmarked call can be reported: `JOLT_GC_STALL=1` writes it to stderr after two seconds (`JOLT_GC_STALL=<seconds>` for another threshold). It is off by default. `on-gc-stall` `f [{:seconds n}]` hands the report to `f` instead, as `{:seconds :threads :callbacks :message}`, whether or not the variable is set; use it to log to a file from a TUI or an embedding host. `f` runs while every other thread is stopped, so it may write to a file but must not wait on another thread, lock, promise or future, and anything it throws is dropped. `(on-gc-stall nil)` restores the default.
 
 ```clojure
 (ffi/defcfn c-connect "connect" [:int :pointer :int] :int :blocking)
@@ -525,5 +526,5 @@ Jolt adds, with no babashka.ffi equivalent: the arena-less `(alloc n)`, the
 `drain-auto-arenas!`, `layout-size` / `layout-alignment` / `field-offset` /
 `read-field` / `write-field`, `foreign-fn` / `foreign-callable` /
 `free-callable` / `export!`, `:varargs` (a second spelling of `:&`), `:blocking`,
-`:capture-native-error`, `errno`, `loaded?`, `defining-libraries`, `read-bytes` /
+`:capture-native-error`, `errno`, `loaded?`, `defining-libraries`, `on-gc-stall`, `read-bytes` /
 `write-bytes` / `read-into!`, and the exact-width type aliases.
