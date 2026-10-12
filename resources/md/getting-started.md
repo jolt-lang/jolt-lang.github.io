@@ -221,6 +221,7 @@ flag it mirrors:
 | `JOLT_GC_OVERHEAD_LIMIT` | `-XX:-UseGCOverheadLimit` | on | `off` turns off the GC overhead limit below |
 | `JOLT_GC_TIME_LIMIT` | `-XX:GCTimeLimit` | `98` | the share of time in collection, over the long term, that counts as overhead |
 | `JOLT_GC_HEAP_FREE_LIMIT` | `-XX:GCHeapFreeLimit` | `2` | the free share of the ceiling below which it counts |
+| `JOLT_STACK_LIMIT` | `-Xss` | 80% of the memory limit | how deep one thread's stack may grow; see [Stack depth](#stack_depth) below |
 
 The GC overhead limit is the JVM's: when five collections in a row find the program
 spending more than `JOLT_GC_TIME_LIMIT` percent of its time collecting with less than
@@ -261,6 +262,66 @@ after the last full collection; and `trip`, the nursery it leaves. A trailing
 the heap passed its allowance over the live data, `ceiling` when it passed three
 quarters of the ceiling. It then gives that collection's time and the current
 allowance factor.
+
+### Stack depth
+
+Chez keeps a deep stack on the heap: when a thread's stack outgrows its segment,
+the frames below move into a heap object and the call carries on. Recursion is
+therefore cheap and deep — ten million frames take well under a second and about
+100 MB — and Jolt does not cap it at the JVM's size. The JVM throws
+`StackOverflowError` at the end of the thread's stack (`-Xss`, 512 KB to 1 MB by
+default), which is ten to twenty thousand Clojure frames.
+
+Instead the limit is sized from memory, the way
+[Guile](https://www.gnu.org/software/guile/manual/html_node/Stack-Overflow.html)
+sizes its stack check at 80% of what the process may use. By default it is
+**80% of the process's memory limit**: `RLIMIT_AS` (`ulimit -v`) if that is set,
+else `RLIMIT_DATA` (`ulimit -d`), else physical RAM. It is read once, at startup,
+and applies to each thread's stack on its own. Past it the recursion throws
+`java.lang.StackOverflowError`, as on the JVM:
+
+```clojure
+(defn f [x] (inc (f x)))
+
+(try (f 1)
+  (catch StackOverflowError e
+    (println "too deep:" (.getMessage e))))
+```
+
+`StackOverflowError` is an `Error`, not an `Exception`, so `(catch Exception e …)`
+lets it through; `(catch StackOverflowError e …)`, `(catch Error e …)` and
+`(catch Throwable e …)` catch it. Unwinding gives the stack's memory back, and the
+thread — a REPL, an nREPL session, a future — carries on. A caught one keeps its
+stack trace but not the stack it was thrown from, so holding on to it is cheap.
+
+**`JOLT_STACK_LIMIT`** sets the limit, in bytes with an optional `k`, `m` or `g`
+suffix in either case, or turns it off with `-1`:
+
+```bash
+JOLT_STACK_LIMIT=512m jolt run app.clj    # overflow past 512 MB of stack
+JOLT_STACK_LIMIT=2g   jolt run app.clj    # past 2 GB
+JOLT_STACK_LIMIT=-1   jolt run app.clj    # no limit: grow until memory runs out
+```
+
+Any other value is refused at startup with its name, as `JOLT_MAX_HEAP`'s are.
+`(jolt.host/stack-limit)` answers the limit in effect, in bytes, or `nil` when
+there is none.
+
+The stack is heap memory, so it also counts against the [heap
+ceiling](#memory). With both at their defaults the ceiling (25% of RAM) is the
+smaller, and a runaway recursion reaches it first and gets an
+`OutOfMemoryError` instead, after growing for a while. To have runaway recursion
+reported as a `StackOverflowError`, and quickly, set a stack limit well below the
+ceiling — `JOLT_STACK_LIMIT=256m` is still several million frames.
+
+The limit is checked when the collector runs rather than on every call, which is
+what keeps it free for ordinary code. A stack can pass it by up to one nursery's
+worth (16 MB and up) before the check sees it.
+
+On the [Gambit backend](/docs/scheme-backends.html) there is no limit: the stack
+grows until Gambit's own memory runs out, as it did everywhere before. On Windows
+there is no default (neither rlimits nor `sysconf` exist there), so the stack is
+unbounded unless `JOLT_STACK_LIMIT` sets a limit.
 
 ## Compiling a standalone binary
 
