@@ -281,6 +281,12 @@ Argument and return types are keywords:
   which would be the wrong width for `_Bool` and read three bytes of whatever
   the callee left above the result.
 - `:void` — return ignored (`nil`)
+- A `:float` result (and `read` / `read-array` / a struct field / a callback
+  argument of `:float`) answers a **`java.lang.Float`** as it reaches Clojure
+  on the JVM; a `:double` stays a Double. Since 0.8.21 — they answered a
+  Double before. A bare `defcfn` binding of a `:float` or `:double` result
+  declares that kind, so arithmetic over the call unboxes it instead of
+  taking generic dispatch.
 
 ## Memory and libraries
 
@@ -319,6 +325,30 @@ digest calls could silently land there and abort the process.
   the *width* and nothing else, so the bits land as they are.
 - `write-array` `ptr arr` / `ptr arr off n` — `byte-array` → memory.
 - `write-array` `ptr type arr [offset]` — the typed inverse of `read-array`.
+- `write-array` `ptr type arr offset index count` — write only
+  `arr[index, index+count)`, so a staging array sized for the largest batch
+  (instance matrices, draw commands, audio samples) can be written part full
+  without copying its used part into a right-sized array. A range outside the
+  array throws before anything is written. The index and count trail the byte
+  offset, so position four is a byte offset in every typed form, as in
+  babashka.ffi.
+- `read-into!` `ptr type arr [offset]` — fill the **existing** array `arr`
+  instead of allocating a new one per read, for a binding that reads the same
+  C buffer every frame (a physics engine's body positions, an audio block).
+  For 6000 doubles a call allocates about 4 KB where `read-array` allocates
+  52 KB, and takes 7.6 µs against 10. An integer type fills the array
+  `read-array` answers for it (`int-array` for `:int32`); `:float` and
+  `:double` each fill a `float-array` or a `double-array`, so a program that
+  keeps its data in `double-array`s can read `:float` into them. A `:float`
+  widens exactly, and a `:double` rounds to single in a `float-array`, as
+  `aset` rounds it. A range outside the array, or an array that cannot hold
+  the type's elements, throws before anything is written. `write-array` in
+  the other direction, in babashka.ffi's argument order:
+  `(read-into! p t arr offset)` reads from `offset` bytes into `p`, and
+  `(read-into! p t arr offset index count)` fills `count` elements from
+  `arr[index]`.
+- `read-into!` `ptr arr off n` — the byte form, unchanged: `n` bytes at byte
+  index `off` into the `byte-array` `arr`.
 - `read-bytes` `ptr n` — `n` bytes → string (UTF-8).
 - `write-bytes` `ptr s` — a string's UTF-8 bytes → memory.
 - `string->ptr` `[arena] s` — a NUL-terminated C string. `nil` answers `NULL` and
@@ -341,9 +371,15 @@ digest calls could silently land there and abort the process.
 - `reinterpret` `p n [arena [cleanup]]` — declare that `p` addresses `n` bytes.
   With an arena the declaration is dropped when the arena closes, and the arena
   calls `cleanup` with `p` — where a C library's own deallocator goes. The arena
-  frees nothing here; the memory is C's.
+  frees nothing here; the memory is C's. babashka.ffi's order,
+  `(reinterpret p size arena cleanup?)`, is accepted beside jolt's arena-first
+  one; a pointer and an arena differ in type, so neither order can be read as
+  the other.
 - `find-symbol` `sym` — the address of `sym`, or `nil`. Searches declared natives
   first, then the process's own symbols — the same resolution a `defcfn` gets.
+- `find-symbol` `lib sym` — search only the library `load-library` answered,
+  and its dependencies. On Windows, where libraries load into the process
+  namespace, it throws.
 - `load-system-library` `name` — load by short name: `"z"` finds `libz.so`,
   `libz.dylib` or `z.dll`. On Linux it also globs the versioned sonames, since a
   runtime-only package has `libz.so.1` and no `libz.so`.
@@ -527,4 +563,5 @@ Jolt adds, with no babashka.ffi equivalent: the arena-less `(alloc n)`, the
 `read-field` / `write-field`, `foreign-fn` / `foreign-callable` /
 `free-callable` / `export!`, `:varargs` (a second spelling of `:&`), `:blocking`,
 `:capture-native-error`, `errno`, `loaded?`, `defining-libraries`, `on-gc-stall`, `read-bytes` /
-`write-bytes` / `read-into!`, and the exact-width type aliases.
+`write-bytes` / `read-into!`, and the exact-width type aliases. `with-open` is
+`clojure.core/with-open` under babashka.ffi's name.

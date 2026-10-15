@@ -279,6 +279,30 @@ Everything on the core.async page applies to a spawned body: channel ops and
 parks. The two APIs share the one pool, so fibers and `go` blocks interleave
 freely.
 
+## Pools
+
+The default pool is one carrier pool for everyone. `pool` makes more, of
+carriers of their own:
+
+```clojure
+(def io (fib/pool {:name :io :size 8}))
+(fib/spawn poll-sockets {:pool io})
+```
+
+A fiber spawned into a pool runs on those carriers only, for life, so a fiber
+that pins its carrier — a blocking foreign call, a long computation — holds up
+only the fibers of its own pool. Channels, promises, `interrupt!` and `kill!`
+work across pools as within one. `:size` defaults to the processor count,
+`:name` is any value, for `pool-name`. A spawn into a pool that has been shut
+down throws.
+
+`shutdown!` stops a pool taking fibers: a spawn into it throws from now on, and
+its carriers run the fibers already in them to the end — parked ones included —
+before their threads end. It returns at once, without waiting for them.
+
+`pool-of` names a fiber's pool (`nil` for the default one), `pool?` tests for
+one, and `pool-size` counts its carriers.
+
 ## Tuning
 
 Both knobs are read **once, when the carrier pool starts**; set them before the

@@ -304,7 +304,7 @@ suffix in either case, or turns it off with `-1`, `0`, `off` or `none`:
 ```bash
 JOLT_STACK_LIMIT=512m jolt run app.clj    # overflow past 512 MB of stack
 JOLT_STACK_LIMIT=2g   jolt run app.clj    # past 2 GB
-JOLT_STACK_LIMIT=off  jolt run app.clj    # no limit: grow until the heap ceiling
+JOLT_STACK_LIMIT=off  jolt run app.clj    # no limit: grow until the heap ceiling, as before 0.8.22
 ```
 
 Any other value is refused at startup with its name, as `JOLT_MAX_HEAP`'s are.
