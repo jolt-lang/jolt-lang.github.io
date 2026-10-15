@@ -195,35 +195,6 @@ the room, which leaves the collection space to work in. When the older
 generations hold more than the free room, that collection also goes a generation
 at a time, so it never holds copies of all of them at once.
 
-### The stack limit
-
-Chez keeps a deep call stack on the heap, so a non-tail recursion that never
-ends used to allocate until the heap ceiling raised `OutOfMemoryError` — or,
-with the ceiling off, until the kernel killed the process. Each thread's stack
-now has a limit too, and runaway recursion throws
-`java.lang.StackOverflowError` instead. It is an `Error`: `(catch Exception e)`
-lets it through, so it reaches the top level rather than being swallowed. The
-message names the limit in bytes, where the JVM's is nil.
-
-The default is 80% of the heap ceiling — in source mode, the ceiling a built
-program would get. With the ceiling off (`JOLT_MAX_HEAP=off`) it is 80% of
-`RLIMIT_AS`, else `RLIMIT_DATA`, else physical RAM. On Windows there is no
-default and the stack is unbounded unless `JOLT_STACK_LIMIT` sets one.
-
-**`JOLT_STACK_LIMIT`** overrides it, read once at startup. An integer of bytes
-with an optional `k`, `m` or `g` suffix, or no limit at all:
-
-```bash
-JOLT_STACK_LIMIT=2g    jolt run app.clj    # 2 GB
-JOLT_STACK_LIMIT=512m  jolt run app.clj    # 512 MB
-JOLT_STACK_LIMIT=-1    jolt run app.clj    # no limit (what releases before 0.8.22 did)
-```
-
-`off`, `none` and `0` mean the same as `-1`. A value that is none of these is
-refused at startup by name, like `JOLT_MAX_HEAP`'s. `jolt.host/stack-limit`
-reads the limit back (nil for none). The stack is measured after each
-collection, so ordinary code pays nothing for it. Not on the Gambit host.
-
 ### Tuning the collector
 
 The nursery, the space new objects are allocated in between collections, is
@@ -250,6 +221,7 @@ flag it mirrors:
 | `JOLT_GC_OVERHEAD_LIMIT` | `-XX:-UseGCOverheadLimit` | on | `off` turns off the GC overhead limit below |
 | `JOLT_GC_TIME_LIMIT` | `-XX:GCTimeLimit` | `98` | the share of time in collection, over the long term, that counts as overhead |
 | `JOLT_GC_HEAP_FREE_LIMIT` | `-XX:GCHeapFreeLimit` | `2` | the free share of the ceiling below which it counts |
+| `JOLT_STACK_LIMIT` | `-Xss` | 80% of the heap ceiling | how deep one thread's stack may grow; see [Stack depth](#stack_depth) below |
 
 The GC overhead limit is the JVM's: when five collections in a row find the program
 spending more than `JOLT_GC_TIME_LIMIT` percent of its time collecting with less than
@@ -290,6 +262,70 @@ after the last full collection; and `trip`, the nursery it leaves. A trailing
 the heap passed its allowance over the live data, `ceiling` when it passed three
 quarters of the ceiling. It then gives that collection's time and the current
 allowance factor.
+
+### Stack depth
+
+Chez keeps a deep stack on the heap: when a thread's stack outgrows its segment,
+the frames below move into a heap object and the call carries on. Recursion is
+therefore cheap and deep — ten million frames take well under a second and about
+100 MB — and Jolt does not cap it at the JVM's size. The JVM throws
+`StackOverflowError` at the end of the thread's stack (`-Xss`, 512 KB to 1 MB by
+default), which is ten to twenty thousand Clojure frames.
+
+Instead the limit is sized from memory, the way
+[Guile](https://www.gnu.org/software/guile/manual/html_node/Stack-Overflow.html)
+sizes its stack check at 80% of what the process may use. The stack is heap
+memory, so what the process may use is the [heap ceiling](#memory): by default
+the limit is **80% of the heap ceiling** (so 20% of RAM, or of a container's
+limit, with the ceiling at its default). With no ceiling (`JOLT_MAX_HEAP=off`)
+it is 80% of `RLIMIT_AS` (`ulimit -v`) if that is set, else of `RLIMIT_DATA`
+(`ulimit -d`), else of physical RAM. It is set at startup and applies to each
+thread's stack on its own. Past it the recursion throws
+`java.lang.StackOverflowError`, as on the JVM:
+
+```clojure
+(defn f [x] (inc (f x)))
+
+(try (f 1)
+  (catch StackOverflowError e
+    (println "too deep:" (.getMessage e))))
+```
+
+`StackOverflowError` is an `Error`, not an `Exception`, so `(catch Exception e …)`
+lets it through; `(catch StackOverflowError e …)`, `(catch Error e …)` and
+`(catch Throwable e …)` catch it. Unwinding gives the stack's memory back, and the
+thread — a REPL, an nREPL session, a future — carries on. A caught one keeps its
+stack trace but not the stack it was thrown from, so holding on to it is cheap. Its message names the
+limit and how to change it; the JVM's is `nil`.
+
+**`JOLT_STACK_LIMIT`** sets the limit, in bytes with an optional `k`, `m` or `g`
+suffix in either case, or turns it off with `-1`, `0`, `off` or `none`:
+
+```bash
+JOLT_STACK_LIMIT=512m jolt run app.clj    # overflow past 512 MB of stack
+JOLT_STACK_LIMIT=2g   jolt run app.clj    # past 2 GB
+JOLT_STACK_LIMIT=off  jolt run app.clj    # no limit: grow until the heap ceiling, as before 0.8.22
+```
+
+Any other value is refused at startup with its name, as `JOLT_MAX_HEAP`'s are.
+`(jolt.host/stack-limit)` answers the limit in effect, in bytes, or `nil` when
+there is none.
+
+An explicit limit is used as given, even above the heap ceiling, where the
+recursion would meet the ceiling first and get an `OutOfMemoryError` instead.
+The default is generous, so a runaway recursion takes a while to reach it: on a
+64 GB machine (a 16 GB ceiling, so a 12.8 GB stack limit) about 40 seconds. To
+have it reported quickly, set a smaller limit — `JOLT_STACK_LIMIT=256m` is
+still several million frames.
+
+The limit is checked when the collector runs rather than on every call, which is
+what keeps it free for ordinary code. A stack can pass it by up to one nursery's
+worth (16 MB and up) before the check sees it.
+
+On the [Gambit backend](/docs/scheme-backends.html) there is no limit: the stack
+grows until Gambit's own memory runs out, as it did everywhere before. On Windows
+there is no default (neither rlimits nor `sysconf` exist there), so the stack is
+unbounded unless `JOLT_STACK_LIMIT` sets a limit.
 
 ## Compiling a standalone binary
 
