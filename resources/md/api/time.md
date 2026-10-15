@@ -48,7 +48,7 @@ core (RFC 0008). Add io.github.jolt-lang/time to your deps.edn.
 ```clojure
 ;; deps.edn
 {:deps {io.github.jolt-lang/time {:git/url "https://github.com/jolt-lang/time.git"
-                                  :git/sha "2738160a958345a927e83cdb8f5a80a2c47f0aa0"}}}
+                                  :git/sha "2c58d9c709a25d80608757c3026f4c656a994ef1"}}}
 ```
 
 Declaring the dependency is all that's needed. The library supplies
