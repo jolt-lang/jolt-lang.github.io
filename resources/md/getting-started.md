@@ -195,6 +195,35 @@ the room, which leaves the collection space to work in. When the older
 generations hold more than the free room, that collection also goes a generation
 at a time, so it never holds copies of all of them at once.
 
+### The stack limit
+
+Chez keeps a deep call stack on the heap, so a non-tail recursion that never
+ends used to allocate until the heap ceiling raised `OutOfMemoryError` — or,
+with the ceiling off, until the kernel killed the process. Each thread's stack
+now has a limit too, and runaway recursion throws
+`java.lang.StackOverflowError` instead. It is an `Error`: `(catch Exception e)`
+lets it through, so it reaches the top level rather than being swallowed. The
+message names the limit in bytes, where the JVM's is nil.
+
+The default is 80% of the heap ceiling — in source mode, the ceiling a built
+program would get. With the ceiling off (`JOLT_MAX_HEAP=off`) it is 80% of
+`RLIMIT_AS`, else `RLIMIT_DATA`, else physical RAM. On Windows there is no
+default and the stack is unbounded unless `JOLT_STACK_LIMIT` sets one.
+
+**`JOLT_STACK_LIMIT`** overrides it, read once at startup. An integer of bytes
+with an optional `k`, `m` or `g` suffix, or no limit at all:
+
+```bash
+JOLT_STACK_LIMIT=2g    jolt run app.clj    # 2 GB
+JOLT_STACK_LIMIT=512m  jolt run app.clj    # 512 MB
+JOLT_STACK_LIMIT=-1    jolt run app.clj    # no limit (what releases before 0.8.22 did)
+```
+
+`off`, `none` and `0` mean the same as `-1`. A value that is none of these is
+refused at startup by name, like `JOLT_MAX_HEAP`'s. `jolt.host/stack-limit`
+reads the limit back (nil for none). The stack is measured after each
+collection, so ordinary code pays nothing for it. Not on the Gambit host.
+
 ### Tuning the collector
 
 The nursery, the space new objects are allocated in between collections, is

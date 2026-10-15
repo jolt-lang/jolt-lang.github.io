@@ -157,7 +157,7 @@ The argument and return types are keywords. The full set:
 | `:int64` `:uint64` | 64-bit integer | number |
 | `:size_t` `:ssize_t` | `size_t` / `ssize_t` | number |
 | `:iptr` `:uptr` | pointer-sized integer | number (handy for `NULL` sentinels) |
-| `:double` `:float` | `double` / `float` | number |
+| `:double` `:float` | `double` / `float` | `java.lang.Double` / `java.lang.Float` |
 | `:char` | `char` | number (code point) |
 | `:uint8` (`:u8`, `:byte`) | `unsigned char` | number 0–255 |
 | `:pointer` (`:void*`) | any pointer | number (machine address) |
