@@ -165,3 +165,13 @@ resources), and clj-kondo picks it up from the dependency.
 ## Dev mode vs a compiled binary
 
 The REPL and nREPL server are dynamic on purpose: calls go through the var, so redefinition works. A `jolt build` binary is the other end of that trade; a `--direct-link` build binds calls directly and gives up runtime redefinition for speed. Develop against the REPL; ship the binary. See [Getting Started](/docs/getting-started.html#compiling_a_standalone_binary) for the build modes.
+
+### Direct linking at the REPL
+
+Code compiled at runtime can opt into the passes a build runs, the same way it does on the JVM. Bind or alter `*compiler-options*` with `:direct-linking true`, and every form compiled after that gets direct calls, inlining, and record/protocol inference:
+
+```clojure
+(alter-var-root #'*compiler-options* assoc :direct-linking true)
+```
+
+Loaded this way, dispatch-heavy code runs about twice as fast. Some loads now run as fast as a built binary. You get the JVM's trade-off: a caller keeps the body it was compiled against when a small callee is redefined, and `with-redefs` does not reach a direct-linked caller. A var marked `^:dynamic` or `^:redef` opts out, including one made dynamic later with `.setDynamic`. It is off by default, so the REPL stays fully redefinable unless you turn it on.
