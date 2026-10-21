@@ -1,4 +1,7 @@
-`jolt.profile` counts how many times each line and function of your code ran. It reads back the counters Chez Scheme's `compile-profile` puts on every expression of the code it compiles, and maps them to Clojure files, lines and fns. The counts are exact, not sampled.
+`jolt.profile` has two profilers:
+
+- **Counts.** How many times each line and fn of your code ran, exact, from the counters Chez Scheme's `compile-profile` puts on every expression it compiles. The code has to be compiled with them, and it runs slower while it carries them.
+- **Samples.** Where the CPU time goes. Every thread is interrupted at an interval of its own CPU time and its stack is recorded. Nothing is recompiled, so it sees all code, including the runtime, `clojure.core` and built binaries, and costs a few percent while it runs.
 
 ```clojure
 (require '[jolt.profile :as prof])
@@ -71,7 +74,73 @@ Only code jolt compiles at runtime is instrumented: your namespaces and the libr
 - Counters are not atomic. Code running on several threads at once can lose increments.
 - Counters are available on the Chez backend. On a host without them, `instrument!` throws.
 
-A sampling profiler, which measures time rather than counts and needs no recompilation, and profile-guided builds are designed in [RFC 0015](/docs/rfc/0015-sampling-and-profile-guided-builds.html). Neither is available yet.
+## Sampling
+
+```clojure
+(prof/sample!)             ; every 1 ms of each thread's CPU time
+(my.app/run)
+(prof/stop-sampling!)
+(prof/sample-report)
+```
+
+`sample-report` prints the fns by self time (in the fn itself), the fns by total time (in it and everything it called), and the lines by self time:
+
+```
+jolt.profile: 158 samples, 159.0 ms of CPU time, 0.0 ms in the collector
+
+fns by self time
+     self ms    self    total ms  fn
+       159.0  100.0%       159.0  my.app/spin                      my/app.clj:3
+         0.0    0.0%       159.0  my.app/driver                    my/app.clj:13
+         0.0    0.0%       118.7  my.app/hot                       my/app.clj:9
+         0.0    0.0%        40.3  my.app/cold                      my/app.clj:11
+```
+
+`(prof/sample! {:interval-ms 5 :depth 32})` samples less often or keeps fewer frames per stack. A new `sample!` drops the samples of the last run.
+
+The rows are available as data. `sample-counts` returns `{:fn :file :line :self-ms :total-ms :samples}` per fn, most self time first. `sample-lines` returns `{:file :line :fn :self-ms :samples}` per line. `samples` returns each distinct stack with its `:thread`, `:count` and `:ms`.
+
+`with-sampling` samples while its body runs:
+
+```clojure
+(prof/with-sampling {:interval-ms 1} (my.app/run))
+;; => {:result ... :counts [{:fn my.app/spin :self-ms 159.0 ...} ...]}
+```
+
+### Flame graphs
+
+`write-folded` writes the stacks in the collapsed format that flame graph tools read, one stack per line, root first, with its CPU time in microseconds:
+
+```clojure
+(prof/write-folded "app.folded")
+```
+
+```sh
+flamegraph.pl app.folded > app.svg     # or open app.folded in speedscope.app
+```
+
+### Sampling a whole run
+
+```sh
+JOLT_PROFILE=sample jolt run -m my.app
+JOLT_PROFILE=sample ./my-app           # a binary made by jolt build
+```
+
+The report prints on stderr when the process exits. A built binary that does not include `jolt.profile` prints the two fn tables.
+
+### What a sample shows
+
+- Every thread is sampled: futures, agents, `go` blocks and nREPL sessions as well as the main thread. A thread started while sampling is on is sampled from its start. A thread that was already running joins at its next timer event, which a fiber gets every quantum and an interruptible eval every poll.
+- Time is CPU time. A thread blocked on a lock, a channel or a socket uses none and gets no samples.
+- A tail call replaces its caller's frame, so the caller is not on the stack.
+- Frames without a jolt fn behind them show their Scheme name. On a whole run you will see Chez's compiler passes, which are the time spent compiling code.
+- A frame stopped in a loop that makes no calls shows its fn's `defn` line, because lines are found from the calls a fn makes.
+- In a built binary, a fn the build inlined is charged to the fn it was inlined into.
+- Collector time is reported for the whole run. A collection is also counted in the CPU time of the thread that ran it, against the frame where it started.
+
+Sampling runs on the Chez backend. On a host without it, `sample!` throws.
+
+Profile-guided builds are designed in [RFC 0015](/docs/rfc/0015-sampling-and-profile-guided-builds.html) and are not available yet.
 
 ## Measuring time and allocation
 

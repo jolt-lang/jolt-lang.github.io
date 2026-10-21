@@ -1,6 +1,6 @@
 # RFC 0015 — Sampling profiles and profile-guided builds
 
-- **Status**: Draft
+- **Status**: Part 1 implemented; part 2 is a draft
 - **Champions**: jolt maintainers
 - **Builds on**: `jolt.profile` (execution counts), RFC 0007 (compilation modes)
 
@@ -14,7 +14,7 @@ things on top:
 1. **A sampling profiler.** Every thread is interrupted at a fixed CPU-time
    interval and its stack is recorded. It sees all code, including the runtime,
    `clojure.core`, AOT-cached namespaces and built binaries. It needs no
-   recompilation and costs about one percent while it runs.
+   recompilation and costs one to three percent while it runs.
 2. **Profile-guided builds.** `jolt build --profile-gen` makes an instrumented
    binary that writes a profile when it exits. `jolt build --profile-use` feeds
    that profile back into the compiler. The first tier uses Chez Scheme's own
@@ -74,35 +74,60 @@ single `set-timer`. The current yield cost (243 ns with preemption on) is the
 ceiling. This round is a refactor with no behavior change, and the fiber, gosm
 and interrupt suites gate it unchanged.
 
+**As built.** A thread with only a preemption registered is *solo*: its state
+register reads 0, and the preempt demand lives in the hardware timer itself, so
+arming is the register read plus the `set-timer` and a yield measured the same
+before and after. Registering any other client moves the thread to a state
+vector, and the last one leaving moves it back. Two things the shared timer
+needed that the hand-off did not:
+
+- The preempt handler now masks interrupts across its enqueue and switch, as a
+  yield already did. Another client's demand can be armed while it runs, and a
+  fire between the enqueue and the switch would queue the fiber twice.
+- A poll that is registered runs whenever a preemption is due, even before its
+  own deadline. A preemption parks the fiber, the park cancels the poll and the
+  resume registers it again, so on a fiber whose quantum is shorter than the
+  poll interval a poll that waited for its deadline would never run.
+
 ### Taking a sample
 
-The sampler registers a short demand: on the order of 10,000 ticks, which is
-about 5 µs on the machine the fiber quantum was measured on. Each time it is
-due, it reads the thread's CPU clock (`(current-time 'time-thread)`). It takes a
+The sampler registers a demand of 10,000 ticks to start with. Each time it is
+due, it reads the thread's CPU clock (`(current-time 'time-thread)`) and takes a
 sample only once the configured interval has passed, 1 ms by default. Ticks
 count calls rather than time, so this check is what makes the profile
-time-weighted. Most firings are just a clock read and return.
+time-weighted. The next demand is sized from the ticks per nanosecond the thread
+just ran at, so a check lands about when the interval ends and most firings are
+a clock read.
 
 A sample is:
 
 - **the stack.** The handler captures its continuation and walks the frames, up
   to a depth cap (64 by default; deeper stacks keep the innermost frames and are
-  marked truncated). It records each frame's code object and return offset, not
-  names. Names, namespaces and lines are resolved at report time, through the
+  marked truncated). A frame is identified by its code object and return
+  offset. The first time a thread sees one it reads the frame's name and source
+  position and caches them as a *site*; after that a frame costs two hash
+  lookups. Namespaces and Clojure lines are resolved at report time, through the
   same source registry that error reports use. Nothing retains the
   continuation, so a sample does not keep the stack's heap alive.
 - **the weight.** The thread CPU time since the previous sample. Time a thread
   spends in a foreign call shows up on its return, in the frame that made the
   call, which is where it belongs.
-- **GC time.** Collector CPU time from the `sstats` delta since the previous
-  sample, charged to a `[gc]` pseudo-frame.
-- **the thread.** The thread id and, on a carrier, the fiber. Scheduler frames
-  below the fiber's own stack are dropped.
+- **the thread.** The thread id. On a carrier, the scheduler frames below the
+  fiber's own stack are dropped by the same naming rule that keeps them out of
+  error traces. The fiber itself is not recorded.
 
-Samples go into a per-thread buffer: a preallocated ring with no locks and
-nothing shared between threads. Buffers are merged when the profile is read. When
-a ring is full, the oldest samples are overwritten and the count of dropped
-samples is reported.
+Collector time is reported once, for the whole run, from the `sstats` delta.
+Charging it per sample would count one collection on every thread at once. A
+collection is also in the CPU time of the thread that ran it.
+
+Samples are counted in a per-thread table keyed by stack, so memory grows with
+the number of distinct stacks rather than with the length of the run, and
+nothing is dropped. Each table has its own lock, contended only by a reader.
+
+**Which threads.** A thread joins when sampling starts on it, when it is forked
+while sampling is on, and otherwise at its next timer event of any kind: a
+fiber's quantum or a `run-interruptible` poll. A thread that was already running
+and has none of those is not sampled until it does.
 
 ### What a sampling profile does not show
 
@@ -117,6 +142,11 @@ samples is reported.
   interval ends. Chez polls at every non-leaf call and every loop back-edge, so
   the skew is small. It does mean a hot leaf is attributed to the frame that
   called it.
+- **Lines inside a loop with no calls.** Lines come from the markers the back
+  end places before call sites, so a frame stopped in a loop that makes no calls
+  reads at its fn's `defn` line.
+- **Inlined fns in a build.** A fn the build inlined has no frame of its own and
+  is charged to the fn it was inlined into.
 
 ### API
 
@@ -131,15 +161,18 @@ same shapes, so the two can be compared directly.
 (prof/write-folded "app.folded")  ; collapsed stacks for flame graph tools
 
 (prof/with-sampling {:interval-ms 1}
-  (my.app/run))                   ; => {:result ... :samples ...}
+  (my.app/run))                   ; => {:result ... :counts ...}
 ```
 
-`sample-counts` returns `{:fn :file :line :self-ms :total-ms :samples}` per fn.
+`sample-counts` returns `{:fn :file :line :self-ms :total-ms :samples}` per fn,
+`sample-lines` the self time per line, and `samples` each distinct stack.
 `write-folded` writes the collapsed-stack format (`a;b;c 123`) that
 `flamegraph.pl` and speedscope read. For a whole run,
 `JOLT_PROFILE=sample jolt run -m my.app` prints the report on stderr at exit,
 like `JOLT_PROFILE=1`. The same variable works on a built binary, because the
-sampler needs the runtime and not the compiler.
+sampler needs the runtime and not the compiler. A binary includes `jolt.profile`
+only when the app requires it, so without it the runtime prints the fn tables
+itself.
 
 On a host without an engine timer, `sample!` throws `{:host :unsupported}` in
 the capability-profile tier, the way `instrument!` does.
@@ -253,14 +286,19 @@ they are only claimed once measured.
 
 | Round | Delivers | Gate |
 | --- | --- | --- |
-| S1 | Per-thread tick scheduler; fibers and `run-interruptible` become clients | fiber, gosm and interrupt suites unchanged; yield A/B |
-| S2 | Sampler, per-thread rings, `sample-report`, `write-folded` | exact-attribution fixtures (a known hot fn holds the majority of samples); overhead under 2% at 1 ms |
-| S3 | `JOLT_PROFILE=sample`, built binaries, fibers, Gambit degradation | smoke on a built binary; capability-tier rows |
+| S1 (done) | Per-thread tick scheduler; fibers and `run-interruptible` become clients | fiber, gosm and interrupt suites unchanged; yield A/B |
+| S2 (done) | Sampler, per-thread stack tables, `sample-report`, `write-folded` | exact-attribution fixtures (a known hot fn holds the majority of samples); overhead under 2% at 1 ms |
+| S3 (done) | `JOLT_PROFILE=sample`, built binaries, fibers, Gambit degradation | smoke on a built binary; capability-tier rows |
 | P1 | Reproducible build text | build twice, compare every unit |
 | P2 | `--profile-gen` / `--profile-use` with block profiles, profile in the unit cache key, stale-profile error | round trip on a fixture app; stale profile fails with the unit named |
 | P3 | Benchmarks; decide on source + block | both columns published |
 | P4 | jolt site profile, inlining budget, `case` order | stale-site counts; byte-identical output with and without the profile |
 | P5 | Receiver and number-kind profiles from inline caches, guarded speculation | divergence corpus run with a deliberately wrong profile |
+
+S1 measured a yield at 114 ns before and after (median of seven runs each,
+alternated). S2's overhead at 1 ms measured 1.4% on a loop, 1.6% on a recursive
+fib and 2.9% on an allocating `reduce`, so the allocation case misses the 2%
+target.
 
 ## Alternatives not taken
 
