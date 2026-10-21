@@ -71,6 +71,8 @@ Only code jolt compiles at runtime is instrumented: your namespaces and the libr
 - Counters are not atomic. Code running on several threads at once can lose increments.
 - Counters are available on the Chez backend. On a host without them, `instrument!` throws.
 
+A sampling profiler, which measures time rather than counts and needs no recompilation, and profile-guided builds are designed in [RFC 0015](/docs/rfc/0015-sampling-and-profile-guided-builds.html). Neither is available yet.
+
 ## Measuring time and allocation
 
 `measure` evaluates its body and returns the result with what it cost:
