@@ -18,4 +18,4 @@ a thing is built the way it is; the code is the source of truth for *how*.
 | [0012](/docs/rfc/0012-no-interpreter.html) | There is no interpreter | Implemented | Every entry point compiles to native code — `-e`, REPL, nREPL, `eval`, builds. |
 | [0013](/docs/rfc/0013-numeric-tower.html) | The numeric tower | Implemented | Host-native integers/ratios with a JVM-shaped class surface; lowering opts out per-site. |
 | [0014](/docs/rfc/0014-host-class-providers.html) | Host classes are provided by declaration | Implemented | `:jolt/provides` — a library declares the host classes it supplies; core names no library. |
-| [0015](/docs/rfc/0015-sampling-and-profile-guided-builds.html) | Sampling profiles and profile-guided builds | Draft | A per-thread timer owner, the sampler in `jolt.profile`, and `jolt build --profile-gen`/`--profile-use`. |
+| [0015](/docs/rfc/0015-sampling-and-profile-guided-builds.html) | Sampling profiles and profile-guided builds | Part 1 implemented | A per-thread timer owner, the sampler in `jolt.profile`, and `jolt build --profile-gen`/`--profile-use`. |
