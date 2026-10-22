@@ -204,7 +204,10 @@ when the code being recompiled is identical. Two consequences:
 - **The build has to be byte-reproducible, and it nearly is.** The build already
   caches one compiled unit per namespace keyed on the unit's text, which is why
   its name counters are per-namespace and per-phase rather than per-process. Tier 1 adds a gate: building the same sources twice produces
-  identical unit text. It also adds the profile's digest for each unit to that
+  identical unit text. (P1 found nothing to fix: cold and warm caches, and the
+  default, `--opt` and `--tree-shake` modes, already give identical text. Unit
+  file names still depend on the output path, so P2 compiles each unit under a
+  fixed name.) It also adds the profile's digest for each unit to that
   unit's cache key, so a profile-guided unit is never served from the plain
   cache or the other way round.
 
@@ -289,7 +292,7 @@ they are only claimed once measured.
 | S1 (done) | Per-thread tick scheduler; fibers and `run-interruptible` become clients | fiber, gosm and interrupt suites unchanged; yield A/B |
 | S2 (done) | Sampler, per-thread stack tables, `sample-report`, `write-folded` | exact-attribution fixtures (a known hot fn holds the majority of samples); overhead under 2% at 1 ms |
 | S3 (done) | `JOLT_PROFILE=sample`, built binaries, fibers, Gambit degradation | smoke on a built binary; capability-tier rows |
-| P1 | Reproducible build text | build twice, compare every unit |
+| P1 (done) | Reproducible build text | build twice, compare every unit |
 | P2 | `--profile-gen` / `--profile-use` with block profiles, profile in the unit cache key, stale-profile error | round trip on a fixture app; stale profile fails with the unit named |
 | P3 | Benchmarks; decide on source + block | both columns published |
 | P4 | jolt site profile, inlining budget, `case` order | stale-site counts; byte-identical output with and without the profile |
