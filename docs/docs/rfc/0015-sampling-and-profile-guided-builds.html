@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="keywords" content="jolt, jolt-lang, clojure, chez scheme, compiler">
+    <meta name="description" content="Jolt is a Clojure implementation on Scheme: Chez natively, Gambit for JavaScript. Self-hosted compiler, Clojure-compatible standard library, no JVM.">
+    <meta name="canonical" content="https://jolt-lang.github.io">
+    <title>RFC 0015: Sampling Profiles &amp; Profile-Guided Builds: Jolt</title>
+    <link rel="icon" type="image/svg+xml" href="/img/jolt.svg">
+    <link href="/css/highlight.css" rel="stylesheet" type="text/css" />
+    <link href="/css/screen.css" rel="stylesheet" type="text/css" />
+    
+  </head>
+  <body class="docs">
+    <nav class="site-nav">
+      <div class="inner">
+        <a href="/" class="brand" aria-label="Jolt home">
+          <img src="/img/jolt.svg" alt="Jolt logo" class="brand-logo">
+        </a>
+        <ul class="links">
+          <li ><a href="/">Home</a></li>
+          <li class="selected"><a href="/docs/getting-started.html">Docs</a></li>
+          <li ><a href="/docs/get-involved.html">Get Involved</a></li>
+          <li><a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">GitHub</a></li>
+        </ul>
+        <div class="nav-search" id="nav-search">
+          <button type="button" class="search-toggle" id="search-toggle" aria-label="Open search" aria-expanded="false">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+          </button>
+          <div class="search-popover">
+            <div class="search-field">
+              <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+              <input type="search" id="search-input" placeholder="Search docs" autocomplete="off" spellcheck="false" aria-label="Search documentation">
+              <kbd class="search-kbd">/</kbd>
+            </div>
+            <div class="search-results" id="search-results" role="listbox" aria-label="Search results" hidden></div>
+          </div>
+        </div>
+        <a class="btn btn-primary nav-cta" href="/docs/getting-started.html">Get Started</a>
+      </div>
+    </nav>
+
+    
+
+    
+<div class="docs-layout">
+  <aside class="docs-sidebar">
+    <button type="button" class="docs-sidebar-toggle" aria-expanded="false" aria-controls="docs-menu">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+      Menu
+    </button>
+    <div class="docs-menu" id="docs-menu">
+    <h3>Documentation</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/getting-started.html">Getting Started</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rationale.html">Rationale</a>
+      </li>
+      
+      <li >
+        <a href="/docs/differences.html">Differences from Clojure</a>
+      </li>
+      
+      <li >
+        <a href="/docs/building-and-deps.html">Building &amp; Running</a>
+      </li>
+      
+      <li >
+        <a href="/docs/repl-driven-development.html">REPL-Driven Development</a>
+      </li>
+      
+      <li >
+        <a href="/docs/writing-libraries.html">Writing Libraries</a>
+      </li>
+      
+      <li >
+        <a href="/docs/testing.html">Testing</a>
+      </li>
+      
+      <li >
+        <a href="/docs/host-interop.html">Host Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/cljc-interop.html">Cljc Interop</a>
+      </li>
+      
+      <li >
+        <a href="/docs/native-interop.html">Native Interop (FFI)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/scheme-backends.html">Scheme Backends</a>
+      </li>
+      
+      <li >
+        <a href="/docs/fibers.html">Fibers</a>
+      </li>
+      
+      <li >
+        <a href="/docs/extension-points.html">Extension Points</a>
+      </li>
+      
+      <li >
+        <a href="/docs/embedding-sci.html">Embedding SCI</a>
+      </li>
+      
+      <li >
+        <a href="/docs/numeric-performance.html">Numeric Performance</a>
+      </li>
+      
+      <li >
+        <a href="/docs/performance-idioms.html">Performance Idioms</a>
+      </li>
+      
+      <li >
+        <a href="/docs/libraries.html">Libraries</a>
+      </li>
+      
+      <li>
+        <a href="https://jlt-commons.github.io" target="_blank" rel="noopener">Community Libraries</a>
+      </li>
+    </ul>
+    
+    <h3>API Reference</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/api/deps.html">Dependencies (jolt.deps)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/infix.html">Infix Notation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/fs.html">File System (babashka.fs)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/reader.html">Reader Macros &amp; Interpolation</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/image.html">Program Images (jolt.image)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/time.html">Date &amp; Time (jolt-lang/time)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/ffi.html">Foreign Functions (jolt.ffi)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/continuations.html">Continuations (jolt.continuations)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/profile.html">Profiling (jolt.profile)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/api/util.html">Utilities (jolt.util)</a>
+      </li>
+      
+    </ul>
+    
+    
+    <h3>Reference &amp; Internals</h3>
+    <ul>
+      
+      <li >
+        <a href="/docs/errors.html">Error Reference</a>
+      </li>
+      
+      <li >
+        <a href="/docs/spec/README.html">Language Specification</a>
+      </li>
+      
+      <li >
+        <a href="/docs/tools-deps.html">deps.edn Internals</a>
+      </li>
+      
+      <li >
+        <a href="/docs/MODULES.html">Module Map (Contributors)</a>
+      </li>
+      
+      <li >
+        <a href="/docs/seed-overlay-registry.html">Seed &amp; Overlay Registry</a>
+      </li>
+      
+      <li >
+        <a href="/docs/rfc/README.html">RFCs (Design Notes)</a>
+      </li>
+      
+    </ul>
+    
+    </div>
+  </aside>
+
+  <main class="docs-main">
+    <h1>RFC 0015: Sampling Profiles &amp; Profile-Guided Builds</h1>
+    
+    <nav class="toc">
+      <h2>Contents</h2>
+      <ol class="contents"><li><a href="#rfc_0015_%E2%80%94_sampling_profiles_and_profile-guided_builds">RFC 0015 — Sampling profiles and profile-guided builds</a></li><li><a href="#summary">Summary</a></li><li><a href="#part_1%3A_sampling">Part 1: sampling</a><ol><li><a href="#where_a_sample_can_come_from">Where a sample can come from</a></li><li><a href="#the_timer_gets_one_owner">The timer gets one owner</a></li><li><a href="#taking_a_sample">Taking a sample</a></li><li><a href="#what_a_sampling_profile_does_not_show">What a sampling profile does not show</a></li><li><a href="#api">API</a></li></ol></li><li><a href="#part_2%3A_profile-guided_builds">Part 2: profile-guided builds</a><ol><li><a href="#tier_1_chez_block_profiles_for_jolt_build">Tier 1: Chez block profiles for jolt build</a></li><li><a href="#tier_2%3A_jolt%27s_passes_read_the_profile">Tier 2: jolt's passes read the profile</a></li></ol></li><li><a href="#measurement">Measurement</a></li><li><a href="#rounds">Rounds</a></li><li><a href="#alternatives_not_taken">Alternatives not taken</a></li></ol>
+    </nav>
+    
+    <div id="content">
+      <h1 id="rfc_0015_%E2%80%94_sampling_profiles_and_profile-guided_builds">RFC 0015 — Sampling profiles and profile-guided builds</h1><ul><li><strong>Status</strong>: Draft</li><li><strong>Champions</strong>: jolt maintainers</li><li><strong>Builds on</strong>: <code>jolt.profile</code> (execution counts), RFC 0007 (compilation modes)</li></ul><h2 id="summary">Summary</h2><p><code>jolt.profile</code> counts how often each line ran. Counts tell you where the code goes but not where the time goes, they only cover code compiled with instrumentation, and they slow down the code they measure. This RFC adds two things on top:</p><ol><li><strong>A sampling profiler.</strong> Every thread is interrupted at a fixed CPU-time   interval and its stack is recorded. It sees all code, including the runtime,   <code>clojure.core</code>, AOT-cached namespaces and built binaries. It needs no   recompilation and costs about one percent while it runs.</li><li><strong>Profile-guided builds.</strong> <code>jolt build --profile-gen</code> makes an instrumented   binary that writes a profile when it exits. <code>jolt build --profile-use</code> feeds   that profile back into the compiler. The first tier uses Chez Scheme's own   block-profile optimizations: basic-block layout and register allocation. A   second tier lets jolt's own passes read the profile, keyed by Clojure source.</li></ol><p>A profile only ever changes how fast the code runs. It never changes what the code does.</p><h2 id="part_1%3A_sampling">Part 1: sampling</h2><h3 id="where_a_sample_can_come_from">Where a sample can come from</h3><p>Chez gives a running thread three ways to be interrupted, and all three are polled at the same safe points: procedure calls and loop back-edges.</p><div class="table-scroll"><table><thead><tr><th>Mechanism</th><th>Reaches</th><th>Already used by</th></tr></thead><tbody><tr><td>Engine timer (<code>set-timer</code>, <code>timer-interrupt-handler</code>)</td><td>the thread that armed it</td><td>fiber preemption, <code>run-interruptible</code></td></tr><tr><td>Signals (<code>register-signal-handler</code>)</td><td>the <strong>main thread only</strong>; Chez forwards a signal that lands on any other thread to the main one</td><td>—</td></tr><tr><td>Keyboard interrupt</td><td>the thread whose pending flag is set</td><td>SIGINT handling</td></tr></tbody></table></div><p>The only mechanism that reaches every thread is the engine timer. A SIGPROF profiler would see nothing a future, an agent, a <code>go</code> block or an nREPL session runs. Setting another thread's pending flags directly works the way the Chez collector does it, but it relies on internal fields and would compete with SIGINT. So sampling rides the engine timer.</p><h3 id="the_timer_gets_one_owner">The timer gets one owner</h3><p>The timer is a single per-thread resource that two clients already share by hand. <code>run-interruptible</code> saves the scheduler's handler, installs its own, counts the ticks it borrows so a fiber's quantum still falls due, and hands everything back through a <code>dynamic-wind</code> so that a park cannot leak the borrow. The comments around that code record three separate bugs in that handoff. A third client written the same way would need a third copy of the accounting.</p><p>So the first round adds no profiler. It replaces the ad-hoc borrowing with a <strong>per-thread tick scheduler</strong> that owns <code>timer-interrupt-handler</code> and <code>set-timer</code>:</p><ul><li>A client registers a <em>demand</em>: a callback and a number of ticks until it is  next due. The scheduler arms the smallest outstanding demand.</li><li>When the timer fires, the scheduler subtracts the ticks that elapsed from every  demand and runs the clients that are due, in a fixed order. The sampler runs  first because it only records and always returns. The interrupt check comes  next, and it may escape. Preemption comes last, and it may switch fibers.</li><li>Refusing is part of the protocol. A client that cannot act yet (a lock is held,  a transition is committed) re-registers with a short retry, as the preemption  handler already does.</li><li>The fiber scheduler, <code>run-interruptible</code> and the sampler all become clients.  The <code>borrowed</code>/<code>armed</code> accounting in <code>jolt-run-interruptible</code> goes away,  because the scheduler does that accounting once for everyone.</li></ul><p><strong>Cost rule.</strong> With only the preemption client registered, arming must stay a single <code>set-timer</code>. The current yield cost (243 ns with preemption on) is the ceiling. This round is a refactor with no behavior change, and the fiber, gosm and interrupt suites gate it unchanged.</p><h3 id="taking_a_sample">Taking a sample</h3><p>The sampler registers a short demand: on the order of 10,000 ticks, which is about 5 µs on the machine the fiber quantum was measured on. Each time it is due, it reads the thread's CPU clock (<code>&#40;current-time 'time-thread&#41;</code>). It takes a sample only once the configured interval has passed, 1 ms by default. Ticks count calls rather than time, so this check is what makes the profile time-weighted. Most firings are just a clock read and return.</p><p>A sample is:</p><ul><li><strong>the stack.</strong> The handler captures its continuation and walks the frames, up  to a depth cap (64 by default; deeper stacks keep the innermost frames and are  marked truncated). It records each frame's code object and return offset, not  names. Names, namespaces and lines are resolved at report time, through the  same source registry that error reports use. Nothing retains the  continuation, so a sample does not keep the stack's heap alive.</li><li><strong>the weight.</strong> The thread CPU time since the previous sample. Time a thread  spends in a foreign call shows up on its return, in the frame that made the  call, which is where it belongs.</li><li><strong>GC time.</strong> Collector CPU time from the <code>sstats</code> delta since the previous  sample, charged to a <code>&#91;gc&#93;</code> pseudo-frame.</li><li><strong>the thread.</strong> The thread id and, on a carrier, the fiber. Scheduler frames  below the fiber's own stack are dropped.</li></ul><p>Samples go into a per-thread buffer: a preallocated ring with no locks and nothing shared between threads. Buffers are merged when the profile is read. When a ring is full, the oldest samples are overwritten and the count of dropped samples is reported.</p><h3 id="what_a_sampling_profile_does_not_show">What a sampling profile does not show</h3><ul><li><strong>Tail-called frames.</strong> Proper tail calls (RFC 0011) erase the caller's frame,  so a stack shows the non-tail spine, as <code>perf</code> shows it on optimized C. The  call-site tables that rebuild tail chains for error reports could later fill  these gaps in reports too. That is not in the first version.</li><li><strong>Blocked threads.</strong> This is a CPU profile. A thread waiting on a lock, a  channel or a socket uses no CPU and gets no samples. A wall-clock mode that  also samples blocked threads is a separate design.</li><li><strong>Time between safe points.</strong> A sample lands at the next poll after the  interval ends. Chez polls at every non-leaf call and every loop back-edge, so  the skew is small. It does mean a hot leaf is attributed to the frame that  called it.</li></ul><h3 id="api">API</h3><p>The sampler lives in <code>jolt.profile</code>, next to the counters. The data is in the same shapes, so the two can be compared directly.</p><pre><code class="clojure">&#40;prof/sample! {:interval-ms 1}&#41;   ; start sampling every thread
+&#40;my.app/run&#41;
+&#40;prof/stop-sampling!&#41;
+&#40;prof/sample-report&#41;              ; fns and lines by self and total time
+&#40;prof/write-folded &quot;app.folded&quot;&#41;  ; collapsed stacks for flame graph tools
+
+&#40;prof/with-sampling {:interval-ms 1}
+  &#40;my.app/run&#41;&#41;                   ; =&gt; {:result ... :samples ...}
+</code></pre><p><code>sample-counts</code> returns <code>{:fn :file :line :self-ms :total-ms :samples}</code> per fn. <code>write-folded</code> writes the collapsed-stack format (<code>a;b;c 123</code>) that <code>flamegraph.pl</code> and speedscope read. For a whole run, <code>JOLT&#95;PROFILE=sample jolt run -m my.app</code> prints the report on stderr at exit, like <code>JOLT&#95;PROFILE=1</code>. The same variable works on a built binary, because the sampler needs the runtime and not the compiler.</p><p>On a host without an engine timer, <code>sample!</code> throws <code>{:host :unsupported}</code> in the capability-profile tier, the way <code>instrument!</code> does.</p><h2 id="part_2%3A_profile-guided_builds">Part 2: profile-guided builds</h2><h3 id="tier_1_chez_block_profiles_for_jolt_build">Tier 1: Chez block profiles for <code>jolt build</code></h3><p>Chez can instrument every basic block (<code>compile-profile 'block</code>), write the counts (<code>profile-dump-data</code>), and later load them (<code>profile-load-data</code>) so that the next compile of the <strong>same</strong> code pushes cold blocks out of line and gives registers to the variables used on hot paths. Source-level weights also raise the loop unrolling limit for hot loops and order <code>case</code> clauses by how often they matched.</p><pre><code class="sh">jolt build --profile-gen -m my.app -o app-gen
+./app-gen &lt; workload-1 ; ./app-gen &lt; workload-2   # each run writes app.jpd.N
+jolt build --profile-use app.jpd.&#42; -m my.app -o app
+</code></pre><p>The constraint that decides the design: Chez matches profile data to code by source file descriptor (CRC, length and file name), and block data only lines up when the code being recompiled is identical. Two consequences:</p><ul><li><strong>The runtime eval path cannot take part.</strong> It names each compiled form  <code>jolt-eval-src-N</code> from a per-process counter, so nothing it compiles has the  same descriptor twice. Tier 1 is for <code>jolt build</code> only.</li><li><strong>The build has to be byte-reproducible, and it nearly is.</strong> The build already  caches one compiled unit per namespace keyed on the unit's text, which is why  its name counters are per-namespace and per-phase rather than per-process. Tier 1 adds a gate: building the same sources twice produces  identical unit text. It also adds the profile's digest for each unit to that  unit's cache key, so a profile-guided unit is never served from the plain  cache or the other way round.</li></ul><p>The runtime and <code>clojure.core</code> are compiled as part of the build, so they are profiled and optimized for the application's workload too. The source-level counters in <code>jolt.profile</code> cannot do that, because they stop at the boundary of code compiled at runtime.</p><p><strong>Stale profiles.</strong> When the sources change, a profile from the old build no longer lines up, and Chez raises. <code>--profile-use</code> turns that into a build error that names the unit and says to regenerate the profile. A profile that is silently partly applied would make the build's speed depend on how stale it is, which is harder to diagnose than a failed build.</p><p><strong>Order of rounds.</strong> Block profiles come first, because they need one generate/use cycle. Using source and block weights together needs the source profile loaded before <em>both</em> the block-generating compile and the final one (the five-step sequence in the Chez User's Guide). It is a second round, and it ships only if the benchmarks show the unrolling and <code>case</code> ordering are worth the extra cycle.</p><h3 id="tier_2%3A_jolt%27s_passes_read_the_profile">Tier 2: jolt's passes read the profile</h3><p>Chez sees Scheme. Some of the most useful decisions are made before Scheme exists: what to inline, which dispatch to specialize, which arithmetic to type. Tier 2 writes a jolt profile keyed by <strong>Clojure source</strong>, not by emitted text:</p><pre><code class="clojure">{:version 1
+ :sites {&#91;&quot;my/app.clj&quot; 12 5 form-hash&#93; {:hits 1973 :receivers {&quot;my.app.Circle&quot; 1973}}}}
+</code></pre><p>A site is identified by its file, line, column, and a hash of the form as read. An edit elsewhere in the file leaves the site's entry valid. An edit to the form itself invalidates only that entry. <code>--profile-use</code> reports how many sites matched and how many were stale, and ignores the stale ones. Unlike tier 1, a partly stale profile is safe here, because each site's decision is independent.</p><p>The data comes from what already exists: <code>jolt.profile</code> counts give <code>:hits</code>, and the per-site inline caches that protocol dispatch, <code>instance?</code> and keyword lookup already keep give the observed receiver types. Dumping cache states at exit produces a type profile at no extra cost while the program runs.</p><p>Consumers, in the order they would be built:</p><ol><li><strong>Inlining budget.</strong> Hot call sites get a larger budget and cold ones get   none. The inliner roughly doubles build memory today, so this should make   builds smaller as well as faster.</li><li><strong><code>case</code> dispatch order.</strong> Clojure <code>case</code> tests constants with no side   effects, so ordering the tests by hit count is invisible to the program.   <code>cond</code> keeps its order: its tests can have effects.</li><li><strong>Guarded speculation.</strong> A protocol call, keyword lookup or arithmetic site   that only ever saw one receiver type or one number kind compiles to a guard,   then the specialized path, then the generic path as fallback. Whole-program   inference already does this where it can <em>prove</em> the type. The profile   extends it to sites where the type was only <em>observed</em>, and the guard keeps   the program correct when the observation is wrong.</li></ol><p>Every tier-2 transformation stays correct for inputs the profile never saw. That is a review rule for each consumer: a decision the profile drives must still be correct if the profile is wrong.</p><h2 id="measurement">Measurement</h2><p>Each round reports both columns in one session (with and without, A/B/A), against <code>bench/run.sh</code> plus the ray tracer and honeysql workloads, and the gates check scaling ratios within one process instead of absolute times. Two rules come from the existing performance ceiling:</p><ul><li>The timer refactor must not slow a yield or a preemption by more than 1.1x.</li><li><code>--profile-use</code> must not make any benchmark slower than the plain build. A  profile that makes code slower is a bug in the consumer, not noise.</li></ul><p>Expectations are modest on purpose. Block-level PGO usually buys a few percent; the larger wins, if there are any, are in tier 2's inlining and speculation, and they are only claimed once measured.</p><h2 id="rounds">Rounds</h2><div class="table-scroll"><table><thead><tr><th>Round</th><th>Delivers</th><th>Gate</th></tr></thead><tbody><tr><td>S1</td><td>Per-thread tick scheduler; fibers and <code>run-interruptible</code> become clients</td><td>fiber, gosm and interrupt suites unchanged; yield A/B</td></tr><tr><td>S2</td><td>Sampler, per-thread rings, <code>sample-report</code>, <code>write-folded</code></td><td>exact-attribution fixtures (a known hot fn holds the majority of samples); overhead under 2% at 1 ms</td></tr><tr><td>S3</td><td><code>JOLT&#95;PROFILE=sample</code>, built binaries, fibers, Gambit degradation</td><td>smoke on a built binary; capability-tier rows</td></tr><tr><td>P1</td><td>Reproducible build text</td><td>build twice, compare every unit</td></tr><tr><td>P2</td><td><code>--profile-gen</code> / <code>--profile-use</code> with block profiles, profile in the unit cache key, stale-profile error</td><td>round trip on a fixture app; stale profile fails with the unit named</td></tr><tr><td>P3</td><td>Benchmarks; decide on source + block</td><td>both columns published</td></tr><tr><td>P4</td><td>jolt site profile, inlining budget, <code>case</code> order</td><td>stale-site counts; byte-identical output with and without the profile</td></tr><tr><td>P5</td><td>Receiver and number-kind profiles from inline caches, guarded speculation</td><td>divergence corpus run with a deliberately wrong profile</td></tr></tbody></table></div><h2 id="alternatives_not_taken">Alternatives not taken</h2><ul><li><strong>SIGPROF with <code>setitimer</code>.</strong> It needs no timer work, but Chez only delivers  signals to the main thread, so most of what a server or a core.async program  does would never be sampled.</li><li><strong>An OS profiler (<code>perf</code>, Instruments) with a symbol map.</strong> It sees native  frames and blocked threads, but Chez code objects move during collection and  carry no symbols the OS can read. Keeping a symbol map current across every GC  costs more than the in-process sampler, and it still cannot name Clojure lines.</li><li><strong>Feeding Chez source profiles from the runtime eval path.</strong> The per-form  descriptor names differ in every process, so the profile database would never  match. Tier 2 keys by Clojure source because that is what stays the same  between runs.</li></ul>
+    </div>
+  </main>
+</div>
+
+
+    <footer>
+      <p>
+        Jolt is <a href="https://github.com/jolt-lang/jolt" target="_blank" rel="noopener">open source</a>
+        under the <a href="https://opensource.org/licenses/EPL-1.0" target="_blank" rel="noopener">Eclipse Public License 1.0</a>,
+        and runs on <a href="https://cisco.github.io/ChezScheme/" target="_blank" rel="noopener">Chez Scheme</a>.
+      </p>
+    </footer>
+
+    <script src="/js/highlight.pack.js" type="application/javascript"></script>
+    <script src="/js/site.js" type="application/javascript"></script>
+    <script src="/js/lunr.min.js" type="application/javascript"></script>
+    <script src="/js/search.js" type="application/javascript"></script>
+    
+<script src="/js/docs.js" type="application/javascript"></script>
+
+  </body>
+</html>
