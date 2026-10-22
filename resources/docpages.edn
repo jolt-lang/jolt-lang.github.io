@@ -29,6 +29,7 @@
   ["api/ffi.md"                    "Foreign Functions (jolt.ffi)"      "api"]
   ["api/parser.md"                 "Parser Combinators (jolt.parser)"  "api"]
   ["api/continuations.md"          "Continuations (jolt.continuations)" "api"]
+  ["api/profile.md"                "Profiling (jolt.profile)"          "api"]
   ["api/util.md"                   "Utilities (jolt.util)"             "api"]
 
   ["errors.md"                    "Error Reference"                    "reference"]
@@ -57,4 +58,5 @@
   ["rfc/0011-tail-calls-are-guaranteed.md"       "RFC 0011: Tail Calls Are Guaranteed"     "page"]
   ["rfc/0012-no-interpreter.md"                  "RFC 0012: There Is No Interpreter"       "page"]
   ["rfc/0013-numeric-tower.md"                   "RFC 0013: The Numeric Tower"             "page"]
-  ["rfc/0014-host-class-providers.md"           "RFC 0014: Host Classes Are Provided by Declaration" "page"]]
+  ["rfc/0014-host-class-providers.md"           "RFC 0014: Host Classes Are Provided by Declaration" "page"]
+  ["rfc/0015-sampling-and-profile-guided-builds.md" "RFC 0015: Sampling Profiles & Profile-Guided Builds" "page"]]
