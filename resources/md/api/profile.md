@@ -71,7 +71,9 @@ Code that runs as a namespace loads (each `defn` form, top-level calls) counts t
 Only code jolt compiles at runtime is instrumented: your namespaces and the libraries they load from source. The runtime and the stdlib compiled into the jolt binary are not, so a call into `clojure.core` counts as one evaluation of the expression that makes it.
 
 - While instrumentation is on, namespaces load from source instead of the AOT cache, and instrumented code runs slower than normal code. Use the counts to compare parts of a program, not to time it.
-- Counters are not atomic. Code running on several threads at once can lose increments.
+- Counters are not atomic. Counts are exact for code running on one thread, but code running on several threads at once loses increments, often most of them.
+- A method of a `defrecord`, `deftype`, `extend-type` or `extend-protocol` is reported as `my.app/Type.method`, and a `defmethod` body as `my.app/multi[:dispatch-value]`.
+- Code that is compiled and then dropped, such as an `eval` in a loop, keeps its counts after the collector reclaims it.
 - Counters are available on the Chez backend. On a host without them, `instrument!` throws.
 
 ## Sampling
