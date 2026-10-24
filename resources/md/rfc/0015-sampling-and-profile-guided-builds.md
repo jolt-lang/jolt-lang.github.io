@@ -333,11 +333,12 @@ branch-heavy code: fib 0.74 to 0.78, tak and `loop`/`recur` 0.87, binary-trees
 0.83 to 0.94, the ray tracer 0.79 to 0.94, protocol and collection dispatch
 0.86 to 0.93, and honey.sql 0.93 to 0.98. Allocation- and IO-bound programs
 were at 1.00, and single rows moved by up to 0.1 between runs. One benchmark,
-`nth-access`, read 1.11 to 1.13 in two of three runs, on runners where its plain
-build took about 51 ms; with eleven runs a side on a runner where it took 27 ms
-it read 0.99, and on an Apple M-series machine 1.00 in every run. By the rule
-above that is not noise until shown to be: it is open, and P4 checks it first,
-since `nth` is the runtime dispatch a block profile reorders. A `--profile-use` build took 25 to 48 seconds
+`nth-access`, read 1.11 to 1.13 in every run that landed on a runner where its
+plain build took about 51 ms (three of five), and 0.99 on the faster runners,
+where it took 27 ms (eleven runs a side in one of them). On an Apple M-series
+machine it read 1.00 every time. So it is slower under a profile on one CPU
+class, which by the rule above is a bug in the consumer: it is open, and P4
+looks at it first, since `nth` is runtime dispatch a block profile reorders. A `--profile-use` build took 25 to 48 seconds
 against 2 to 28 plain, almost all of it Chez loading the runtime's block data.
 
 ## Alternatives not taken
