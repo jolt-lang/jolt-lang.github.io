@@ -211,14 +211,26 @@ when the code being recompiled is identical. Two consequences:
   unit's cache key, so a profile-guided unit is never served from the plain
   cache or the other way round.
 
+**The dump format.** Chez's `profile-dump-data` writes every block with its
+whole source descriptor and record type, about 370 bytes a block. The runtime
+has 680,000 blocks, so that is 255 MB a run, and it needs the compiler in the
+binary. P2 writes its own format instead, three numbers a block (9 MB), and
+converts one unit's data to Chez's format just before that unit compiles.
+Loading the runtime's data still costs Chez about 20 seconds, which the
+runtime cache keeps to the first build with a given profile.
+
 The runtime and `clojure.core` are compiled as part of the build, so they are
 profiled and optimized for the application's workload too. The source-level
 counters in `jolt.profile` cannot do that, because they stop at the boundary of
 code compiled at runtime.
 
 **Stale profiles.** When the sources change, a profile from the old build no
-longer lines up, and Chez raises. `--profile-use` turns that into a build error
-that names the unit and says to regenerate the profile. A profile that is
+longer matches. Chez does not raise for that: it matches data to code by the
+checksum of the text and compiles text with no match as if there were no
+profile. It raises only when the text matches and the blocks do not line up.
+So `--profile-use` loads each unit's data itself and fails, naming the unit,
+when there is none, and the dump records the build mode so a profile from
+another mode is refused before anything compiles. A profile that is
 silently partly applied would make the build's speed depend on how stale it is,
 which is harder to diagnose than a failed build.
 
@@ -293,7 +305,7 @@ they are only claimed once measured.
 | S2 (done) | Sampler, per-thread stack tables, `sample-report`, `write-folded` | exact-attribution fixtures (a known hot fn holds the majority of samples); overhead under 2% at 1 ms |
 | S3 (done) | `JOLT_PROFILE=sample`, built binaries, fibers, Gambit degradation | smoke on a built binary; capability-tier rows |
 | P1 (done) | Reproducible build text | build twice, compare every unit |
-| P2 | `--profile-gen` / `--profile-use` with block profiles, profile in the unit cache key, stale-profile error | round trip on a fixture app; stale profile fails with the unit named |
+| P2 (done) | `--profile-gen` / `--profile-use` with block profiles, profile in the unit cache key, stale-profile error | round trip on a fixture app; stale profile fails with the unit named |
 | P3 | Benchmarks; decide on source + block | both columns published |
 | P4 | jolt site profile, inlining budget, `case` order | stale-site counts; byte-identical output with and without the profile |
 | P5 | Receiver and number-kind profiles from inline caches, guarded speculation | divergence corpus run with a deliberately wrong profile |
