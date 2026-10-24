@@ -521,6 +521,25 @@ The flag forces the cc-linked build path. A self-contained jolt — the distribu
 
 `--library` output is always structurally complete, and a `--target` cross-compile already takes this path, so the flag affects neither.
 
+### Profile-guided builds
+
+A profile-guided build is two builds with runs of the program in between. The first, with `--profile-gen`, counts how often every basic block of the app and of the runtime runs. The second, with `--profile-use`, compiles the same sources with those counts, so Chez lays each function's hot blocks out first and gives their variables the registers.
+
+```bash
+jolt build -m my.app -o target/my-app-gen --profile-gen
+./target/my-app-gen < workload-1      # writes my-app-gen-PID.jpd
+./target/my-app-gen < workload-2
+jolt build -m my.app -o target/my-app --profile-use my-app-gen-*.jpd
+```
+
+- Each run writes its counts as it exits, to `NAME-PID.jpd` in the directory it ran in, or to `$JOLT_PROFILE_DATA`. Give `--profile-use` every run's file, and runs that exercise different paths are averaged.
+- The profile fits only the code it was taken from. If a namespace changes, `--profile-use` fails and names it; run `--profile-gen` again. A profile from a release build does not fit an `--opt` build, and the build says so.
+- Profiled and plain units never share a cache entry. A `--profile-use` build compiles more than a plain one: loading the runtime's block data takes Chez about 20 seconds, and the result is cached for the next build with the same profile.
+- A `--profile-gen` binary runs slower than a plain one and starts slower, since it boots without the vfasl image. Use it for the runs and nothing else.
+- Profile-guided builds compile in process, so they are available for executables built for the machine you are on: not with `--library`, `--target` or `--dev`.
+
+Block-level profiles usually buy a few percent. Measure your own program before and after.
+
 ### Typed arithmetic and inference
 
 Numeric code compiles to raw Chez flonum/fixnum operations (`fl*`, `fx+`) when
