@@ -241,6 +241,13 @@ five-step sequence in the Chez User's Guide). It is a second round, and it ships
 only if the benchmarks show the unrolling and `case` ordering are worth the
 extra cycle.
 
+P3 decided against it for now. Block profiles alone gave about 5% (below), and
+what source weights add overlaps with tier 2: P4 orders `case` by jolt's own
+site counts and sets the inlining budget, with a profile that survives edits.
+A second Chez cycle would also add another load of the runtime's data to a
+build that already spends most of its time there. Source weights come back as
+an option if P4 leaves hot loops on the table.
+
 ### Tier 2: jolt's passes read the profile
 
 Chez sees Scheme. Some of the most useful decisions are made before Scheme
@@ -306,7 +313,7 @@ they are only claimed once measured.
 | S3 (done) | `JOLT_PROFILE=sample`, built binaries, fibers, Gambit degradation | smoke on a built binary; capability-tier rows |
 | P1 (done) | Reproducible build text | build twice, compare every unit |
 | P2 (done) | `--profile-gen` / `--profile-use` with block profiles, profile in the unit cache key, stale-profile error | round trip on a fixture app; stale profile fails with the unit named |
-| P3 | Benchmarks; decide on source + block | both columns published |
+| P3 (done) | Benchmarks; decide on source + block | both columns published |
 | P4 | jolt site profile, inlining budget, `case` order | stale-site counts; byte-identical output with and without the profile |
 | P5 | Receiver and number-kind profiles from inline caches, guarded speculation | divergence corpus run with a deliberately wrong profile |
 
@@ -314,6 +321,25 @@ S1 measured a yield at 114 ns before and after (median of seven runs each,
 alternated). S2's overhead at 1 ms measured 1.4% on a loop, 1.6% on a recursive
 fib and 2.9% on an allocating `reduce`, so the allocation case misses the 2%
 target.
+
+P3 measured block profiles with `ci/pgo-bench.sh` on GitHub's ubuntu-latest
+runners: each of the 46 `bench/run.sh` programs, the ray tracer's two variants
+and a honey.sql format loop, built plain and with `--profile-use`, in the
+release and `--opt` modes, timed alternately on one runner, min of three runs a
+side. The profile was trained on the timed input, which is the best case. Two
+full runs gave geomean ratios (profiled over plain) of 0.91 to 0.98 per shard,
+about 0.95 overall, in both modes. The gains that repeated were in call- and
+branch-heavy code: fib 0.74 to 0.78, tak and `loop`/`recur` 0.87, binary-trees
+0.83 to 0.94, the ray tracer 0.79 to 0.94, protocol and collection dispatch
+0.86 to 0.93, and honey.sql 0.93 to 0.98. Allocation- and IO-bound programs
+were at 1.00, and single rows moved by up to 0.1 between runs. One benchmark,
+`nth-access`, read 1.11 to 1.13 in every run that landed on a runner where its
+plain build took about 51 ms (three of five), and 0.99 on the faster runners,
+where it took 27 ms (eleven runs a side in one of them). On an Apple M-series
+machine it read 1.00 every time. So it is slower under a profile on one CPU
+class, which by the rule above is a bug in the consumer: it is open, and P4
+looks at it first, since `nth` is runtime dispatch a block profile reorders. A `--profile-use` build took 25 to 48 seconds
+against 2 to 28 plain, almost all of it Chez loading the runtime's block data.
 
 ## Alternatives not taken
 
