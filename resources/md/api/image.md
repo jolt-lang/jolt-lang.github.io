@@ -84,6 +84,8 @@ An open resource — a port, a thread — cannot travel as itself. Three ways to
 - **A function the runtime built rather than analyzed** — there is no source form to rebuild it from. Functions you wrote travel, and so do `clojure.core`'s: the closures `partial`, `comp`, `memoize` and `juxt` return are ordinary registered literals.
 - **Restoring closures needs the compiler**: a tree-shaken build that dropped it refuses closure-bearing images up front.
 
+The `java.util` collections Jolt ships travel with their contents in order and their class: `HashMap`, `HashSet`, `Properties`, `LinkedHashMap` (its access order too), `TreeMap` and `TreeSet` (their comparator too), `EnumSet`, `EnumMap`, the lists, deques and blocking queues, `StringBuilder` and the arrays; a collection that holds itself comes back as one. An enum constant travels as its class and name and restores as the live constant, so `identical?` still holds. A view or an entry of another collection (a `keySet`, a sub-map, an `EnumMap` entry), an iterator, a thread, an executor or task, and an open stream are refused naming their class: write the collection, or what the stream holds, instead.
+
 Lazy sequences travel unforced and stay lazy — an infinite one keeps generating after a restore, and a side effect that had not run still has not. Multimethods, `reify` instances and namespaces travel as their name and come back as the live object.
 
 An image survives a change of machine and architecture, but not a Chez upgrade or an incompatible rebuild of your application — `read-image` and `restore-world!` check the header and refuse with the reason, rather than reading stale data.
