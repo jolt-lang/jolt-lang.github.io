@@ -29,7 +29,7 @@ This is the surface today, not the whole JVM. Methods not listed generally aren'
 
 - **`String`** statics: `valueOf`, `format` (the `clojure.core/format` engine). `format` speaks `java.util.Formatter`: every conversion (`%d %s %S %b %h %c %x %o %e %E %f %g %G %a %%  %n` and the `%t` date family), flags (`- # + 0 , (` and a space), width, precision (truncation on `%.3s`), argument indexes (`%2$s`, `%<s`), and it refuses what the JVM refuses with the same exception class and message (a flag on the wrong conversion, a duplicate flag, `-` with no width, a missing argument).
 - **`StringBuilder`**: `append` `toString` `length` `charAt` `setLength`.
-- **`java.util.ArrayList` / `HashMap`**: the mutable `add`/`get`/`put`/`size`/`remove`/`keySet`/… surface. A `java.util` mutator called on one of Clojure's immutable collections is `UnsupportedOperationException`, as on the JVM (`removeIf` only once its predicate matches).
+- **`java.util.ArrayList` / `HashMap`**: the mutable `add`/`get`/`put`/`size`/`remove`/`keySet`/… surface. `LinkedHashMap` and `LinkedHashSet` keep insertion order with O(1) operations and JDK 21's sequenced methods (`putFirst`, `pollLastEntry`, `reversed`, `addFirst`, …); an access-ordered map (`(LinkedHashMap. 16 0.75 true)`) moves what `get` and `put` reach to the tail and asks `removeEldestEntry` after each new mapping, so `(proxy [java.util.LinkedHashMap] [16 0.75 true] (removeEldestEntry [e] (> (count this) 100)))` is an LRU cache. `EnumSet` and `EnumMap` are there too (see [Declaring an enum](#declaring_an_enum)). A `java.util` mutator called on one of Clojure's immutable collections is `UnsupportedOperationException`, as on the JVM (`removeIf` only once its predicate matches).
 - **`java.util.concurrent`**: `Executors` / `ThreadPoolExecutor` / `FutureTask`, `ArrayBlockingQueue` / `LinkedBlockingQueue` (blocking `put`/`take`, timed `offer`/`poll`, the `Collection` half, a capacity below 1 refused at construction), `TimeUnit`, `atomic.*`, `ConcurrentHashMap`, `ThreadLocal` / `InheritableThreadLocal` (a plain `ThreadLocal` is per thread; only the inheritable one hands a forked thread its parent's value).
 - **`java.util.regex.Pattern` / `Matcher`**: `compile` (with flags), `quote`, `.split`, `.pattern`; a `Matcher`'s `find` (and `find(int)`), `matches`, `lookingAt`, `group`, `start`/`end`, `region`, `reset`. The engine reads Java's grammar — `\p{…}` classes (Unicode category names are real categories, the POSIX names are ASCII), the line-terminator set `\n \r \r\n NEL LS PS` for `.` `^` `$` with `(?d)` narrowing it to `\n`, `(?i)(?m)(?s)(?x)`, look-around, atomic groups, back-references, `\Q…\E`. Group-free patterns compile to a DFA on a bounded work budget; past it (a 50-way alternation with `.*` branches) the backtracking matcher, which is `java.util.regex`'s own engine, takes over.
 - **`java.io.File`**: construction plus `getPath` `getName` `getAbsolutePath` `getCanonicalPath` `exists` `isDirectory` `listFiles` `toURI` (an existing directory's ends in `/`) …; **`java.nio.file`** `Path` / `Paths` / `Files` (read, write, size, attributes, `createFile`, `walk`, `PathMatcher`).
@@ -150,6 +150,47 @@ only statics: fields and static methods, again keyed by string name:
   {"getEncoder" (fn [] my-encoder)})         ; Base64/getEncoder
 ;; then Name/FIELD reads a field, (Name/method …) calls a static method
 ```
+
+### Declaring an enum
+
+An enum class is more than its constants: the JVM gives every one `values` and
+`valueOf`, and `java.lang.Enum` gives every constant `name`, `ordinal`,
+`compareTo` and friends. Declare the class with `jolt.host/register-enum!`,
+handing it the constants in the JDK's declaration order, and Jolt supplies all
+of that:
+
+```clojure
+(deftype Suit [label])
+(def hearts (->Suit "♥"))
+(def spades (->Suit "♠"))
+
+(jolt.host/register-enum! "user.Suit" [["HEARTS" hearts] ["SPADES" spades]])
+
+user.Suit/SPADES                     ;=> the constant, by identity
+(user.Suit/valueOf "HEARTS")         ;=> hearts
+(user.Suit/values)                   ;=> a fresh user.Suit/1 array each call
+(.ordinal spades)                    ;=> 1
+(.compareTo hearts spades)           ;=> -1
+(Enum/valueOf (class hearts) "SPADES") ;=> spades
+(.isEnum (class hearts))             ;=> true
+(java.util.EnumSet/allOf (class hearts)) ;=> an EnumSet over both
+```
+
+A constant is whatever value you already use for it: a `deftype`, a tagged
+table, anything with a stable identity. Its own methods win, so a `toString` or
+`compareTo` your type defines is the one that answers, and Enum's methods fill
+in only what it leaves out. A constant prints the JVM's way,
+`#object[user.Suit 0x1b2c3d4e "HEARTS"]`, and `str` is its name, unless the type
+defines `toString` or your library registers its own printing for it. `valueOf` refuses an unknown name with the JVM's
+`IllegalArgumentException` ("No enum constant user.Suit.CLUBS") and a nil one
+with `NullPointerException`.
+
+The values must report the class you name (`(class hearts)` above is
+`user.Suit`), and each must be one object for the life of the program: a
+constructor that hands back a new, equal object each time breaks `identical?`,
+`valueOf` and `EnumSet` membership alike. Build the constants once and return
+them. The java.time enums Jolt ships (`Month`, `DayOfWeek`, `ChronoUnit`,
+`ChronoField`) are declared this way.
 
 ### Fitting a class into the hierarchy
 
@@ -295,6 +336,7 @@ tagged-table, hierarchy and class-extension seams live in `jolt.host`:
 - `(__register-class-methods! :your-tag {"method" (fn [self args…] …)})`: `(.method obj args…)` on a value tagged `:your-tag`
 - `(__register-instance-check! (fn [class-name-str v] true|false|nil))`: `(instance? pkg.Name v)`
 - `(jolt.host/register-class-supers! "pkg.Name" ["pkg.Super" "pkg.Iface" …])`: hierarchy for `isa?`/`ancestors`
+- `(jolt.host/register-enum! "pkg.Name" [["CONST" v] …])`: an enum class, with `values`, `valueOf`, `Enum/valueOf` and Enum's methods
 - `(jolt.host/extend-class! "pkg.Name" {:methods {…} :statics {…} :ctor f :override bool})`: add to — or replace — a shim Jolt already has
 - `jolt.host/tagged-table`, `jolt.host/ref-put!`, `jolt.host/ref-get`, `jolt.host/table?`: build and read a stateful wrapper
 
