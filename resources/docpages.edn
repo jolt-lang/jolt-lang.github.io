@@ -6,6 +6,7 @@
  ["rationale.md"                   "Rationale"                         "topic"]
  ["differences.md"                 "Differences from Clojure"          "topic"]
   ["building-and-deps.md"          "Building & Running"                "topic"]
+  ["embedded-resources.md"         "Embedded Resources"                "topic"]
   ["repl-driven-development.md"    "REPL-Driven Development"           "topic"]
   ["writing-libraries.md"          "Writing Libraries"                 "topic"]
   ["testing.md"                    "Testing"                           "topic"]
