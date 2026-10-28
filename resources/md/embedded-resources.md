@@ -60,9 +60,9 @@ archive:
   on every call.
 - A jar opened at a version above 8 reads `META-INF/versions/N/name` for the
   highest `N` from 8 up to that version, and `versionedStream` lists the names
-  that version sees. `JarFile/runtimeVersion` and `Runtime/version` report the
-  Java version jolt answers as, the same one `java.version` and
-  `java.specification.version` report.
+  that version sees. `JarFile/runtimeVersion` and `Runtime/version` report 21,
+  the JDK jolt is certified against, and resource URLs select entries at that
+  version. The `java.version` property stays `nil`.
 - Entries carry zero times and no certificates; `close` is idempotent and every
   later call refuses.
 
