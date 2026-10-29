@@ -395,6 +395,7 @@ Unreached code that uses `resolve` is fine; it's shaken away like anything else 
 jolt                       # no arguments starts a REPL, like bb or clj
 jolt repl                  # the same, explicitly
 jolt nrepl-server [port]   # an nREPL server (default port 7888)
+                           # [--no-port-file | --port-file PATH]
 ```
 
 `nrepl-server` writes a `.nrepl-port` file and auto-resolves a `deps.edn` in the directory, so the server starts with your app and its dependencies loaded. Connect CIDER, Calva, or Cursive to the port. See [REPL-Driven Development](/docs/repl-driven-development.html) for the full workflow.
