@@ -21,8 +21,15 @@ This is handy for a quick poke at a namespace, but the real workflow is driving 
 ```bash
 $ cd myapp
 $ jolt nrepl-server
-nREPL server started on port 7888 (127.0.0.1); .nrepl-port written
+jolt 0.8.24 nREPL server started on port 7888 (127.0.0.1) — .nrepl-port written
 ;; connect your editor; ^C to stop
+```
+
+Two flags change where the port goes. `--no-port-file` writes no file, for a second server beside one that already owns `.nrepl-port`. `--port-file PATH` writes the port to `PATH` instead, resolved against the directory you ran `jolt` from. Either way the server removes the file it wrote when it stops. If the file can't be written (its directory doesn't exist, say), the server still starts and prints the reason on stderr.
+
+```bash
+$ jolt nrepl-server --port-file .cache/nrepl-port 0
+$ jolt nrepl-server 7889 --no-port-file
 ```
 
 Leave it running. Everything you do from here on happens in your editor, against this live process.
