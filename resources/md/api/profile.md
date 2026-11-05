@@ -142,7 +142,7 @@ The report prints on stderr when the process exits. A built binary that does not
 
 Sampling runs on the Chez backend. On a host without it, `sample!` throws.
 
-Profile-guided builds are designed in [RFC 0015](/docs/rfc/0015-sampling-and-profile-guided-builds.html) and are not available yet.
+Profile-guided builds, `jolt build --profile-gen` and `--profile-use`, are described under [Building and deps](/docs/building-and-deps.html) and designed in [RFC 0015](/docs/rfc/0015-sampling-and-profile-guided-builds.html).
 
 ## Measuring time and allocation
 

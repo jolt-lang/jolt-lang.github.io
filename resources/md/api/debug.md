@@ -33,7 +33,7 @@ Other code shows only what Chez kept live in the frame: the locals it still read
 
 Debug-compiled code makes every call except `recur` a real call, as the JVM does, which is what keeps its frames on the stack. Recursion that is not `recur` can run out of stack there where it would not otherwise. The code is also slower, and while the mode is on namespaces load from source rather than from the AOT cache.
 
-A defmethod's body or a record's method compiled under the debug mode gets a frame named as [`jolt.profile`](/api/profile) names it (`ns/Type.method`, `ns/mm[dispatch]`).
+A defmethod's body or a record's method compiled under the debug mode gets a frame named as [`jolt.profile`](/docs/api/profile.html) names it (`ns/Type.method`, `ns/mm[dispatch]`).
 
 ## A hook before the stack unwinds
 

@@ -146,7 +146,7 @@ Jolt composes the listed middleware over the built-in handler when the server st
 
 ## Wrapping each evaluation
 
-`jolt.nrepl/*eval-wrapper*` is a hook around each evaluation. When it is bound to a function, `jolt.nrepl/evaluate` calls it with a thunk of the code's evaluation, inside its own `try` and `*ns*` binding, so the wrapper sees a throw before it becomes the error reply. A tool can run each evaluation under [`jolt.debug`](/api/debug)'s `call-with-break-handler`, a timer or a binding of its own:
+`jolt.nrepl/*eval-wrapper*` is a hook around each evaluation. When it is bound to a function, `jolt.nrepl/evaluate` calls it with a thunk of the code's evaluation, inside its own `try` and `*ns*` binding, so the wrapper sees a throw before it becomes the error reply. A tool can run each evaluation under [`jolt.debug`](/docs/api/debug.html)'s `call-with-break-handler`, a timer or a binding of its own:
 
 ```clojure
 (binding [jolt.nrepl/*eval-wrapper* (fn [thunk] (time (thunk)))]
