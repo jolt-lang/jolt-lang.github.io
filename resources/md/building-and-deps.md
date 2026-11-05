@@ -256,9 +256,9 @@ A single-file script can declare its dependencies inline with
 ```clojure
 (when (System/getProperty "jolt.version")
   ((requiring-resolve 'jolt.deps/add-deps)
-   '{:deps {org.clojure/data.json {:mvn/version "2.5.0"}}}))
+   '{:deps {medley/medley {:mvn/version "1.4.0"}}}))
 
-(ns main (:require [clojure.data.json :as json]))
+(ns main (:require [medley.core :as m]))
 ```
 
 The `jolt.version` property guard makes the script portable: on jolt it's
