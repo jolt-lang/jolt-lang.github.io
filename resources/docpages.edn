@@ -31,6 +31,7 @@
   ["api/parser.md"                 "Parser Combinators (jolt.parser)"  "api"]
   ["api/continuations.md"          "Continuations (jolt.continuations)" "api"]
   ["api/profile.md"                "Profiling (jolt.profile)"          "api"]
+  ["api/debug.md"                  "Debugging (jolt.debug)"            "api"]
   ["api/util.md"                   "Utilities (jolt.util)"             "api"]
 
   ["errors.md"                    "Error Reference"                    "reference"]
