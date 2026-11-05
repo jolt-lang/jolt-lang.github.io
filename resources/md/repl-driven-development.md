@@ -144,6 +144,21 @@ The core server is intentionally small. A library can add the heavier nREPL ops 
 
 Jolt composes the listed middleware over the built-in handler when the server starts, so completion, interruptible eval, and lookup are opt-in per project rather than baked into every server.
 
+## Wrapping each evaluation
+
+`jolt.nrepl/*eval-wrapper*` is a hook around each evaluation. When it is bound to a function, `jolt.nrepl/evaluate` calls it with a thunk of the code's evaluation, inside its own `try` and `*ns*` binding, so the wrapper sees a throw before it becomes the error reply. A tool can run each evaluation under [`jolt.debug`](/api/debug)'s `call-with-break-handler`, a timer or a binding of its own:
+
+```clojure
+(binding [jolt.nrepl/*eval-wrapper* (fn [thunk] (time (thunk)))]
+  ...)
+```
+
+Bound around a session's `clone`, it covers every eval in that session, since jolt-lang/nrepl starts the session's worker with the clone's bindings.
+
+## Evaluating text under a source path
+
+`jolt.host/eval-string` and `jolt.host/load-string` take an optional second argument, the path of the file the text came from. The forms carry it as `:file`, as a file load's do, so a def's recorded position, a trace and `jolt.profile`'s counts name that file, and `*file*` and `*source-path*` are the path and its name. A third argument gives the source name `*source-path*` holds. `jolt.nrepl/evaluate` takes these as `:file` and `:file-name`, and the built-in `load-file` op passes the request's `file-path` and `file-name`. `clojure.core/load-string` still takes the string alone.
+
 ## Editor linting: clj-kondo and clojure-lsp
 
 clj-kondo (and clojure-lsp, which runs it) analyzes sources from the JVM
