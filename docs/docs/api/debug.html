@@ -222,22 +222,46 @@
     
     <nav class="toc">
       <h2>Contents</h2>
-      <ol class="contents"><li><a href="#frames">Frames</a></li><li><a href="#seeing_every_local">Seeing every local</a></li><li><a href="#a_hook_before_the_stack_unwinds">A hook before the stack unwinds</a></li></ol>
+      <ol class="contents"><li><a href="#frames">Frames</a></li><li><a href="#seeing_every_local">Seeing every local</a></li><li><a href="#a_hook_before_the_stack_unwinds">A hook before the stack unwinds</a></li><li><a href="#keeping_the_frames_of_each_failed_repl_evaluation">Keeping the frames of each failed REPL evaluation</a></li></ol>
     </nav>
     
     <div id="content">
       <p><code>jolt.debug</code> reads a throwable's stack as data, with each frame's locals, and runs a hook before that stack unwinds.</p><pre><code class="clojure">&#40;require '&#91;jolt.debug :as debug&#93;&#41;
 </code></pre><h2 id="frames">Frames</h2><p><code>frames</code> returns the frames <code>.getStackTrace</code> reports, innermost first, as maps of <code>:fn</code> (the fn's symbol), <code>:file</code>, <code>:line</code> and <code>:locals</code>, a map of each local's symbol to its value:</p><pre><code class="clojure">&#40;try &#40;my.app/run&#41;
   &#40;catch Throwable t &#40;debug/frames t&#41;&#41;&#41;
-;; =&gt; &#91;{:fn my.app/inner :file &quot;src/my/app.clj&quot; :line 4 :locals {x 21 y 42}}
+;; =&gt; &#91;{:fn my.app/inner :file &quot;my/app.clj&quot; :line 4 :locals {x 21 y 42}}
 ;;     {:fn my.app/outer ...} ...&#93;
-</code></pre><p>A throwable with no stack has no frames.</p><h2 id="seeing_every_local">Seeing every local</h2><p>A frame holds every param and local in scope only when its code was compiled under <code>jolt.profile</code>'s debug mode. The mode is a compile-time switch, so turn it on and then load what you want to debug:</p><pre><code class="clojure">&#40;require '&#91;jolt.profile :as prof&#93;&#41;
+</code></pre><p><code>:file</code> is the path relative to its source root, as in a stack trace. A throwable that has not been thrown has no frames.</p><h2 id="seeing_every_local">Seeing every local</h2><p>A frame holds every param and local in scope only when its code was compiled under <code>jolt.profile</code>'s debug mode. The mode is a compile-time switch, so turn it on and then load what you want to debug:</p><pre><code class="clojure">&#40;require '&#91;jolt.profile :as prof&#93;&#41;
 &#40;prof/instrument! :debug&#41;
 &#40;require 'my.app :reload&#41;
-</code></pre><p>Or set <code>JOLT&#95;PROFILE=debug</code> for a whole run. <code>&#40;prof/instrument-mode&#41;</code> says which mode is on.</p><p>Other code shows only what Chez kept live in the frame: the locals it still reads after the call it is paused in returns. A frame a tail call erased is not on the stack.</p><p>Debug-compiled code makes every call except <code>recur</code> a real call, as the JVM does, which is what keeps its frames on the stack. Recursion that is not <code>recur</code> can run out of stack there where it would not otherwise. The code is also slower, and while the mode is on namespaces load from source rather than from the AOT cache.</p><p>A defmethod's body or a record's method compiled under the debug mode gets a frame named as <a href='/docs/api/profile.html'><code>jolt.profile</code></a> names it (<code>ns/Type.method</code>, <code>ns/mm&#91;dispatch&#93;</code>).</p><h2 id="a_hook_before_the_stack_unwinds">A hook before the stack unwinds</h2><p><code>with-break-handler</code> runs its body. When a throw escapes it, <code>&#40;handler throwable frames&#41;</code> runs on the throwing thread before anything unwinds, and the throw then continues:</p><pre><code class="clojure">&#40;debug/with-break-handler
+</code></pre><p>Or set <code>JOLT&#95;PROFILE=debug</code> for a whole run. <code>&#40;prof/instrument-mode&#41;</code> answers <code>:debug</code>, <code>:counts</code> or nil, and <code>&#40;prof/instrument! false&#41;</code> turns the mode off for code compiled after that. Code already compiled keeps what it was compiled with. Only one mode is on at a time, so debug-compiled code adds nothing to <code>jolt.profile</code>'s counts, and <code>JOLT&#95;PROFILE=debug</code> prints no report at exit. On a host that cannot keep locals, <code>instrument!</code> throws.</p><p>With this code loaded under the debug mode:</p><pre><code class="clojure">&#40;ns my.app&#41;
+&#40;defn inner &#91;x&#93;
+  &#40;let &#91;y &#40;&#42; 2 x&#41;&#93;
+    &#40;/ y 0&#41;&#41;&#41;
+&#40;defn outer &#91;a&#93;
+  &#40;let &#91;b &#40;inc a&#41;&#93;
+    &#40;+ 1 &#40;inner b&#41;&#41;&#41;&#41;
+</code></pre><p>each frame shows its params and locals:</p><pre><code class="clojure">&#40;try &#40;my.app/outer 20&#41;
+  &#40;catch Throwable t
+    &#40;mapv &#40;juxt :fn :locals&#41; &#40;debug/frames t&#41;&#41;&#41;&#41;
+;; =&gt; &#91;&#91;my.app/inner {x 21 y 42}&#93;
+;;     &#91;my.app/outer {a 20 b 21}&#93; ...&#93;
+</code></pre><p>Other code shows only what Chez kept live in the frame: the locals it still reads after the call it is paused in returns. A frame a tail call erased is not on the stack.</p><p>Debug-compiled code makes every call except <code>recur</code> a real call, as the JVM does, which is what keeps its frames on the stack. Recursion that is not <code>recur</code> can run out of stack there where it would not otherwise. The code is also slower, and while the mode is on namespaces load from source rather than from the AOT cache.</p><p>A defmethod's body or a record's method compiled under the debug mode gets a frame named as <a href='/docs/api/profile.html'><code>jolt.profile</code></a> names it (<code>ns/Type.method</code>, <code>ns/mm&#91;dispatch&#93;</code>).</p><h2 id="a_hook_before_the_stack_unwinds">A hook before the stack unwinds</h2><p><code>with-break-handler</code> runs its body. When a throw escapes it, <code>&#40;handler throwable frames&#41;</code> runs on the throwing thread before anything unwinds, and the throw then continues:</p><pre><code class="clojure">&#40;debug/with-break-handler
   &#40;fn &#91;t frames&#93; &#40;show-to-user t frames&#41;&#41;
   &#40;my.app/run&#41;&#41;
-</code></pre><p>The handler may block, for instance while a tool shows the frames and waits for the user. It cannot resume the throw or change a local. If it throws, that throw propagates instead.</p><p>A throw that a catch inside the body handles never reaches the handler. One that a catch clause there does not match does, after that try has unwound to rethrow it, with the frames from where it was thrown.</p><p><code>call-with-break-handler</code> is the same thing taking a function of no arguments, for when the body is already a function.</p>
+</code></pre><p>The handler may block, for instance while a tool shows the frames and waits for the user. It cannot resume the throw or change a local. If it throws, that throw propagates instead.</p><p>A throw that a catch inside the body handles never reaches the handler. One that a catch clause there does not match does, after that try has unwound to rethrow it, with the frames from where it was thrown.</p><p>The handler covers the thread its body runs on. A throw inside a <code>future</code> reaches a handler established inside that future, on the future's thread. A handler around the code that started the future sees only the <code>ExecutionException</code> that <code>deref</code> rethrows.</p><p><code>call-with-break-handler</code> is the same thing taking a function of no arguments, for when the body is already a function.</p><h2 id="keeping_the_frames_of_each_failed_repl_evaluation">Keeping the frames of each failed REPL evaluation</h2><p><a href='/docs/repl-driven-development.html'><code>jolt.nrepl/&#42;eval-wrapper&#42;</code></a> calls its function with a thunk of each evaluation, which is the shape <code>call-with-break-handler</code> takes. This keeps the frames of the last evaluation that threw, and the error still reaches the client as usual:</p><pre><code class="clojure">&#40;def last-frames &#40;atom nil&#41;&#41;
+
+&#40;defn wrap-eval &#91;thunk&#93;
+  &#40;debug/call-with-break-handler
+    &#40;fn &#91;t frames&#93; &#40;reset! last-frames frames&#41;&#41;
+    thunk&#41;&#41;
+
+&#40;binding &#91;jolt.nrepl/&#42;eval-wrapper&#42; wrap-eval&#93;
+  &#40;jolt.nrepl/evaluate &quot;&#40;my.app/outer 20&#41;&quot; &quot;user&quot;&#41;&#41;
+
+&#40;map &#40;juxt :fn :locals&#41; @last-frames&#41;
+;; =&gt; &#40;&#91;my.app/inner {x 21 y 42}&#93; &#91;my.app/outer {a 20 b 21}&#93; ...&#41;
+</code></pre>
     </div>
   </main>
 </div>
