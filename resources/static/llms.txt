@@ -55,6 +55,7 @@ Read the Differences page before assuming a JVM behaviour holds.
 - [Parser Combinators (jolt.parser)](https://jolt-lang.github.io/docs/api/parser.html)
 - [Infix Notation (jolt.infix)](https://jolt-lang.github.io/docs/api/infix.html)
 - [Profiling (jolt.profile)](https://jolt-lang.github.io/docs/api/profile.html)
+- [Debugging (jolt.debug)](https://jolt-lang.github.io/docs/api/debug.html)
 - [Utilities (jolt.util)](https://jolt-lang.github.io/docs/api/util.html)
 
 ## Reference and internals

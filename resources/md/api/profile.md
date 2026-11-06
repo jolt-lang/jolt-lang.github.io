@@ -3,6 +3,8 @@
 - **Counts.** How many times each line and fn of your code ran, exact, from the counters Chez Scheme's `compile-profile` puts on every expression it compiles. The code has to be compiled with them, and it runs slower while it carries them.
 - **Samples.** Where the CPU time goes. Every thread is interrupted at an interval of its own CPU time and its stack is recorded. Nothing is recompiled, so it sees all code, including the runtime, `clojure.core` and built binaries, and costs a few percent while it runs.
 
+The compile switch for the counters also has a mode for debugging, described under [Compile modes](#compile_modes).
+
 ```clojure
 (require '[jolt.profile :as prof])
 ```
@@ -66,6 +68,18 @@ JOLT_PROFILE=1 jolt run -m my.app
 
 Code that runs as a namespace loads (each `defn` form, top-level calls) counts toward its lines, but not toward any fn.
 
+## Compile modes
+
+`instrument!` sets how code compiled from then on is compiled. One mode is on at a time, and code already compiled keeps what it was compiled with.
+
+| Call | `JOLT_PROFILE` | `instrument-mode` | Effect |
+|------|----------------|-------------------|--------|
+| `(prof/instrument!)` or `(prof/instrument! :counts)` | any other value, such as `1` | `:counts` | Execution counters. The whole-run form prints the report at exit. |
+| `(prof/instrument! :debug)` | `debug` | `:debug` | Keeps each fn's params and locals visible to [`jolt.debug/frames`](/docs/api/debug.html). Adds no counts and prints no report. |
+| `(prof/instrument! false)` | unset, empty, `0`, `false`, `no`, `n` or `off` | `nil` | Normal compilation. |
+
+`JOLT_PROFILE=sample` is the [sampler](#sampling), which compiles nothing differently. `(prof/instrumenting?)` is true while either compile mode is on, and `(prof/sampling?)` while the sampler runs.
+
 ## What is counted
 
 Only code jolt compiles at runtime is instrumented: your namespaces and the libraries they load from source. The runtime and the stdlib compiled into the jolt binary are not, so a call into `clojure.core` counts as one evaluation of the expression that makes it.
@@ -98,7 +112,7 @@ fns by self time
          0.0    0.0%        40.3  my.app/cold                      my/app.clj:11
 ```
 
-`(prof/sample! {:interval-ms 5 :depth 32})` samples less often or keeps fewer frames per stack. A new `sample!` drops the samples of the last run.
+`(prof/sample! {:interval-ms 5 :depth 32})` samples less often or keeps fewer frames per stack; the defaults are 1 ms and 64 frames. A new `sample!` drops the samples of the last run. `(prof/sample-report {:limit 50})` shows more rows.
 
 The rows are available as data. `sample-counts` returns `{:fn :file :line :self-ms :total-ms :samples}` per fn, most self time first. `sample-lines` returns `{:file :line :fn :self-ms :samples}` per line. `samples` returns each distinct stack with its `:thread`, `:count` and `:ms`.
 

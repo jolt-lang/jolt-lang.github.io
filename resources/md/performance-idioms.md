@@ -77,6 +77,8 @@ Small maps are array maps (up to 8 keys of any kind, up to 64 when every key is 
 
 ## Measuring
 
+To find where a program spends its time, start with the sampler in [`jolt.profile`](/docs/api/profile.html#sampling), which needs no recompilation. `(prof/measure body)` gives one expression's real and CPU time, bytes allocated and collector work.
+
 Bytes allocated is the most useful single number, and it is deterministic where nanoseconds are not. From Clojure:
 
 ```clojure
