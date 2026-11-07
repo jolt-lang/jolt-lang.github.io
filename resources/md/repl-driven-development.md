@@ -61,6 +61,27 @@ The server speaks bencode over a loopback TCP socket and writes `.nrepl-port`, s
 - **Calva** (VS Code): *Connect to a running REPL in your project*, pick *Generic* / *deps.edn*; it reads `.nrepl-port` automatically.
 - **Cursive** (IntelliJ): a *Remote* nREPL run configuration pointing at the port.
 
+Start the server first and use these connect commands. An editor's default *jack-in* on a `deps.edn` project starts the JVM with `clojure`, not jolt. With [jolt-lang/nrepl](https://github.com/jolt-lang/nrepl) in your deps, that stops with:
+
+```
+Could not locate jolt/ffi__init.class, jolt/ffi.clj or jolt/ffi.cljc on classpath.
+```
+
+To make Calva's Jack-in command start jolt instead, add a custom connect sequence to `.vscode/settings.json`:
+
+```json
+{
+  "calva.replConnectSequences": [
+    {
+      "name": "Jolt",
+      "projectType": "custom",
+      "customJackInCommandLine": "jolt nrepl-server",
+      "nReplPortFile": [".nrepl-port"]
+    }
+  ]
+}
+```
+
 The built-in handler implements `clone`, `describe`, `eval`, `load-file`, and `close`, enough to connect and evaluate. Heavier features (sessions, interruptible eval, completion, lookup) are added as nREPL middleware; see [Middleware](#middleware) below.
 
 ## The develop loop
