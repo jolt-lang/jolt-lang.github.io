@@ -85,6 +85,13 @@ A map literal with an odd number of forms, so some key has no value.
 
 Raised while analyzing a form — the compile-time errors.
 
+### `analyze/duplicate-method`
+
+A `reify`, `deftype` or `defrecord` that defines the same method (name, arity
+and parameter hints) twice, with the JVM's `Duplicate method name ...` message.
+Before 0.8.25 one of the two was silently dropped. `extend-type` and
+`extend-protocol` still accept a repeat and keep the last, as on the JVM.
+
 ### `analyze/internal-failure`
 
 Anything else raised while analyzing a form, carrying the position of the
