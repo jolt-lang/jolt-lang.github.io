@@ -60,7 +60,36 @@ jolt native      # compiles it
 jolt run -m app  # loads it
 ```
 
-Running a **task** does not require the libraries to be present — it warns and carries on, because the task may be the very thing that builds one. Every other command still refuses to start without a required library, so a missing artifact never reaches your code as a confusing binding error.
+Running a **task** does not require the project's own libraries to be present — it warns and carries on, because the task may be the very thing that builds one. Every other command still refuses to start without a required library, so a missing artifact never reaches your code as a confusing binding error.
+
+### Building it for the projects that use it
+
+Add `:build` to the spec, naming the task that produces it, and the library works as a plain dependency too:
+
+```clojure
+{:jolt/native [{:name "shim"
+                :darwin ["native/libshim.dylib"]
+                :linux  ["native/libshim.so"]
+                :build  "native"}]
+ :tasks {native {:doc "compile native/shim.c" :task ...}}}
+```
+
+`:build` is the name of a task in the library's **own** `deps.edn`. A project that depends on the library needs nothing beyond the dependency:
+
+```clojure
+{:deps {io.github.me/shim {:git/sha "..."}}}
+```
+
+On first use the gitlib checkout under `~/.jolt/gitlibs` holds only the sources. When jolt finds the library's declared file missing, it runs `jolt run native` in the library's root, prints one line to stderr saying what it is building and where, and loads the result. Later runs find the file and build nothing. The task's output goes to stderr, so it never mixes into the program's stdout.
+
+- The task runs **at most once** per jolt process, however many specs name it.
+- Two jolt processes that need the same build don't both run it. A lock in the library's root (`.jolt-native-build.lock`) makes the second one wait, then load what the first built.
+- A failed build stops startup with an error that names the library, the task, the directory and the task's exit status. A task that exits 0 without producing the file is reported as such.
+- `jolt build` runs the task too, for a missing dynamic library or a missing `:static` archive (except when cross-compiling with `--target`), so the binary gets the built artifact.
+- `JOLT_NATIVE_BUILD=0` turns auto-building off. The missing-library error then names the task that would build the library.
+- The **project's own** libraries are not auto-built when you run one of its tasks: that task may be the build itself, or one that shouldn't trigger it, like `clean`. A task that needs the library can `:depends` on the build task. Other commands (`jolt run`, `-M`, `jolt build`) build the project's own library the same way they build a dependency's.
+
+The machine using the library needs whatever the task does: a C compiler, and any headers it includes. Jolt 0.8.25 and earlier ignore `:build`, so adding it doesn't break their users; on those the library still has to be built by hand.
 
 Pass the compiler its arguments **separately**, as above, rather than as one command string: no shell sees them, so an ELF rpath keeps its literal `$ORIGIN` (a single string would have the shell expand it away).
 
@@ -392,7 +421,7 @@ pair the code with, so it is rejected on `:void` and on by-value struct returns.
 
 ## Checklist for a binding
 
-- Declare the library in `deps.edn` `:jolt/native` with per-OS candidates; mark optional drivers `:optional`, process symbols `:process`. Add a `:static` archive to link it into a built binary (keep the dynamic candidates for `run`/`repl`).
+- Declare the library in `deps.edn` `:jolt/native` with per-OS candidates; mark optional drivers `:optional`, process symbols `:process`. A shim you compile yourself names its build task with `:build` so consumers can use the library as a plain dependency. Add a `:static` archive to link it into a built binary (keep the dynamic candidates for `run`/`repl`).
 - Bind each C function with `defcfn`, exact argument/return types, and `:blocking` on anything that waits. Add `{:capture-native-error true}` where you need `errno` and can't guarantee an immediate read.
 - Free every `ffi/alloc` and `ffi/string->ptr`; wrap allocation in `try`/`finally`. Leaked foreign memory is never reclaimed.
 - Check C return codes and null pointers explicitly, and `throw` an `ex-info` on failure; `(ffi/errno-message)` makes the message say what went wrong.

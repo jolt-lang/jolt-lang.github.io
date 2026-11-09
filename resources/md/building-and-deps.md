@@ -167,7 +167,9 @@ user file.
 
 `:deps/prep-lib` is recognized but not run: Jolt has no prep step, so a
 dependency declaring one is named in a warning rather than silently contributing
-a half-built source root.
+a half-built source root. A native library that has to be compiled names its
+build task in its `:jolt/native` spec (`:build`), which Jolt does run; see
+[Native interop](/docs/native-interop.html#building_it_for_the_projects_that_use_it).
 
 ### What's supported
 
