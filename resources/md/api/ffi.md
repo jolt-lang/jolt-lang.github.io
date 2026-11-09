@@ -323,7 +323,8 @@ digest calls could silently land there and abort the process.
   `int-array` or `long-array` for the 2-, 4- and 8-byte integer and pointer
   types, `float-array` / `double-array` for the floating types. The type gives
   the *width* and nothing else, so the bits land as they are.
-- `write-array` `ptr arr` / `ptr arr off n` — `byte-array` → memory.
+- `write-array` `ptr arr` — every byte of a `byte-array` → memory. To write a
+  slice of one, give it a one-byte type: `(write-array p :byte arr 0 index count)`.
 - `write-array` `ptr type arr [offset]` — the typed inverse of `read-array`.
 - `write-array` `ptr type arr offset index count` — write only
   `arr[index, index+count)`, so a staging array sized for the largest batch
@@ -347,8 +348,11 @@ digest calls could silently land there and abort the process.
   `(read-into! p t arr offset)` reads from `offset` bytes into `p`, and
   `(read-into! p t arr offset index count)` fills `count` elements from
   `arr[index]`.
-- `read-into!` `ptr arr off n` — the byte form, unchanged: `n` bytes at byte
-  index `off` into the `byte-array` `arr`.
+- A one-byte type fills a `byte-array`, so `(read-into! p :byte arr 0 index count)`
+  reads `count` bytes into `arr[index]`. Before 0.8.25, `(read-into! p arr off n)`
+  and `(write-array p arr off n)` took `off` as an index into the byte-array.
+  Both raise now, naming the typed form: in babashka.ffi's order, which every
+  other form follows, position four is a byte offset into `p`.
 - `read-bytes` `ptr n` — `n` bytes → string (UTF-8).
 - `write-bytes` `ptr s` — a string's UTF-8 bytes → memory.
 - `string->ptr` `[arena] s` — a NUL-terminated C string. `nil` answers `NULL` and

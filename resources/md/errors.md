@@ -85,6 +85,13 @@ A map literal with an odd number of forms, so some key has no value.
 
 Raised while analyzing a form — the compile-time errors.
 
+### `analyze/duplicate-method`
+
+A `reify`, `deftype` or `defrecord` that defines the same method (name, arity
+and parameter hints) twice, with the JVM's `Duplicate method name ...` message.
+Before 0.8.25 one of the two was silently dropped. `extend-type` and
+`extend-protocol` still accept a repeat and keep the last, as on the JVM.
+
 ### `analyze/internal-failure`
 
 Anything else raised while analyzing a form, carrying the position of the
@@ -110,6 +117,13 @@ A `def` whose first argument is not a symbol.
 A `fn*` parameter list that is not a vector of symbols, or a rest parameter
 that is not a symbol.
 
+### `analyze/invalid-fn-arities`
+
+A multi-arity `fn` whose arities overlap, with the JVM's messages: two variadic
+arities, two fixed arities of the same count, or a fixed arity with more
+parameters than the variadic one. Before 0.8.25 these compiled and the first
+matching clause took every call.
+
 ### `analyze/invalid-if`
 
 An `if` with fewer than two or more than three arguments.
@@ -126,6 +140,14 @@ target ...) or (.-field target) with a missing or non-symbol member.
 ### `analyze/invalid-method-reference`
 
 A qualified instance method (Class/.method) used as a value rather than called.
+
+### `analyze/invalid-ns-form`
+
+An `ns` form with something other than an optional docstring, an optional
+attr-map and reference clauses after the name, such as a clause typo
+(`(:requires ...)`) or a docstring split by an unescaped `"`. Before 0.8.25 the
+extra forms were ignored. `jolt tools/ns_audit.clj <dir>`, run from a jolt
+checkout, lists the files that would raise without loading them.
 
 ### `analyze/invalid-recur`
 
