@@ -93,7 +93,8 @@ It answers the same way on either backend, and on a `thread` block's channel too
 Monitoring any other channel gives `nil` rather than an error.
 
 `(timeout ms)` is served by one shared timer thread, so `(<! (timeout 100))`
-parks the fiber and costs no thread. `(Thread/sleep 100)` does not; see
+parks the fiber and costs no thread. Since 0.8.16 `(Thread/sleep 100)` on a
+fiber parks it too, with a deadline, and is interruptible mid-sleep; see
 [what parks and what pins](#what_parks_and_what_pins) below.
 
 ## Parking works through function calls
@@ -210,8 +211,9 @@ stranded fibers are already bound to the blocked one.
 | operation | on a fiber |
 | --- | --- |
 | channel ops, `alts!`, `(<! (timeout ms))` | park |
+| `Thread/sleep`, `Thread/yield` | park (since 0.8.16) |
 | socket read / write / `accept` / `connect` | park (readiness goes through `kqueue`/`epoll`) |
-| file IO, `slurp`, `Thread/sleep`, an FFI call | **pin the carrier** |
+| file IO, `slurp`, an FFI call | **pin the carrier** |
 
 So real blocking work goes on a thread, and the fiber waits for it on a channel:
 
@@ -337,7 +339,7 @@ where the spawn cost and the memory difference are decisive, and where fan-in
 throughput favours them.
 
 Stay on threads when your `go` bodies **block on something the poller does not
-cover** (file IO, FFI, `Thread/sleep`) or when you want a small number of
+cover** (file IO, FFI) or when you want a small number of
 genuinely parallel workers with no carrier to strand. `thread` is always
 available for the blocking part of an otherwise fiber-shaped program.
 
