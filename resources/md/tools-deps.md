@@ -376,7 +376,7 @@ project inherits its dependencies' `:jolt/native`, but a dependency's libraries
 are opened on the first require of one of its namespaces, not at startup,
 unless its spec says `:eager true`. A spec can also name a `:build` task that
 produces a missing library; see
-[Native interop](/docs/native-interop.html#when-the-libraries-load).
+[Native interop](/docs/native-interop.html#when_the_libraries_load).
 
 ### Static vs dynamic linking
 

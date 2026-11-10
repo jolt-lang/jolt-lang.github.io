@@ -22,9 +22,9 @@ Each entry is a map:
 - `:darwin` / `:linux` / `:windows`: per-platform candidates, a string or a vector tried in order. Jolt picks the key for the host OS (`os.name`) and loads the first candidate that resolves. List the versioned name first (`libsqlite3.so.0`), the bare name as a fallback.
 
     A candidate is a **name** or a **path**, and the difference is a separator — the same line `dlopen` draws. `libsqlite3.so.0` is searched for on the loader path; `native/libfoo.so` is a path, resolved **relative to the project** (the directory holding `deps.edn`), not to wherever you happened to run `jolt` from. Absolute paths are used as given.
-- `:optional true`: a missing library is skipped instead of erroring. Use it for feature-gated drivers (the db library makes Postgres optional). Check `(jolt.ffi/loaded? "libpq.so.5")` before using such a binding — from code in the library itself, since a dependency's libraries are opened only when one of its namespaces is required (see [When the libraries load](#when-the-libraries-load)).
+- `:optional true`: a missing library is skipped instead of erroring. Use it for feature-gated drivers (the db library makes Postgres optional). Check `(jolt.ffi/loaded? "libpq.so.5")` before using such a binding — from code in the library itself, since a dependency's libraries are opened only when one of its namespaces is required (see [When the libraries load](#when_the_libraries_load)).
 - `:eager true`: open the library at startup even when it is a dependency's (see below). Use it when the C has to be there before any of the library's namespaces load, such as a shim another library links against.
-- `:build "task"`: the name of a task in the library's own `deps.edn` that produces the declared file. When the file is missing, jolt runs the task in the library's root and loads the result (see [Shipping your own C](#shipping-your-own-c) below).
+- `:build "task"`: the name of a task in the library's own `deps.edn` that produces the declared file. When the file is missing, jolt runs the task in the library's root and loads the result (see [Shipping your own C](#shipping_your_own_c) below).
 - `:process true`: bind symbols already in the running process (libc, POSIX) rather than loading a file. The http-client uses this for `socket`/`connect`/`send`/`recv`:
 
 ### When the libraries load
