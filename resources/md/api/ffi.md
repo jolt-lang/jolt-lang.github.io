@@ -272,6 +272,8 @@ Argument and return types are keywords:
 - `:double` `:float` — `double` / `float`
 - `:char` — `char` (a code point)
 - `:uint8` (alias `:u8`, `:byte`) — `unsigned char`, number 0–255
+- `:int8` (alias `:i8`), `:int16` (alias `:short`), `:uint16` (alias `:ushort`),
+  `:int32`, `:uint32` — exact-width integers in native byte order
 - `:pointer` (alias `:void*`) — any pointer (a machine address)
 - `:string` — `char *`, marshaled both ways (UTF-8 both directions)
 - `:bool` — a one-byte C boolean (`_Bool`/`stdbool.h`), `true`/`false` in Jolt.
@@ -279,7 +281,9 @@ Argument and return types are keywords:
   everything else sends 1 — a C predicate answers `true`/`false` rather than the
   truthy number `0`. It travels as one byte, not as an int-sized `boolean`,
   which would be the wrong width for `_Bool` and read three bytes of whatever
-  the callee left above the result.
+  the callee left above the result: a `bool` function bound as `:int` can read
+  a false as a nonzero number. The same one-byte read applies to callback
+  arguments, and a `:bool` struct field is one byte at one-byte alignment.
 - `:void` — return ignored (`nil`)
 - A `:float` result (and `read` / `read-array` / a struct field / a callback
   argument of `:float`) answers a **`java.lang.Float`** as it reaches Clojure

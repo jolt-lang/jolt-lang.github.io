@@ -160,9 +160,13 @@ The argument and return types are keywords. The full set:
 | `:double` `:float` | `double` / `float` | `java.lang.Double` / `java.lang.Float` |
 | `:char` | `char` | number (code point) |
 | `:uint8` (`:u8`, `:byte`) | `unsigned char` | number 0–255 |
+| `:int8` (`:i8`) `:int16` (`:short`) `:uint16` (`:ushort`) `:int32` `:uint32` | exact-width integer | number |
+| `:bool` | `bool` / `_Bool` (one byte) | `true` / `false` |
 | `:pointer` (`:void*`) | any pointer | number (machine address) |
 | `:string` | `char *` | string (marshaled both ways) |
 | `:void` | `void` | return ignored (nil) |
+
+A `:bool` reads only the low byte C defines for a `_Bool`, so a callee that leaves garbage above it still reads right; binding a `bool` function as `:int` does not. Going out, `nil` and `false` send 0 and any other value sends 1. As a struct field it is one byte at one-byte alignment, as in C.
 
 A `:string` argument is copied to a NUL-terminated C string for the call; a `:string` return reads a NUL-terminated C string back, decoding UTF-8 (falling back to Latin-1). Pointers are plain integers; you pass them around, offset them, and hand them back to C.
 
@@ -414,7 +418,8 @@ Jolt into C; `export!` lets C call *in*.
 The argtype/rettype keywords are the same set `foreign-fn`/`ffi-type->chez`
 accepts: `:int :uint :long :ulong :int64 :uint64 :size_t :ssize_t :iptr :uptr
 :double :float :pointer` (alias `:void*`) `:string :void :uint8` (aliases
-`:u8`/`:byte`) `:char`. A `:pointer`/`:void*` returns an opaque address you pass
+`:u8`/`:byte`) `:char :bool`, and the exact widths `:int8 :int16 :uint16 :int32
+:uint32`. A `:pointer`/`:void*` returns an opaque address you pass
 back unchanged; `:string` copies a C string in/out.
 
 ```c
