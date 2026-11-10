@@ -95,7 +95,10 @@ aren't a separate task form.
 
 `:deps/prep-lib` is recognized but never run: jolt has no prep step, so a
 library needing one is named in a warning instead of silently producing a
-half-built root. Maven `:classifier`/`:extension` coordinates, `pom.xml` as a
+half-built root. A library whose prep step compiles a C shim names the task
+that builds it in its `:jolt/native` spec instead (`:build "native"`), and
+jolt runs that task the first time the shim is missing; see
+[Native interop](/docs/native-interop.html#building_it_for_the_projects_that_use_it). Maven `:classifier`/`:extension` coordinates, `pom.xml` as a
 project manifest, and the `:deps/manifest` override are not implemented.
 
 ## How the CLI ties it together
@@ -188,7 +191,9 @@ project that needs a build step — compiling a C shim named by
 [`:jolt/native`](/docs/native-interop.html), generating a source file — can
 carry it here instead of in a makefile or a script beside it. A task run does
 not require the project's `:jolt/native` libraries to be loadable, precisely so
-that the task which builds one can run on a fresh checkout.
+that the task which builds one can run on a fresh checkout. Name that task in
+the spec's `:build` key and projects that depend on the library get it built
+for them too.
 
 Two forms are jolt's rather than babashka's. A **string** body is a shell
 command line — `{clean "rm -rf target"}` — where babashka would evaluate it as
