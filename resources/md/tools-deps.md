@@ -372,12 +372,16 @@ one class.
 ## Native libraries
 
 A library that binds C declares the shared objects it needs under `:jolt/native`,
-so `jolt.main` loads them before the namespace is required and its `foreign-fn`
+so `jolt.main` loads them before the library's namespace runs and its `foreign-fn`
 bindings resolve. Each entry is a map
 (`{:name "sqlite3" :darwin ["libsqlite3.0.dylib" …] :linux ["libsqlite3.so.0" …]}`) with optional
 `:optional true` (absence is fine, a feature-gated dep) and `:process true` (use
 the running process's own symbols, e.g. libc sockets, no external file). A
-project inherits its dependencies' `:jolt/native`.
+project inherits its dependencies' `:jolt/native`, but a dependency's libraries
+are opened on the first require of one of its namespaces, not at startup,
+unless its spec says `:eager true`. A spec can also name a `:build` task that
+produces a missing library; see
+[Native interop](/docs/native-interop.html#when_the_libraries_load).
 
 ### Static vs dynamic linking
 

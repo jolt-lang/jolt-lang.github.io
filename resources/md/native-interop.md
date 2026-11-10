@@ -4,7 +4,7 @@ The FFI is a thin, explicit layer: you declare the library, bind each C function
 
 ## Declaring the native library
 
-A library names the shared objects it needs in its `deps.edn` under `:jolt/native`. Jolt loads them at startup, before any namespace is required, so the bindings resolve. From the db library:
+A library names the shared objects it needs in its `deps.edn` under `:jolt/native`. Jolt opens them before the code that binds them runs, so the bindings resolve. From the db library:
 
 ```clojure
 :jolt/native [{:name "sqlite3"
@@ -22,8 +22,21 @@ Each entry is a map:
 - `:darwin` / `:linux` / `:windows`: per-platform candidates, a string or a vector tried in order. Jolt picks the key for the host OS (`os.name`) and loads the first candidate that resolves. List the versioned name first (`libsqlite3.so.0`), the bare name as a fallback.
 
     A candidate is a **name** or a **path**, and the difference is a separator — the same line `dlopen` draws. `libsqlite3.so.0` is searched for on the loader path; `native/libfoo.so` is a path, resolved **relative to the project** (the directory holding `deps.edn`), not to wherever you happened to run `jolt` from. Absolute paths are used as given.
-- `:optional true`: a missing library is skipped instead of erroring. Use it for feature-gated drivers (the db library makes Postgres optional). Check `(jolt.ffi/loaded? "libpq.so.5")` before using such a binding.
+- `:optional true`: a missing library is skipped instead of erroring. Use it for feature-gated drivers (the db library makes Postgres optional). Check `(jolt.ffi/loaded? "libpq.so.5")` before using such a binding — from code in the library itself, since a dependency's libraries are opened only when one of its namespaces is required (see [When the libraries load](#when_the_libraries_load)).
+- `:eager true`: open the library at startup even when it is a dependency's (see below). Use it when the C has to be there before any of the library's namespaces load, such as a shim another library links against.
+- `:build "task"`: the name of a task in the library's own `deps.edn` that produces the declared file. When the file is missing, jolt runs the task in the library's root and loads the result (see [Shipping your own C](#shipping_your_own_c) below).
 - `:process true`: bind symbols already in the running process (libc, POSIX) rather than loading a file. The http-client uses this for `socket`/`connect`/`send`/`recv`:
+
+### When the libraries load
+
+The project's own `:jolt/native` libraries, `:process` specs and `:eager` specs are opened at startup. A **dependency's** other libraries are opened the first time one of that dependency's namespaces is required, just before that namespace's code runs. A program that never requires the dependency never opens its libraries, so a web app whose dependency tree carries an OpenSSL binding does not load OpenSSL unless it uses it.
+
+What that means in practice:
+
+- A missing library fails at that `require`, and the error names the library, the dependency and the namespace.
+- `(ffi/loaded? …)` answers false for a dependency's library until one of its namespaces has been required. `ffi/find-symbol` likewise looks only at what is already loaded.
+- If an app binds a dependency's C functions itself without requiring any of its namespaces, the first call of such a binding loads the pending dependency libraries and looks the symbol up again.
+- A library the project ships that links against one a dependency provides needs that dependency's spec to be `:eager true`, or the project restates the spec in its own `:jolt/native`.
 
 ### Shipping your own C
 
@@ -90,6 +103,18 @@ On first use the gitlib checkout under `~/.jolt/gitlibs` holds only the sources.
 - The **project's own** libraries are not auto-built when you run one of its tasks: that task may be the build itself, or one that shouldn't trigger it, like `clean`. A task that needs the library can `:depends` on the build task. Other commands (`jolt run`, `-M`, `jolt build`) build the project's own library the same way they build a dependency's.
 
 The machine using the library needs whatever the task does: a C compiler, and any headers it includes. Jolt 0.8.25 and earlier ignore `:build`, so adding it doesn't break their users; on those the library still has to be built by hand.
+
+When the library is used as a **dependency** (a git dep, say), its checkout holds only the sources, and nobody runs `jolt native` in it. Name the task in the spec and jolt runs it for you:
+
+```clojure
+{:jolt/native [{:name "shim"
+                :darwin ["native/libshim.dylib"]
+                :linux  ["native/libshim.so"]
+                :build  "native"}]
+ ...}
+```
+
+When the declared file is missing, jolt runs `jolt run native` in the library's root (saying on stderr what it is building), then loads the result. The task runs at most once per process, and a lock in the library's root makes a second jolt process wait instead of building into the same checkout; a lock left by a killed build is broken automatically. `jolt build` runs the task too, for a missing `:static` archive or for a shared library the binary may load. `JOLT_NATIVE_BUILD=0` turns this off, and the missing-library error then names the task that would build it. The project's own libraries are left to its tasks.
 
 Pass the compiler its arguments **separately**, as above, rather than as one command string: no shell sees them, so an ELF rpath keeps its literal `$ORIGIN` (a single string would have the shell expand it away).
 
@@ -377,7 +402,7 @@ callback released together — use an arena instead of a macro per pointer:
 
 Arenas also scope the pointer sizes `segment`, `slice` and `reinterpret` record.
 Called without an arena those record for the life of the process, which is the
-wrong form in a loop — see [Pointer sizes](/docs/api/ffi.html#pointer-sizes) in
+wrong form in a loop — see [Pointer sizes](/docs/api/ffi.html#pointer_sizes) in
 the API reference.
 
 ## errno
