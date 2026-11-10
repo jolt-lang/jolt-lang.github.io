@@ -369,7 +369,7 @@ callback released together — use an arena instead of a macro per pointer:
 
 Arenas also scope the pointer sizes `segment`, `slice` and `reinterpret` record.
 Called without an arena those record for the life of the process, which is the
-wrong form in a loop — see [Pointer sizes](/docs/api/ffi.html#pointer-sizes) in
+wrong form in a loop — see [Pointer sizes](/docs/api/ffi.html#pointer_sizes) in
 the API reference.
 
 ## errno

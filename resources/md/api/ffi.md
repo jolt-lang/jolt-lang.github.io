@@ -17,7 +17,7 @@ For the end-to-end guide to writing a binding — declaring the library in `deps
 Every allocation belongs to an **arena**, which owns its lifetime, or to you, to
 `free` by hand. `jolt.ffi` matches [`babashka.ffi`](https://github.com/babashka/ffi)
 name for name and semantics for semantics wherever one substrate can match the
-other — see [babashka.ffi compatibility](#babashkaffi-compatibility) for the
+other — see [babashka.ffi compatibility](#babashka.ffi_compatibility) for the
 short list of places they still differ, and why.
 
 ## Binding functions
@@ -308,7 +308,7 @@ digest calls could silently land there and abort the process.
   arena owns it; without one you `free` it. A type or layout aligns naturally, a
   byte count aligns to 16, and a third argument overrides.
 - `free` `ptr` — release memory from the arena-less `alloc` / `string->ptr`, and
-  forget any size recorded for that pointer (see [Pointer sizes](#pointer-sizes)).
+  forget any size recorded for that pointer (see [Pointer sizes](#pointer_sizes)).
 - `sizeof` `type-or-layout` / `alignof` `type-or-layout` — size and alignment,
   padding included for a layout.
 - `read` `ptr type [offset]` — read a typed value at `ptr` (+ optional byte offset).

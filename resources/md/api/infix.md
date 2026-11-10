@@ -21,7 +21,7 @@ There are two entry points. `infix` (and its alias `$=`) is a **macro** that rew
 ($=   & expr)        ; alias, identical behavior
 ```
 
-`infix` takes alternating operands and operators and rewrites them to prefix Clojure at macroexpansion time, applying [operator precedence](#precedence-and-associativity) and resolving [aliases](#aliased-operators-and-functions). Bare names resolve as ordinary Clojure locals or vars; the standard math operators (`+ - * /` etc.) pass straight through to `clojure.core`.
+`infix` takes alternating operands and operators and rewrites them to prefix Clojure at macroexpansion time, applying [operator precedence](#precedence_and_associativity) and resolving [aliases](#aliased_operators_and_functions). Bare names resolve as ordinary Clojure locals or vars; the standard math operators (`+ - * /` etc.) pass straight through to `clojure.core`.
 
 ```clojure
 (infix 3 + 4)                ; => (+ 3 4)  => 7
@@ -70,7 +70,7 @@ The returned function carries metadata recording its source and parameters, whic
 
 ### The environment
 
-`from-string` resolves every name against an **environment** — a map from keyword to function/value. The default is `jolt.infix.core/base-env`, which provides arithmetic, comparison, boolean, bitwise, and math functions (see [The default environment](#the-default-environment)). Declared bindings are merged on top of the base environment, shadowing it:
+`from-string` resolves every name against an **environment** — a map from keyword to function/value. The default is `jolt.infix.core/base-env`, which provides arithmetic, comparison, boolean, bitwise, and math functions (see [The default environment](#the_default_environment)). Declared bindings are merged on top of the base environment, shadowing it:
 
 ```clojure
 (require '[jolt.infix.core :refer [base-env]])
@@ -188,7 +188,7 @@ Use parentheses to override any of the above.
 
 ## The default environment
 
-`jolt.infix.core/base-env` is the keyword→function map `from-string` evaluates against by default. It provides everything in the [alias table](#aliased-operators-and-functions) plus the core arithmetic and comparison operators. To see what is available, inspect it directly:
+`jolt.infix.core/base-env` is the keyword→function map `from-string` evaluates against by default. It provides everything in the [alias table](#aliased_operators_and_functions) plus the core arithmetic and comparison operators. To see what is available, inspect it directly:
 
 ```clojure
 (require '[jolt.infix.core :refer [base-env]])

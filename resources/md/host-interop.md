@@ -54,7 +54,7 @@ This is the surface today, not the whole JVM. Methods not listed generally aren'
   `.fillInStackTrace`. This holds equally for an `ex-info`, a constructed
   `(Exception. "…")`, and an error the host itself raised; the value a `catch`
   binds answers the same set whichever it is. `.printStackTrace` prints a real
-  backtrace (see [Stack traces](/docs/tools-deps.html#stack-traces)).
+  backtrace (see [Stack traces](/docs/tools-deps.html#stack_traces)).
   `.getStackTrace` is empty: Jolt reifies no `StackTraceElement` array, because
   tail-call optimization means there is no faithful per-frame array to hand back.
 
