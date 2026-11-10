@@ -168,18 +168,26 @@ that is not last) or a catch clause that does not parse.
 
 A `var` special form whose argument is not a symbol.
 
+### `analyze/no-such-var`
+
+A qualified symbol whose namespace half, an alias or a namespace name, names a
+loaded namespace that has no such var: `No such var: s/nope`, as the JVM
+reports it. Raised where a form runs as soon as it compiles (load, require,
+eval, the REPLs), so a namespace that names a missing var anywhere, even on a
+path that rarely runs, fails to load. `jolt build`'s analysis keeps such a
+reference late-bound, since the var may be defined before the code runs, and so
+does `jolt.host`, whose vars depend on the host files a boot loaded.
+Carries :symbol, :namespace and :ns alongside the position.
+
 ### `analyze/unknown-namespace`
 
 A qualified symbol whose namespace half is namespace-shaped — dotted, with a
 lowercase segment after the last dot — and names no loaded namespace at all: a
 missing `require`, or a typo in the namespace part. The JVM reports the same
-thing, as `No such namespace`. Two neighbouring cases are deliberately NOT
-this error, and both report at the call instead. A LOADED namespace missing
-only the var stays late-bound, because that is how jolt-core reaches its host
-contract (`jolt.host/…`) across boots that load different host files; its
-compile-time guard is the static one in `host/chez/jolt-host-manifest.txt`, and
-the miss reads `No such var: ns/name`. And a name with no dot (`str/join`) may
-be an `:import`-ed class short name whose provider has not autoloaded yet.
+thing, as `No such namespace`. A LOADED namespace missing only the var is
+`analyze/no-such-var` instead. A Capitalized name with no dot (`Nope/foo`) is
+deliberately NOT this error and reports at the call: it may be an
+`:import`-ed class short name whose provider has not autoloaded yet.
 Carries :symbol, :namespace and :ns alongside the position.
 
 ### `analyze/unresolved-symbol`
