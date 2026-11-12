@@ -183,6 +183,15 @@ Bodies are evaluated in the `user` namespace with `clojure.core` and
 `jolt`, `clojure`, `run` and `current-task` need no require. A `shell` that
 exits non-zero fails the task, and `jolt` exits with the child's status.
 
+Everything after the task name reaches the body as `*command-line-args*`,
+every `--` included, as babashka does: `jolt args -- a -b` gives
+`("--" "a" "-b")`, the same as `bb args -- a -b`. Before 0.8.27 jolt dropped
+the first standalone `--`, so a task written against that rule now sees an
+extra `"--"` and should skip it itself. An `:exec-fn` or `:cmd` task gets the
+same list (babashka.cli reads a `--` as the end of options), and a
+`:main-opts` task is unchanged, since `-m` consumes a leading `--` the way
+`bb -m` does.
+
 Each dependency runs at most once per invocation, and a cycle is an error
 rather than a hang.
 

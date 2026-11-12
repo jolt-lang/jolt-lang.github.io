@@ -24,7 +24,7 @@ Because Jolt emulates `clojure.lang.*` and `java.*`, it satisfies `:clj`, so it 
 
 ### Jolt does not satisfy `:bb`
 
-Jolt is not babashka, and a `:bb` branch is not a "non-JVM host" branch — it is written for babashka's host model. Where that model differs from Jolt's, the branch is wrong here: it reaches for namespaces babashka supplies natively and Jolt does not (`cheshire.core`, where the `:clj` branch would have used `clojure.data.json`), asserts babashka's class model (classes as symbols in hierarchies, `sci.impl.fns` class names), and skips work Jolt can do because babashka can't (`java.nio`'s `DirectoryStream`, `LazilyPersistentVector`, `clojure.lang.Util`, `java.lang.reflect.Array` — Jolt shims all of them).
+Jolt is not babashka, and a `:bb` branch is not a "non-JVM host" branch — it is written for babashka's host model. Where that model differs from Jolt's, the branch is wrong here: it reaches for namespaces babashka bundles and Jolt may not (Jolt now ships a [`cheshire.core`](/docs/libraries.html#data_and_schemas), but not every bb built-in), asserts babashka's class model (classes as symbols in hierarchies, `sci.impl.fns` class names), and skips work Jolt can do because babashka can't (`java.nio`'s `DirectoryStream`, `LazilyPersistentVector`, `clojure.lang.Util`, `java.lang.reflect.Array` — Jolt shims all of them).
 
 Jolt matched `:bb` from 0.7.10 through 0.8.5 and no longer does. If you are porting a script whose `:bb` branches are the ones you want, ask for the key in your project's `deps.edn`:
 
@@ -41,6 +41,18 @@ Two Jolt-specific details worth knowing:
 - Unlike the JVM reader, Jolt resolves `#?()` in **every** file type, not just `.cljc`. A `#?(:cljs …)` form with no `:clj`/`:jolt` branch simply reads as nothing, in a `.clj` or `.jolt` file as much as a `.cljc` one. (The reader spec allows this only when an implementation documents it; Jolt does; see [reader spec S18](/docs/spec/02-reader.html#s18_reader_conditionals).)
 
 Clause order is the whole mechanism: a `:jolt` clause written before the `:clj` one overrides the JVM branch without affecting any other dialect.
+
+### Reading `.cljc` from code
+
+`read-string`, `read` and `read+string` take the JVM reader's options. `:features` adds platforms for that one read, so a tool reading source for another platform takes that platform's branch, and `:read-cond :preserve` returns each `#?`/`#?@` as a `reader-conditional` instead of resolving it:
+
+```clojure
+(read-string {:read-cond :allow :features #{:cljs}} "#?(:cljs 2 :clj 1)")  ;=> 2
+(read-string {:read-cond :preserve} "#?(:clj 1 :cljs 2)")  ;=> #?(:clj 1 :cljs 2)
+(read-string {:read-cond :allow} "#?(:cljs 2) x")          ;=> x
+```
+
+A top-level `#?` with no branch for the platform reads as nothing and the reader moves on to the next form, as on the JVM.
 
 ## File precedence: `.jolt` over `.clj` over `.cljc`
 

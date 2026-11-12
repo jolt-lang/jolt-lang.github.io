@@ -75,6 +75,8 @@ Third-party Clojure/JVM libraries confirmed to run on Jolt.
 - **[malli](https://github.com/metosin/malli)**: data schema validation, on the [malli-app example](https://github.com/jolt-lang/examples/tree/main/malli-app).
 - **[honeysql](https://github.com/seancorfield/honeysql)**: SQL formatter and helpers.
 - **[clojure.data.json](https://github.com/clojure/data.json)**: JSON reading and writing. Ships with Jolt; writing a `java.time.Instant` needs [time](https://github.com/jolt-lang/time).
+- **[cheshire](https://github.com/dakrone/cheshire)**: ships with Jolt as `cheshire.core`, for babashka scripts and `bb.edn` tasks that use it. Written over the bundled `clojure.data.json` rather than Jackson, it covers parsing and generation (`parse-string`, `parse-string-strict`, `parse-stream`, `parsed-seq`, `generate-string`, `generate-stream`, `encode`/`decode`, `:pretty` and `create-pretty-printer`, `:date-format`, `:escape-non-ascii`, `:key-fn`) with output matching cheshire's. Custom encoders (`cheshire.generate`), factory options, Smile/CBOR and the Jackson generator API (`with-writer`, `write`, `create-generator`) are left out.
+- **[clojure.core.reducers](https://clojure.org/reference/reducers)**: ships with Jolt, as with Clojure. `fold` runs its pieces one after another instead of on a fork/join pool, but splits a vector into the same pieces the JVM does, so `fold` and `foldcat` give the same results.
 - **[clojure.spec.alpha](https://github.com/clojure/spec.alpha)**: data specs.
 - **[core.match](https://github.com/clojure/core.match)**: pattern matching.
 - **[core.cache](https://github.com/clojure/core.cache)**: caching (Basic/FIFO/LRU/LU/TTL/Soft + wrapped), over [data.priority-map](https://github.com/clojure/data.priority-map).
