@@ -276,6 +276,18 @@ The rest of the surface: `fiber?` (is this value a fiber handle),
 behind the other fibers on this carrier; rarely needed, since preemption
 already time-slices).
 
+`fibers` lists the fibers that haven't finished, across the default pool and
+named ones, including those core.async starts itself (`io-thread`, a go block
+on the `:fiber` backend, a flow process), so a tool can show what is running
+without wrapping `spawn`. It is a snapshot vector: a fiber in it may finish
+before you look, and `state`, `interrupt!` and `kill!` work on each one. The
+list holds fibers weakly, so a parked fiber nothing else can reach may drop out
+once the collector runs.
+
+```clojure
+(map fib/state (fib/fibers))   ;=> (:parked :running)
+```
+
 Everything on the core.async page applies to a spawned body: channel ops and
 `deref` park it, `alts!` works, blocking IO pins its carrier, `jolt.socket`
 parks. The two APIs share the one pool, so fibers and `go` blocks interleave

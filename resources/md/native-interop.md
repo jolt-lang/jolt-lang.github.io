@@ -349,9 +349,32 @@ mixed in with the keywords:
 Indexed offsets come from the ABI's element stride rather than a stored entry
 per element, so a large array is no more expensive to describe than a small one.
 
-Unions, bitfields and explicit packing are still not modelled; for those, and
-for any struct whose shape you cannot state literally, lay it out by offset as
-below.
+A **union** is `[:union [[field type] ...]]` anywhere a nested struct goes,
+sized and aligned the way the C compiler does it. It carries no tag, so `read`
+answers it as a pointer to its bytes and you read the member that applies,
+`(ffi/read-field p msg [:data :result])`; `write` names the member as a pair,
+`{:data [:result 0]}`. A union is never passed by value; declare `:pointer`.
+
+Bitfields and explicit packing are still not modelled; for those, and for any
+struct whose shape you cannot state literally, lay it out by offset as below.
+
+#### Is this Chez placing stack arguments right?
+
+`(ffi/stack-args-correct?)` says whether foreign calls put arguments past the
+argument registers where C reads them. Chez 10.4.1 misplaces some of them once
+the registers are used up, structs by value above all
+([cisco/ChezScheme#1091](https://github.com/cisco/ChezScheme/issues/1091)).
+Jolt's release binaries carry a patched Chez; a jolt built over a system Chez
+may not, and looks the same otherwise. The answer is probed once per process:
+`true` or `false`, or `nil` where jolt can't tell (a pb build, or a binary
+without the compiler). It comes from Chez's code generator rather than the
+build, so a Chez release with the fix answers `true` unpatched. A library that
+passes structs by value can refuse only the signatures that would be misplaced:
+
+```clojure
+(when (false? (ffi/stack-args-correct?))
+  (refuse-stack-struct-signatures!))
+```
 
 ### Structs by offset
 
