@@ -1,31 +1,26 @@
-# Clojure Language Specification — Front Matter
+# Clojure Language Specification: Front Matter
 
 **Edition**: Draft 1 · **Describes**: Clojure 1.12 (reference) · **Status**: in progress
 
-This document specifies the Clojure programming language independently of any
-implementation. See `docs/rfc/0001-language-specification.md` for motivation,
-process, and scope.
+This document specifies the Clojure programming language independently of any implementation. See
+`docs/rfc/0001-language-specification.md` for motivation, process, and scope.
 
 ## 1. Conformance terminology
 
-The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY**
-are to be interpreted as described in RFC 2119.
+The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** are to be interpreted as described in
+RFC 2119.
 
-- A statement marked **MUST** is normative: a conforming implementation
-  exhibits exactly this behavior, and the conformance suite tests it.
-- **implementation-defined** marks behavior a conforming implementation must
-  document but may choose (e.g. the concrete error type thrown where the
-  reference throws a JVM exception class).
-- **host-defined** marks behavior delegated to the host platform (e.g. what
-  `slurp` accepts as a source).
-- **⚠ reference-divergence** marks a place where this spec deliberately
-  differs from observed reference behavior, with rationale; the reference
-  behavior is always recorded alongside.
+- A statement marked **MUST** is normative: a conforming implementation exhibits exactly this
+  behavior, and the conformance suite tests it.
+- **implementation-defined** marks behavior a conforming implementation must document but may choose (e.g. the concrete
+  error type thrown where the reference throws a JVM exception class).
+- **host-defined** marks behavior delegated to the host platform (e.g. what `slurp` accepts as a source).
+- **⚠ reference-divergence** marks a place where this spec deliberately differs from observed reference behavior, with
+  rationale; the reference behavior is always recorded alongside.
 
 ## 2. Classification of the core surface
 
-Every `clojure.core` var carries exactly one classification (dashboard:
-`coverage.md`):
+Every `clojure.core` var carries exactly one classification (dashboard: `coverage.md`):
 
 | Class | Meaning | Spec treatment |
 |---|---|---|
@@ -33,8 +28,7 @@ Every `clojure.core` var carries exactly one classification (dashboard:
 | **host-dependent** | portable *interface*, host-defined behavior | interface entry; behavior host-defined |
 | **JVM-specific** | meaningful only on the JVM | catalogued in Appendix; not specified |
 
-Initial classifications are mechanical and reviewable; reclassification is an
-ordinary spec change.
+Initial classifications are mechanical and reviewable; reclassification is an ordinary spec change.
 
 ## 3. The normative entry format
 
@@ -58,19 +52,16 @@ Conformance
   S1 → <suite>/<test id>; E1 → ...   (statements without a test: UNVERIFIED)
 ```
 
-The **Conformance** field is load-bearing: every numbered statement names the
-test(s) that verify it. A normative statement with no test is labeled
-`UNVERIFIED` and is a defect in the spec.
+The **Conformance** field is load-bearing: every numbered statement names the test(s) that verify it. A
+normative statement with no test is labeled `UNVERIFIED` and is a defect in the spec.
 
 ## 4. Evidence and verification
 
-Behavioral questions are settled in this order: differential testing against
-the reference implementation → cross-dialect agreement in clojure-test-suite
-→ ClojureDocs community examples (verified before inclusion) → reference
-source (for intent). Conformance tests live in this repository
-(the corpus `test/chez/corpus.edn`, run on Chez via `host/chez/run-corpus.ss`
-and certified against reference JVM Clojure by `test/conformance/certify.clj`)
-and in the cross-dialect clojure-test-suite.
+Behavioral questions are settled in this order: differential testing against the reference
+implementation → cross-dialect agreement in clojure-test-suite → ClojureDocs community examples
+(verified before inclusion) → reference source (for intent). Conformance tests live in this
+repository (the corpus `test/chez/corpus.edn`, run on Chez via `host/chez/run-corpus.ss` and certified against reference JVM Clojure
+by `test/conformance/certify.clj`) and in the cross-dialect clojure-test-suite.
 
 ## 5. Chapter plan
 

@@ -1,7 +1,6 @@
-Every error Jolt raises carries a **kind** — a namespaced keyword
-identifying what went wrong, independent of the wording. The kind is
-what to search for, and what tooling should key on: the message beside
-it is free to improve, the kind is not.
+Every error Jolt raises carries a **kind**: a namespaced keyword identifying what went wrong,
+independent of the wording. The kind is what to search for, and what tooling should key on: the
+message beside it is free to improve, the kind is not.
 
 ```
 error[analyze/invalid-def]: First argument to def must be a Symbol
@@ -11,23 +10,17 @@ error[analyze/invalid-def]: First argument to def must be a Symbol
    |      ^^^^ the name must be a symbol
 ```
 
-Set `JOLT_DIAG=edn` to get the same diagnostic as a single line of EDN
-— kind, position, the offending token and the surrounding source —
-for editors and other tooling.
+Set `JOLT_DIAG=edn` to get the same diagnostic as a single line of EDN (kind, position, the offending token
+and the surrounding source) for editors and other tooling.
 
-The diagnostic's `ex-data` also carries the reference's spelling of its
-phase and position — `:clojure.error/phase` (`:read-source`,
-`:compile-syntax-check`, or for what a macro's own run raised
-`:macro-syntax-check` / `:macroexpansion` with `:clojure.error/symbol`
-naming the macro), `:clojure.error/line`, `:clojure.error/column` and
-`:clojure.error/source` — and `Throwable->map` lifts the phase to a
-top-level `:phase`, so `clojure.main/ex-triage` and everything built on it
-(REPL `:caught` hooks, test runners, editor middleware) reads a Jolt error
-the way it reads a JVM one.
+The diagnostic's `ex-data` also carries the reference's spelling of its phase and position (`:clojure.error/phase`
+(`:read-source`, `:compile-syntax-check`, or for what a macro's own run raised `:macro-syntax-check` / `:macroexpansion` with `:clojure.error/symbol` naming the
+macro), `:clojure.error/line`, `:clojure.error/column` and `:clojure.error/source`), and `Throwable->map` lifts the phase to a top-level `:phase`, so
+`clojure.main/ex-triage` and everything built on it (REPL `:caught` hooks, test runners, editor middleware) reads a
+Jolt error the way it reads a JVM one.
 
-This page is generated from
-[`test/conformance/error-kinds.edn`](https://github.com/jolt-lang/jolt/blob/main/test/conformance/error-kinds.edn),
-which the build gates against the compiler's actual raise sites.
+This page is generated from [`test/conformance/error-kinds.edn`](https://github.com/jolt-lang/jolt/blob/main/test/conformance/error-kinds.edn), which the build gates against the compiler's actual raise
+sites.
 
 ## Reader
 
@@ -35,22 +28,18 @@ Raised while reading source text into forms, before anything is compiled.
 
 ### `read/duplicate-key`
 
-The same key twice in a map literal, or the same element twice in a set
-literal. An IllegalArgumentException on both runtimes.
+The same key twice in a map literal, or the same element twice in a set literal. An
+IllegalArgumentException on both runtimes.
 
 ### `read/invalid-character`
 
-A character literal that names nothing — an unknown `\name`, or an octal escape
-outside `[0, 377]`.
+A character literal that names nothing: an unknown `\name`, or an octal escape outside `[0, 377]`.
 
 ### `read/invalid-constituent`
 
-An `@`, `` ` `` or `~` read as EDN (`clojure.edn`). EDN has no reader macros,
-and those three are refused outright rather than ending the token they sit in:
-inside or after a token it is an `Invalid constituent character`, where a form
-should start an `Invalid leading character`. A `RuntimeException` on both
-runtimes. Source reading is unaffected — there they are ordinary macro
-characters.
+An `@`, `` ` `` or `~` read as EDN (`clojure.edn`). EDN has no reader macros, and those three are refused outright rather than ending the token they sit in: inside or after a token it is an `Invalid constituent
+character`, where a form should start an `Invalid leading character`. A `RuntimeException` on both runtimes. Source reading
+is unaffected; there they are ordinary macro characters.
 
 ### `read/invalid-data-reader`
 
@@ -58,24 +47,23 @@ A `#tag` literal whose reader function is not registered in `*data-readers*`.
 
 ### `read/invalid-number`
 
-A token that starts like a number but is not one — `1a`, `08`, `0x2g`, `2r2`.
-A `NumberFormatException` on both runtimes.
+A token that starts like a number but is not one: `1a`, `08`, `0x2g`, `2r2`. A `NumberFormatException` on
+both runtimes.
 
 ### `read/invalid-syntax`
 
-A read error with no more specific kind yet — the default for the reader's
-positioned raise. Narrowing one of these to its own kind is always an
-improvement; nothing depends on it staying general.
+A read error with no more specific kind yet: the default for the reader's positioned raise.
+Narrowing one of these to its own kind is always an improvement; nothing depends on it staying
+general.
 
 ### `read/invalid-token`
 
-A token that is not a valid symbol or keyword: a leading or trailing slash, a
-bare `:` or `::`, or a keyword name beginning with a colon (`:::c`).
+A token that is not a valid symbol or keyword: a leading or trailing slash, a bare `:` or
+`::`, or a keyword name beginning with a colon (`:::c`).
 
 ### `read/invalid-unicode`
 
-A \uXXXX escape that is not four hex digits, is not a valid code point, or is
-an unpaired surrogate.
+A \uXXXX escape that is not four hex digits, is not a valid code point, or is an unpaired surrogate.
 
 ### `read/odd-entries-in-map`
 
@@ -83,20 +71,19 @@ A map literal with an odd number of forms, so some key has no value.
 
 ## Analysis
 
-Raised while analyzing a form — the compile-time errors.
+Raised while analyzing a form: the compile-time errors.
 
 ### `analyze/duplicate-method`
 
-A `reify`, `deftype` or `defrecord` that defines the same method (name, arity
-and parameter hints) twice, with the JVM's `Duplicate method name ...` message.
-Before 0.8.25 one of the two was silently dropped. `extend-type` and
+A `reify`, `deftype` or `defrecord` that defines the same method (name, arity and parameter hints) twice,
+with the JVM's `Duplicate method name ...` message. Before 0.8.25 one of the two was silently dropped. `extend-type` and
 `extend-protocol` still accept a repeat and keep the last, as on the JVM.
 
 ### `analyze/internal-failure`
 
-Anything else raised while analyzing a form, carrying the position of the
-innermost form under analysis. A diagnostic that reaches a user with this kind
-is a gap in the list above, not a category of its own.
+Anything else raised while analyzing a form, carrying the position of the innermost form under
+analysis. A diagnostic that reaches a user with this kind is a gap in the list above, not a category
+of its own.
 
 ### `analyze/invalid-arity`
 
@@ -104,9 +91,8 @@ A special form applied to the wrong number of arguments.
 
 ### `analyze/invalid-binding`
 
-A `let*`/`loop*` binding whose left-hand side is not a symbol. Destructuring is
-a macro over these, so a pattern that reaches the special form directly is one
-the desugarer did not rewrite.
+A `let*`/`loop*` binding whose left-hand side is not a symbol. Destructuring is a macro over these,
+so a pattern that reaches the special form directly is one the desugarer did not rewrite.
 
 ### `analyze/invalid-def`
 
@@ -114,15 +100,13 @@ A `def` whose first argument is not a symbol.
 
 ### `analyze/invalid-fn-parameters`
 
-A `fn*` parameter list that is not a vector of symbols, or a rest parameter
-that is not a symbol.
+A `fn*` parameter list that is not a vector of symbols, or a rest parameter that is not a symbol.
 
 ### `analyze/invalid-fn-arities`
 
-A multi-arity `fn` whose arities overlap, with the JVM's messages: two variadic
-arities, two fixed arities of the same count, or a fixed arity with more
-parameters than the variadic one. Before 0.8.25 these compiled and the first
-matching clause took every call.
+A multi-arity `fn` whose arities overlap, with the JVM's messages: two variadic arities, two
+fixed arities of the same count, or a fixed arity with more parameters than the variadic one. Before
+0.8.25 these compiled and the first matching clause took every call.
 
 ### `analyze/invalid-if`
 
@@ -134,8 +118,8 @@ A macro's var used as a value. Macros exist only at compile time.
 
 ### `analyze/invalid-member-access`
 
-A host interop form that does not parse: (. target member ...), (.method
-target ...) or (.-field target) with a missing or non-symbol member.
+A host interop form that does not parse: (. target member ...), (.method target ...) or (.-field
+target) with a missing or non-symbol member.
 
 ### `analyze/invalid-method-reference`
 
@@ -143,26 +127,25 @@ A qualified instance method (Class/.method) used as a value rather than called.
 
 ### `analyze/invalid-ns-form`
 
-An `ns` form with something other than an optional docstring, an optional
-attr-map and reference clauses after the name, such as a clause typo
-(`(:requires ...)`) or a docstring split by an unescaped `"`. Before 0.8.25 the
-extra forms were ignored. `jolt tools/ns_audit.clj <dir>`, run from a jolt
-checkout, lists the files that would raise without loading them.
+An `ns` form with something other than an optional docstring, an optional attr-map and reference
+clauses after the name, such as a clause typo (`(:requires ...)`) or a docstring split by an unescaped
+`"`. Before 0.8.25 the extra forms were ignored. `jolt tools/ns_audit.clj <dir>`, run from a jolt checkout, lists the
+files that would raise without loading them.
 
 ### `analyze/invalid-recur`
 
-A `recur` that cannot reach its target: no enclosing loop or fn, the wrong
-argument count, across a `try`, or outside tail position.
+A `recur` that cannot reach its target: no enclosing loop or fn, the wrong argument count, across a
+`try`, or outside tail position.
 
 ### `analyze/invalid-set`
 
-A `set!` whose target is not an assignable place — a local, a non-var, or a
-form that is neither a symbol nor a field access.
+A `set!` whose target is not an assignable place: a local, a non-var, or a form that is neither a
+symbol nor a field access.
 
 ### `analyze/invalid-try`
 
-A `try` whose clauses are out of order (a body form after a catch, a finally
-that is not last) or a catch clause that does not parse.
+A `try` whose clauses are out of order (a body form after a catch, a finally that is not last) or
+a catch clause that does not parse.
 
 ### `analyze/invalid-var-reference`
 
@@ -170,30 +153,26 @@ A `var` special form whose argument is not a symbol.
 
 ### `analyze/no-such-var`
 
-A qualified symbol whose namespace half, an alias or a namespace name, names a
-loaded namespace that has no such var: `No such var: s/nope`, as the JVM
-reports it. Raised where a form runs as soon as it compiles (load, require,
-eval, the REPLs), so a namespace that names a missing var anywhere, even on a
-path that rarely runs, fails to load. `jolt build`'s analysis keeps such a
-reference late-bound, since the var may be defined before the code runs, and so
-does `jolt.host`, whose vars depend on the host files a boot loaded.
-Carries :symbol, :namespace and :ns alongside the position.
+A qualified symbol whose namespace half, an alias or a namespace name, names a loaded namespace that
+has no such var: `No such var: s/nope`, as the JVM reports it. Raised where a form runs as soon as it compiles
+(load, require, eval, the REPLs), so a namespace that names a missing var anywhere, even on a path
+that rarely runs, fails to load. `jolt build`'s analysis keeps such a reference late-bound, since the var
+may be defined before the code runs, and so does `jolt.host`, whose vars depend on the host files a boot
+loaded. Carries :symbol, :namespace and :ns alongside the position.
 
 ### `analyze/unknown-namespace`
 
-A qualified symbol whose namespace half is namespace-shaped — dotted, with a
-lowercase segment after the last dot — and names no loaded namespace at all: a
-missing `require`, or a typo in the namespace part. The JVM reports the same
-thing, as `No such namespace`. A LOADED namespace missing only the var is
-`analyze/no-such-var` instead. A Capitalized name with no dot (`Nope/foo`) is
-deliberately NOT this error and reports at the call: it may be an
-`:import`-ed class short name whose provider has not autoloaded yet.
-Carries :symbol, :namespace and :ns alongside the position.
+A qualified symbol whose namespace half is namespace-shaped (dotted, with a lowercase segment after
+the last dot), and names no loaded namespace at all: a missing `require`, or a typo in the namespace
+part. The JVM reports the same thing, as `No such namespace`. A LOADED namespace missing only the var is `analyze/no-such-var`
+instead. A Capitalized name with no dot (`Nope/foo`) is deliberately NOT this error and reports at the
+call. It may be an `:import`-ed class short name whose provider has not autoloaded yet. Carries
+:symbol, :namespace and :ns alongside the position.
 
 ### `analyze/unresolved-symbol`
 
-A symbol that names neither a local, an interned var, nor an imported class.
-Carries :symbol, :suggestions and :ns alongside the position.
+A symbol that names neither a local, an interned var, nor an imported class. Carries :symbol,
+:suggestions and :ns alongside the position.
 
 ### `analyze/unresolved-var`
 
@@ -201,8 +180,7 @@ A `var` special form naming a var that does not exist.
 
 ### `analyze/unsupported-form`
 
-A form the analyzer cannot classify at all — neither literal, symbol,
-collection, nor list.
+A form the analyzer cannot classify at all: neither literal, symbol, collection, nor list.
 
 ### `analyze/unsupported-special-form`
 
@@ -210,9 +188,8 @@ A special-form head jolt's analyzer has no arm for.
 
 ## Foreign interface
 
-Raised while checking a jolt.ffi layout, type or signature. These are
-compile-time like the analysis errors, but concern a foreign type description
-rather than Clojure itself.
+Raised while checking a jolt.ffi layout, type or signature. These are compile-time like the analysis
+errors, but concern a foreign type description rather than Clojure itself.
 
 ### `ffi/invalid-array`
 
@@ -220,19 +197,17 @@ A fixed array descriptor that is not `[:array element-type positive-count]`.
 
 ### `ffi/invalid-field`
 
-A struct or union field that is not `[keyword type]`, whose name is not an
-unqualified keyword, or that repeats a name already used.
+A struct or union field that is not `[keyword type]`, whose name is not an unqualified keyword, or that
+repeats a name already used.
 
 ### `ffi/invalid-layout`
 
-A jolt.ffi layout that is not `[:struct [[field type] ...]]` or the `:union`
-equivalent, or one declaring no fields at all.
+A jolt.ffi layout that is not `[:struct [[field type] ...]]` or the `:union` equivalent, or one declaring no fields at all.
 
 ### `ffi/invalid-option`
 
-An unknown option key, an option key that is not an unqualified keyword, or an
-option combination the backend cannot honour — :capture-native-error on a
-:void or by-value return.
+An unknown option key, an option key that is not an unqualified keyword, or an option combination
+the backend cannot honour. :capture-native-error on a :void or by-value return.
 
 ### `ffi/invalid-signature`
 
@@ -240,6 +215,6 @@ A foreign-fn or foreign-callable form whose shape does not parse.
 
 ### `ffi/invalid-type`
 
-A field or parameter type that is not a fixed-size scalar, a nested struct or
-union, or a fixed array.
+A field or parameter type that is not a fixed-size scalar, a nested struct or union, or a fixed
+array.
 

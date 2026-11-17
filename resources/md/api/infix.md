@@ -1,6 +1,11 @@
-Jolt ships an infix-notation layer in `jolt.infix` for arithmetic, comparison, and boolean expressions. It is a thin reader/rewriter on top of ordinary Clojure — infix forms compile down to the same prefix calls you would write by hand, so there is no separate value type and no runtime cost for the macro form. It is handy for math-heavy code, configuration formulas, and user-supplied expressions you need to evaluate safely.
+Jolt ships an infix-notation layer in `jolt.infix` for arithmetic, comparison, and boolean expressions.
+It is a thin reader/rewriter on top of ordinary Clojure: infix forms compile down to the same prefix
+calls you would write by hand, so there is no separate value type and no runtime cost for the macro
+form. It is handy for math-heavy code, configuration formulas, and user-supplied expressions you
+need to evaluate safely.
 
-There are two entry points. `infix` (and its alias `$=`) is a **macro** that rewrites a literal infix form at compile time. `from-string` **parses a string at runtime**, returning a function you can call with bound variables.
+There are two entry points. `infix` (and its alias `$=`) is a **macro** that rewrites a literal
+infix form at compile time. `from-string` **parses a string at runtime**, returning a function you can call with bound variables.
 
 ```clojure
 (require '[jolt.infix :refer [infix $= from-string]])
@@ -21,7 +26,9 @@ There are two entry points. `infix` (and its alias `$=`) is a **macro** that rew
 ($=   & expr)        ; alias, identical behavior
 ```
 
-`infix` takes alternating operands and operators and rewrites them to prefix Clojure at macroexpansion time, applying [operator precedence](#precedence_and_associativity) and resolving [aliases](#aliased_operators_and_functions). Bare names resolve as ordinary Clojure locals or vars; the standard math operators (`+ - * /` etc.) pass straight through to `clojure.core`.
+`infix` takes alternating operands and operators and rewrites them to prefix Clojure at
+macroexpansion time, applying [operator precedence](#precedence_and_associativity) and resolving [aliases](#aliased_operators_and_functions). Bare names resolve as ordinary Clojure
+locals or vars; the standard math operators (`+ - * /` etc.) pass straight through to `clojure.core`.
 
 ```clojure
 (infix 3 + 4)                ; => (+ 3 4)  => 7
@@ -33,7 +40,8 @@ There are two entry points. `infix` (and its alias `$=`) is a **macro** that rew
 (infix 5 = 5.0)              ; => false    (= is strict value equality)
 ```
 
-Function application uses prefix-style calls, and unary functions bind tighter than binary operators:
+Function application uses prefix-style calls, and unary functions bind tighter than binary
+operators:
 
 ```clojure
 (infix abs (3 ** 6))         ; => 729.0
@@ -42,7 +50,8 @@ Function application uses prefix-style calls, and unary functions bind tighter t
 (infix √ (5 * 5))            ; => 5.0      (√ is an alias for sqrt)
 ```
 
-Note the two equality operators: `==` is Clojure's numeric equality (`5 == 5.0` is true); `=` is strict value equality (`5 = 5.0` is false).
+Note the two equality operators: `==` is Clojure's numeric equality (`5 == 5.0` is true); `=` is
+strict value equality (`5 = 5.0` is false).
 
 ## Parsing strings at runtime: `from-string`
 
@@ -52,7 +61,8 @@ Note the two equality operators: `==` is Clojure's numeric equality (`5 == 5.0` 
 (from-string [bindings...] env expr)        ; env :: {keyword fn}
 ```
 
-`from-string` parses `expr` according to the [grammar](#grammar) and returns a **function**. Call that function with values for the declared bindings to evaluate the expression:
+`from-string` parses `expr` according to the [grammar](#grammar) and returns a **function**. Call that function with
+values for the declared bindings to evaluate the expression:
 
 ```clojure
 ((from-string "5 * 2"))                     ; => 10
@@ -61,7 +71,8 @@ Note the two equality operators: `==` is Clojure's numeric equality (`5 == 5.0` 
 ((from-string [t] "(t > 100) ? 1 : 0") 150) ; => 1   (ternary)
 ```
 
-The returned function carries metadata recording its source and parameters, which is useful when expressions come from configuration or user input:
+The returned function carries metadata recording its source and parameters, which is useful when
+expressions come from configuration or user input:
 
 ```clojure
 (meta (from-string [x y] "sqrt(x**2 + y**2)"))
@@ -70,7 +81,9 @@ The returned function carries metadata recording its source and parameters, whic
 
 ### The environment
 
-`from-string` resolves every name against an **environment** — a map from keyword to function/value. The default is `jolt.infix.core/base-env`, which provides arithmetic, comparison, boolean, bitwise, and math functions (see [The default environment](#the_default_environment)). Declared bindings are merged on top of the base environment, shadowing it:
+`from-string` resolves every name against an **environment**: a map from keyword to function/value. The default is
+`jolt.infix.core/base-env`, which provides arithmetic, comparison, boolean, bitwise, and math functions (see [The default environment](#the_default_environment)).
+Declared bindings are merged on top of the base environment, shadowing it:
 
 ```clojure
 (require '[jolt.infix.core :refer [base-env]])
@@ -92,7 +105,9 @@ The returned function carries metadata recording its source and parameters, whic
 
 ### Performance
 
-`from-string` parses the string **each time the `from-string` form is evaluated**, not each time the returned function is called. The parsed expression is captured in the closure, so the returned function can be called many times cheaply. Hoist the parser out of hot loops:
+`from-string` parses the string **each time the `from-string` form is evaluated**, not each time the returned function is called. The parsed
+expression is captured in the closure, so the returned function can be called many times cheaply.
+Hoist the parser out of hot loops:
 
 ```clojure
 ;; Good: parse once, call many times
@@ -106,7 +121,8 @@ The returned function carries metadata recording its source and parameters, whic
 
 ## Aliased operators and functions
 
-The `infix` macro resolves a set of symbols and names to their Clojure/`Math` equivalents before rewriting. These aliases are the friendly surface for math and logic:
+The `infix` macro resolves a set of symbols and names to their Clojure/`Math` equivalents before
+rewriting. These aliases are the friendly surface for math and logic:
 
 **Logical and bitwise**
 
@@ -133,7 +149,7 @@ The `infix` macro resolves a set of symbols and names to their Clojure/`Math` eq
 - `!=` → `not=`
 - `<`, `>`, `<=`, `>=` → as in `clojure.core`
 
-**Math — exponential/log/power**
+**Math: exponential/log/power**
 
 - `sqrt`, `√` → `Math/sqrt`
 - `exp` → `Math/exp`
@@ -142,22 +158,22 @@ The `infix` macro resolves a set of symbols and names to their Clojure/`Math` eq
 - `signum` → `Math/signum`
 - `pow` → `Math/pow` (also the function form `pow(2.53, 3.1)`)
 
-**Math — trigonometric** (angles in radians)
+**Math: trigonometric** (angles in radians)
 
 - `sin`, `cos`, `tan`
 - `asin`, `acos`, `atan`, `atan2`
 - `sinh`, `cosh`, `tanh`
-- `sec`, `csc`, `cot` (secant, cosecant, cotangent — not in `java.lang.Math`)
+- `sec`, `csc`, `cot` (secant, cosecant, cotangent: not in `java.lang.Math`)
 - `asec`, `acsc`, `acot` (their inverses)
 
 **Number theory and aggregation**
 
-- `gcd` — greatest common divisor
-- `lcm` — least common multiple
-- `fact` — factorial
-- `root(a, b)` — the `a`-th root of `b`, i.e. `b ** (1 / a)`
-- `sum`, `∑` — variadic sum, e.g. `sum(1, 2, 5.7, 4)`
-- `product`, `∏` — variadic product
+- `gcd`: greatest common divisor
+- `lcm`: least common multiple
+- `fact`: factorial
+- `root(a, b)`: the `a`-th root of `b`, i.e. `b ** (1 / a)`
+- `sum`, `∑`: variadic sum, e.g. `sum(1, 2, 5.7, 4)`
+- `product`, `∏`: variadic product
 
 **Constants**
 
@@ -170,15 +186,16 @@ The `infix` macro resolves a set of symbols and names to their Clojure/`Math` eq
 - `rand()` → a random double in `[0, 1)`
 - `randInt(n)` → a random integer in `[0, n)`
 
-In `from-string` these resolve by name from `base-env`; in the `infix` macro the symbolic ones (`&&`, `**`, `√`, `π`, …) are rewritten to their target symbols at compile time.
+In `from-string` these resolve by name from `base-env`; in the `infix` macro the symbolic ones (`&&`,
+`**`, `√`, `π`, …) are rewritten to their target symbols at compile time.
 
 ## Precedence and associativity
 
 Expressions are built from three precedence classes (tightest first), plus ternary:
 
-- `**` (exponentiation) — **right**-associative, so `2 ** 2 ** 2 ** 2` is `2 ** (2 ** (2 ** 2))` → `65536.0`.
-- multiplicative: `* / ÷ % << >> >>>` — left-associative.
-- additive: `+ - | & || &&` — left-associative, so `1 - 2 + 3` is `(1 - 2) + 3` → `2`.
+- `**` (exponentiation) **right**-associative, so `2 ** 2 ** 2 ** 2` is `2 ** (2 ** (2 ** 2))` → `65536.0`.
+- multiplicative: `* / ÷ % << >> >>>`: left-associative.
+- additive: `+ - | & || &&`: left-associative, so `1 - 2 + 3` is `(1 - 2) + 3` → `2`.
 - unary functions (`sqrt`, `sin`, `abs`, `√`, …) bind tighter than any binary operator.
 - the ternary `(cond) ? a : b` is a separate form; the condition must be parenthesized.
 
@@ -188,7 +205,9 @@ Use parentheses to override any of the above.
 
 ## The default environment
 
-`jolt.infix.core/base-env` is the keyword→function map `from-string` evaluates against by default. It provides everything in the [alias table](#aliased_operators_and_functions) plus the core arithmetic and comparison operators. To see what is available, inspect it directly:
+`jolt.infix.core/base-env` is the keyword→function map `from-string` evaluates against by default. It provides everything in
+the [alias table](#aliased_operators_and_functions) plus the core arithmetic and comparison operators. To see what is available, inspect it
+directly:
 
 ```clojure
 (require '[jolt.infix.core :refer [base-env]])
@@ -201,11 +220,13 @@ Use parentheses to override any of the above.
 ;     :| :& :¬ :>> :>>> :<< ...)
 ```
 
-Pass your own env (third argument) to add to or override it; pass a merged map as the second-arity `env` to swap the operator meanings entirely.
+Pass your own env (third argument) to add to or override it; pass a merged map as the second-arity
+`env` to swap the operator meanings entirely.
 
 ## Extending and overriding
 
-The alias table lives in the `jolt.infix.core/operator-alias` atom. `suppress!` removes an alias so the symbol falls back to its ordinary Clojure meaning — useful when a name like `e` clashes with a local:
+The alias table lives in the `jolt.infix.core/operator-alias` atom. `suppress!` removes an alias so the symbol falls back to its
+ordinary Clojure meaning: useful when a name like `e` clashes with a local:
 
 ```clojure
 (require '[jolt.infix.core :refer [suppress!]])
@@ -215,7 +236,8 @@ The alias table lives in the `jolt.infix.core/operator-alias` atom. `suppress!` 
   (infix e * 3))          ; => 27  (e is now your local)
 ```
 
-You can also `swap!` onto `operator-alias` to add your own aliases for the `infix` macro, and extend `base-env` (or pass an explicit env to `from-string`) to teach the string parser new names.
+You can also `swap!` onto `operator-alias` to add your own aliases for the `infix` macro, and extend `base-env`
+(or pass an explicit env to `from-string`) to teach the string parser new names.
 
 ## Grammar
 
@@ -245,4 +267,6 @@ You can also `swap!` onto `operator-alias` to add your own aliases for the `infi
 <digits>     ::= digit { digit }.
 ```
 
-Numbers accept decimals (`1.7`), rationals (`1/7`), binary (`0b011011`), and hex (`0xCAFEBABE` or `#DEADBEEF`), each with an optional leading `-`. Names (`envref`) may contain letters, digits, `_`, and `.`, and resolve to a keyword key in the evaluation environment.
+Numbers accept decimals (`1.7`), rationals (`1/7`), binary (`0b011011`), and hex (`0xCAFEBABE` or
+`#DEADBEEF`), each with an optional leading `-`. Names (`envref`) may contain letters, digits,
+`_`, and `.`, and resolve to a keyword key in the evaluation environment.
