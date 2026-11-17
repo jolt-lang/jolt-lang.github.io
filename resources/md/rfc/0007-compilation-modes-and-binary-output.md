@@ -79,7 +79,7 @@ accumulate-then-compile:
 3. **Emit to a file.** Run `analyze → emit` for each surviving form under the mode's knobs, concatenating the Scheme
    into one program source (the `clojure.core` overlay prelude first, in tier order).
 4. **Compile and link.** Feed that source to Chez's native compiler and link a boot file plus the compiled
-   program into a single executable. App libraries are baked in: no source roots are needed at
+   program into a single executable. App libraries are baked in, so no source roots are needed at
    runtime.
 
 ## Binaries, FFI, and `eval`

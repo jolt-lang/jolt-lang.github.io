@@ -44,7 +44,7 @@ arithmetic stays exact until a double enters:
 (denominator 3/4)    ;=> 4
 ```
 
-This matches JVM Clojure's `clojure.lang.Ratio` behavior: jolt ratios *are* reported as `clojure.lang.Ratio`.
+This matches JVM Clojure's `clojure.lang.Ratio` behavior: jolt ratios are reported as `clojure.lang.Ratio`.
 
 ## The JVM-shaped class surface
 
@@ -75,11 +75,11 @@ JVM `BigInt` stays a `BigInt` when arithmetic brings it back into range; here it
 2r1010N                              ;=> 10                  (JVM: reader error)
 ```
 
-An `N` suffix therefore asks for nothing the value does not already have: it is
+An `N` suffix therefore asks for nothing the value does not already have; it is
 accepted, and it is a no-op. Values and arithmetic agree with the JVM throughout
 (`(= 10 10N)` and `(= (inc Long/MAX_VALUE) 9223372036854775808)` are both true) only the class of a small `N` literal differs,
 and jolt's divergence registry carries these rows under `:integer-box-model` and `:reader-model`. A
-faithfully narrow box is not worth its cost: it would have to crash raw compiled `(+ …)`
+faithfully narrow box is not worth its cost, as it would have to crash raw compiled `(+ …)`
 or de-optimize all arithmetic.
 
 `M` literals are decimal (`BigDecimal`) as on the JVM. `##Inf`, `##-Inf`, `##NaN` read and
@@ -95,7 +95,7 @@ no build mode in which the tower silently shrinks.
 
 ## Complex numbers
 
-Chez's tower extends below what Clojure has: it carries exact and inexact complex
+Chez's tower extends below what Clojure has; it carries exact and inexact complex
 numbers natively. jolt does not surface them first-class (no reader syntax, no `complex?`),
 but they are the layer underneath, reachable through the raw host seam (`jolt.scheme`) where
 Chez procedures and their results cross untouched:

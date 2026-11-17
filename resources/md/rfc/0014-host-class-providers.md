@@ -166,7 +166,7 @@ After:
 > provided.
 
 This is deliberate. Which library supplies `java.sql` or `java.time`
-is not the runtime's to say: a caller may write the shim themselves, and declaring it
+is not the runtime's to say, so a caller may write the shim themselves, and declaring it
 through `:jolt/provides` is exactly the point. Naming a specific library in the error would put
 the coupling back as a string: the runtime would once again ship an opinion about which
 library you ought to depend on, going stale as the ecosystem grows.
@@ -176,7 +176,7 @@ deliberate the old message was; they now assert the general form, plus a third a
 that no library name appears, so the coupling cannot return as a string.
 
 A claim that IS declared but whose provider raised while loading still names that
-provider. That is not a catalogue: it is the dependency the caller declared, read back
+provider. That is not a catalogue but the dependency the caller declared, read back
 from their own `deps.edn`, and the fix is the opposite of adding something, so the two
 cases must not read alike.
 
@@ -199,7 +199,7 @@ cases must not read alike.
 ## Compatibility
 
 `:jolt/provides` is a new `deps.edn` key. Older jolt ignores unknown `deps.edn` keys silently, so
-libraries can declare it before the runtime understands it: the declaration is inert
+libraries can declare it before the runtime understands it, so the declaration is inert
 until a jolt that reads it. `:jolt/min-version` (jolt 0.8.0) is how a library states that it needs
 the newer behaviour.
 

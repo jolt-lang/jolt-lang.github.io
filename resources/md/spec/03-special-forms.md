@@ -14,7 +14,7 @@ macroexpansion. The special forms of Clojure are:
 MUST treat them as redefinable macros, not additional special forms. `monitor-enter`/`monitor-exit`, `.` and
 `new` are host forms: their syntax is specified here, their behavior is host-defined.
 
-Special-form head symbols are not shadowable: a binding named `if` does not change the meaning of
+Special-form head symbols are not shadowable; a binding named `if` does not change the meaning of
 `(if ...)` in operator position. ⚠ This matches the reference; it differs from Scheme. A local *may*
 legally be named like a special form and used in value position (`(let [if 5] if)` ⇒ `5`); only operator
 position is reserved. **Macros, unlike special forms, ARE shadowable** by a local (`(let [when (fn ...)] (when 1 2))` calls the local).
@@ -90,7 +90,7 @@ and expands to `let*` (§8); `let*` itself accepts **only simple symbols** in bi
   body form is the value of the `let*` form. An empty body evaluates to `nil`.
 - S3. A later binding MAY rebind the same symbol; each binding creates a new lexical binding visible
   from the next init onward (no mutation of the earlier binding is implied).
-- S4. Bindings are lexical and immutable: there is no form that assigns to a `let*`-bound local.
+- S4. Bindings are lexical and immutable; there is no form that assigns to a `let*`-bound local.
   (Closures capture bindings by value; see §3 `fn*`.)
 - S5. The binding vector MUST be a vector literal with an even number of forms.
 

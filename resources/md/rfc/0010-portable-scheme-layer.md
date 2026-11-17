@@ -44,7 +44,7 @@ group is owned by a *capability* with named entry points and a documented degrad
 
 ## Capabilities and degradation
 
-Degradation is explicit and honest: an absent capability raises or returns empty; it never fakes.
+Degradation is explicit and honest: an absent capability raises or returns empty, and it never fakes.
 
 | capability | entry points (examples) | a target without it |
 |---|---|---|

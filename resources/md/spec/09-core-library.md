@@ -58,7 +58,7 @@ corpus.
 **Edge cases**
 
 - E1. `(first nil)` ⇒ `nil`; `(first [])` ⇒ `nil`; `(first "")` ⇒ `nil`.
-- E2. A `nil` or `false` first *element* is returned as-is: callers cannot distinguish
+- E2. A `nil` or `false` first *element* is returned as-is, so callers cannot distinguish
   "empty" from "first element is nil" via `first` alone (that is what `seq` is for).
 - E3. On a map, the element is a map entry; on an unordered collection (map, set)
   *which* element is first is implementation-defined but MUST be consistent with that

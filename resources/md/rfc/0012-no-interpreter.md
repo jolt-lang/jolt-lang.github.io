@@ -17,7 +17,7 @@ interpreter/compiled parity in dev workflows), which means two execution engines
 kept semantically identical and separately optimized. jolt never built the second
 engine.
 
-The bottom of the stack makes this cheap: Chez Scheme itself has no interpreter: it
+The bottom of the stack makes this cheap, because Chez Scheme itself has no interpreter: it
 incrementally compiles everything to native machine code, including forms evaluated one
 at a time. So "evaluate this form" in jolt is "compile this form's Scheme emission and
 run the native code," whether at the REPL or inside a release binary.

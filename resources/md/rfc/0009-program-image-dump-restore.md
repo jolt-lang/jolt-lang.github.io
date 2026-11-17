@@ -16,7 +16,7 @@ thing in it.
 
 What travels is **state, not execution**. What does not travel is in-flight computation: no thread
 stacks, no continuations, no suspended calls. This is a state image, not a process
-image, and the distinction is load-bearing: it is what makes the feature implementable
+image, and the distinction is load-bearing, because it is what makes the feature implementable
 on Chez at all, and what users have to expect.
 
 ## API
@@ -88,7 +88,7 @@ copy: they are code, or interned, and the restoring build already has them.
 
 Lazy sequences travel **unforced**. A core producer records what it is (the producer and its
 arguments) rather than closing over them, so restore re-applies it and what comes back
-is still lazy: an infinite sequence keeps generating, and a side effect that had not run
+is still lazy, so an infinite sequence keeps generating, and a side effect that had not run
 still has not. Forcing at dump would do neither.
 
 Because restore evaluates fn sources, **an image is code**: load images with exactly the trust you
@@ -114,7 +114,7 @@ Two things cannot simply be copied, and both are silent failures rather than err
 you get them wrong.
 
 **Keywords are interned**, and jolt's map lookup compares them by identity. A copied keyword is a key
-nothing can find: the restored map prints and counts correctly while every `(:k m)`
+nothing can find. The restored map prints and counts correctly while every `(:k m)`
 returns `nil` and `=` is `false`. Keywords are therefore re-interned on the way
 in. Their cached hash is content-derived, so an re-interned keyword hashes the same and
 the restored map's internal structure stays valid. Symbols need none of this: they are

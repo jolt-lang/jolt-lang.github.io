@@ -6,7 +6,7 @@
 
 > **Implementation note.** As shipped, the core base is narrower than the boundary sketched below: it is the java.time
 > **value types only** (`Instant`, `LocalDate`/`LocalTime`/`LocalDateTime`, `Duration`, `Period`, `Year`/`YearMonth`/`MonthDay`, and the
-> `Month`/`DayOfWeek`/`Chrono*` enums. Everything that formats or names a zone) (`DateTimeFormatter`, `FormatStyle`,
+> `Month`/`DayOfWeek`/`Chrono*` enums. Everything that formats or names a zone (`DateTimeFormatter`, `FormatStyle`,
 > `ZoneOffset`, `ZoneId`, `ZonedDateTime`/`OffsetDateTime`, localized formatting, and `java.util.Locale`) is the jolt-lang/time
 > library, as the single implementation. Putting `DateTimeFormatter` and `ZoneOffset` in core (as the boundary below
 > proposed) meant core carried a reduced pattern engine and fixed zones that the library then had to
@@ -33,7 +33,7 @@ The boundary this RFC settles on:
 > locale data: named-zone offset resolution and DST (`ZoneId` rules), `ZonedDateTime` / `OffsetDateTime`, localized
 > formatting, and the tick API.
 
-The line was chosen empirically by surveying `conformance-libraries/` (see below): the base is what real libraries
+The line was chosen empirically by surveying `conformance-libraries/` (see below), so the base is what real libraries
 reach for incidentally, and it computes from epoch arithmetic alone, so it should never require an
 extra dependency. Only named-zone/DST and localized names genuinely need system libraries, and those
 are the library's reason to exist.
@@ -51,7 +51,7 @@ Two files in the core image carry time.
 value-model seams (`register-class-statics!`, `register-host-methods!`, `register-class-ctor!`, and the `register-{eq,hash,compare,class,pr,instance-check}-arm!` family):
 
 - The `#inst` literal: parse (`jolt-inst-from-string`), the `jinst` value type, and its equality / hashing /
-  comparison / printing / `instance?` integration. This is intrinsic: the reader and printer must
+  comparison / printing / `instance?` integration. This is intrinsic, because the reader and printer must
   round-trip `#inst` with no library present, so this can only live in core.
 - The legacy `java.util` / `java.text` date layer: `java.util.Date`, `java.sql.Date` / `Timestamp`, `java.util.Calendar`, `java.util.TimeZone`, `java.text.SimpleDateFormat`,
   `java.util.Locale`, and the UTC/GMT `format-ms` / `parse-ms` pattern engine that backs them (and HTTP date headers).
@@ -175,7 +175,7 @@ java.time.ZonedDateTime is provided by the jolt-lang/time library, not core
 (RFC 0008). Add io.github.jolt-lang/time to your deps.edn.
 ```
 
-This is the same philosophy as the "did you mean?" symbol diagnostics: the error carries the fix.
+This is the same philosophy as the "did you mean?" symbol diagnostics, where the error carries the fix.
 `host-static.ss` already recognizes an unresolved `java.time.*` class and points at jolt-lang/time; once the base
 is in core the message narrows to the classes that genuinely live in the library (`ZonedDateTime`, `OffsetDateTime`,
 named-zone `ZoneId` operations), since the base now resolves.

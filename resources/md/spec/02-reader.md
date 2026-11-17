@@ -38,7 +38,7 @@ exponent := [eE] ['+'|'-'] digits
 ```
 
 - S4a. **Digit separators (a Jolt superset).** An underscore between two digits is a separator and is dropped: `1_000_000` reads as
-  `1000000`. The rule is Java's: the separator must sit *between two digits*, never against the sign, the `0x` /
+  `1000000`. The rule is Java's, so the separator must sit *between two digits*, never against the sign, the `0x` /
   `NrDDD` radix marker, the decimal point, the exponent marker, the ratio slash, or the
   `N`/`M` suffix. So `0xFF_FF`, `0_52`, `36rR_Z`, `1_0.5_5`, `1_0e1_0` and `3_000N` read, while
   `1_`, `0x_52` and `1e_5` raise `Invalid number` as before. A run of underscores counts as one
@@ -176,7 +176,7 @@ literal dirs. S3/S4 duplicate checks → UNVERIFIED (rows to add).
 
 ### S20a: program-supplied dispatch readers
 
-The reference dispatch table is closed: a character not catalogued above is a read error ("No
+The reference dispatch table is closed, so a character not catalogued above is a read error ("No
 dispatch macro for: $"). That is a deliberate reference decision, and this section does not require
 it to change.
 

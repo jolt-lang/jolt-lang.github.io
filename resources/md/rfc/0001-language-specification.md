@@ -22,9 +22,9 @@ Clojure has no specification. The language is defined by:
 4. each alternative implementation's reverse-engineering effort.
 
 Every alternative implementation independently re-derives answers to the same questions (*what does `(nth coll nil)` do? is `(first "")` an error? does `conj` on `nil` produce a list or vector? in what order does `reduce-kv` visit a map?*),
-and they routinely diverge. The cross-dialect [clojure-test-suite](https://github.com/jank-lang/clojure-test-suite) exists precisely because these divergences are
-real and frequent: it currently encodes hundreds of edge-case assertions that no normative document
-captures.
+and they routinely diverge. The cross-dialect [clojure-test-suite](https://github.com/jank-lang/clojure-test-suite) exists precisely because these divergences
+are real and frequent. It currently encodes hundreds of edge-case assertions that no normative
+document captures.
 
 Building jolt's self-hosted compiler forced us to answer these questions one at a time (the
 conformance harness runs every behavior through three independent execution paths and demands
@@ -39,8 +39,8 @@ A useful spec needs an implementation that can *afford* to be strict. The refere
 can't adopt a spec retroactively without breaking changes; an alternative implementation chasing
 drop-in compatibility can't deviate from the reference even where the reference is accidental.
 jolt's goals (self-hosted, minimal seed, multiple execution paths that must agree) already require
-us to decide, for every form, *what the contract is*: we are writing the spec anyway, in test form. The marginal
-cost of writing it down properly is small; the value to the ecosystem is large.
+us to decide, for every form, *what the contract is*. We are writing the spec anyway, in test form.
+The marginal cost of writing it down properly is small; the value to the ecosystem is large.
 
 ## Goals
 
@@ -49,12 +49,13 @@ cost of writing it down properly is small; the value to the ecosystem is large.
    for the portable `clojure.core` surface.
 2. **Executable**: every normative statement is paired with at least one conformance test. The spec and the
    suite are maintained together; a spec claim without a test is marked `unverified`.
-3. **Host classification**: every `clojure.core` var is classified **portable** (specified normatively), **host-dependent** (interface
-   specified, behavior host-defined (e.g. `slurp`, `*out*`), or **JVM-specific** (documented as outside the
-   portable language) e.g. `bases`, `definline`, agents/STM as currently scoped).
+3. **Host classification**: every `clojure.core` var is classified **portable** (specified
+   normatively), **host-dependent** (interface specified, behavior host-defined; e.g. `slurp`,
+   `*out*`), or **JVM-specific** (documented as outside the portable language, e.g. `bases`,
+   `definline`, agents/STM as currently scoped).
 4. **Versioned against reference Clojure**: each spec edition states the reference version it describes (initially 1.12) and records
-   *deliberate* divergences (e.g. where reference behavior is accidental: these become labeled
-   "implementation-defined" with the reference behavior noted).
+   *deliberate* divergences (e.g. where reference behavior is accidental, so these become
+   labeled "implementation-defined" with the reference behavior noted).
 5. **Useful to other implementations**: no jolt-specific concepts in normative text. jolt appears only in conformance-suite
    references.
 

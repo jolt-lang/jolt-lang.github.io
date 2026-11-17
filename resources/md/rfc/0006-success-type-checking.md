@@ -40,7 +40,7 @@ Success typing (Lindahl and Sagonas, "Practical Type Inference Based on Success 
 accepts only what it can prove correct and rejects the rest (false positives on dynamic
 code). A success typer accepts everything that *could* be correct and rejects only what
 *cannot* be correct under any execution. It is sound for **rejection**: if it reports an error,
-the code is genuinely wrong. It is intentionally incomplete: it misses errors it cannot
+the code is genuinely wrong. It is intentionally incomplete, and misses errors it cannot
 prove. That is the correct trade for a dynamic language, and it matches the user's "accept
 ambiguous, reject provably wrong".
 
