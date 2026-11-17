@@ -1,4 +1,7 @@
-Jolt runs on Scheme, not the JVM, so there are no real Java classes behind interop forms. Instead the runtime ships shims for the slice of the JVM standard library that portable Clojure code reaches for, so libraries written against `clojure.core` and common `java.*` classes run unchanged. The Clojure interop syntax works against these shims:
+Jolt runs on Scheme, not the JVM, so there are no real Java classes behind interop forms. Instead
+the runtime ships shims for the slice of the JVM standard library that portable Clojure code reaches
+for, so libraries written against `clojure.core` and common `java.*` classes run unchanged. The Clojure
+interop syntax works against these shims:
 
 ```clojure
 (Math/sqrt 2)                  ; static call
@@ -8,97 +11,188 @@ Math/PI                        ; static field
 (instance? String "hi")        ; class token
 ```
 
-A class token (`String`, `java.util.UUID`, …) evaluates to a `java.lang.Class` object, and `(class x)` returns one for the scalar and collection types Clojure programs compare against. The modeled class hierarchy answers a minimal reflective surface: `.getSuperclass` (nil for `Object` and for interfaces, as on the JVM), `.getInterfaces`, `.isAssignableFrom`, `.isInterface`, `.isInstance`, plus the naming trio `.getName`/`.getSimpleName`/`.getCanonicalName`. `isa?`, `supers`, `ancestors` and `bases` derive from the same graph, and a class a library registers (`jolt.host/register-class-supers!`) reflects like a built-in. There is no method/field enumeration and no `clojure.reflect`: the hierarchy is modeled, the members are not.
+A class token (`String`, `java.util.UUID`, …) evaluates to a `java.lang.Class` object, and `(class x)` returns one for the
+scalar and collection types Clojure programs compare against. The modeled class hierarchy answers a
+minimal reflective surface: `.getSuperclass` (nil for `Object` and for interfaces, as on the JVM), `.getInterfaces`,
+`.isAssignableFrom`, `.isInterface`, `.isInstance`, plus the naming trio `.getName`/`.getSimpleName`/`.getCanonicalName`. `isa?`, `supers`,
+`ancestors` and `bases` derive from the same graph, and a class a library registers (`jolt.host/register-class-supers!`)
+reflects like a built-in. There is no method/field enumeration and no `clojure.reflect`: the hierarchy is
+modeled, the members are not.
 
 ## What's shimmed
 
-This is the surface today, not the whole JVM. Methods not listed generally aren't implemented; a few are accepted but no-ops.
+This is the surface today, not the whole JVM. Methods not listed generally aren't implemented; a few
+are accepted but no-ops.
 
 ### Numbers and language
 
-- **`java.lang.Math`**: `sqrt` `cbrt` `pow` `exp` `log` `log10` `floor` `ceil` `round` `abs` `max` `min` `sin` `cos` `tan` `asin` `acos` `atan` `signum` `random`; `PI`, `E`. (`clojure.math` mirrors these as functions.)
-- **`Long` / `Integer` / `Short` / `Byte`**: `parseLong`/`parseInt`/`parseShort`/`parseByte`/`valueOf`/`decode` (optional radix), each at its own width and reading Java's grammar (`"+5"` yes, `" 5"` and `"1_000"` no; `2147483648` is a `NumberFormatException` for `parseInt`), `MAX_VALUE`, `MIN_VALUE`. `parse-long` answers `nil` past the long bounds, as `Long/parseLong` throws there.
-- **`Double` / `Float`**: `parseDouble`, `valueOf`, `toString`, `isNaN`, `isInfinite`, the value/infinity/NaN fields. `parseDouble` reads Java's grammar: surrounding whitespace trimmed, a `d`/`f` suffix, hex floats (`0x1p3`), `NaN`/`Infinity`.
+- **`java.lang.Math`**: `sqrt` `cbrt` `pow` `exp` `log` `log10` `floor` `ceil` `round` `abs` `max`
+  `min` `sin` `cos` `tan` `asin` `acos` `atan` `signum` `random`; `PI`,
+  `E`. (`clojure.math` mirrors these as functions.)
+- **`Long` / `Integer` / `Short` / `Byte`**: `parseLong`/`parseInt`/`parseShort`/`parseByte`/`valueOf`/`decode` (optional radix), each at its own width
+  and reading Java's grammar (`"+5"` yes, `" 5"` and `"1_000"` no; `2147483648` is a `NumberFormatException` for
+  `parseInt`), `MAX_VALUE`, `MIN_VALUE`. `parse-long` answers `nil` past the long bounds, as `Long/parseLong` throws
+  there.
+- **`Double` / `Float`**: `parseDouble`, `valueOf`, `toString`, `isNaN`, `isInfinite`, the value/infinity/NaN fields. `parseDouble` reads
+  Java's grammar: surrounding whitespace trimmed, a `d`/`f` suffix, hex floats (`0x1p3`),
+  `NaN`/`Infinity`.
 - **`Boolean`**: `parseBoolean`, `TRUE`, `FALSE`.
 - **`Character`**: `isUpperCase` `isLowerCase` `isLetter` `isDigit` `isWhitespace` and friends, over Unicode.
 - **Boxed-number methods**: every number answers `.intValue` `.longValue` `.doubleValue` `.byteValue` `.shortValue` `.toString` `.hashCode`.
-- **`java.lang.System`**: `currentTimeMillis` `nanoTime` `exit` `getProperty` `setProperty` `getProperties` `getenv`. The built-in property keys: `os.name` (`"Mac OS X"`/`"Linux"`/`"Windows"`), `os.arch` in the JVM's spelling (`aarch64`/`amd64`), `os.version` (macOS product version / kernel release), `user.name`, `user.dir`, `user.home`, `java.io.tmpdir`, `java.class.path`, `line.separator`, `file.separator`, `path.separator`, and `jolt.version`. `java.version` is nil **deliberately**: jolt has no JDK to report, and claiming one would flip JVM-only code paths in libraries that parse it. Branch on `jolt.version` (or a `:jolt` reader conditional) instead.
+- **`java.lang.System`**: `currentTimeMillis` `nanoTime` `exit` `getProperty` `setProperty` `getProperties` `getenv`. The built-in property keys:
+  `os.name` (`"Mac OS X"`/`"Linux"`/`"Windows"`), `os.arch` in the JVM's spelling (`aarch64`/`amd64`), `os.version`
+  (macOS product version / kernel release), `user.name`, `user.dir`, `user.home`, `java.io.tmpdir`, `java.class.path`,
+  `line.separator`, `file.separator`, `path.separator`, and `jolt.version`. `java.version` is nil **deliberately**: jolt has no JDK to report, and
+  claiming one would flip JVM-only code paths in libraries that parse it. Branch on `jolt.version` (or a
+  `:jolt` reader conditional) instead.
 - **`java.lang.Thread`**: `sleep` (real), `yield`/`interrupted` (no-ops), `currentThread`.
 
 ### Strings, collections, I/O
 
-- **`String`** statics: `valueOf`, `format` (the `clojure.core/format` engine). `format` speaks `java.util.Formatter`: every conversion (`%d %s %S %b %h %c %x %o %e %E %f %g %G %a %%  %n` and the `%t` date family), flags (`- # + 0 , (` and a space), width, precision (truncation on `%.3s`), argument indexes (`%2$s`, `%<s`), and it refuses what the JVM refuses with the same exception class and message (a flag on the wrong conversion, a duplicate flag, `-` with no width, a missing argument).
+- **`String`** statics: `valueOf`, `format` (the `clojure.core/format` engine). `format` speaks `java.util.Formatter`: every conversion
+  (`%d %s %S %b %h %c %x %o %e %E %f %g %G %a %%  %n` and the `%t` date family), flags (`- # + 0 , (` and a space), width, precision (truncation on
+  `%.3s`), argument indexes (`%2$s`, `%<s`), and it refuses what the JVM refuses with the same
+  exception class and message (a flag on the wrong conversion, a duplicate flag, `-` with no
+  width, a missing argument).
 - **`StringBuilder`**: `append` `toString` `length` `charAt` `setLength`.
-- **`java.util.ArrayList` / `HashMap`**: the mutable `add`/`get`/`put`/`size`/`remove`/`keySet`/… surface. `LinkedHashMap` and `LinkedHashSet` keep insertion order with O(1) operations and JDK 21's sequenced methods (`putFirst`, `pollLastEntry`, `reversed`, `addFirst`, …); an access-ordered map (`(LinkedHashMap. 16 0.75 true)`) moves what `get` and `put` reach to the tail and asks `removeEldestEntry` after each new mapping, so `(proxy [java.util.LinkedHashMap] [16 0.75 true] (removeEldestEntry [e] (> (count this) 100)))` is an LRU cache. `EnumSet` and `EnumMap` are there too (see [Declaring an enum](#declaring_an_enum)). `Vector`, `Stack`, `Hashtable`, `BitSet`, `PriorityQueue`, `ArrayDeque`, `WeakHashMap` and `IdentityHashMap` follow the JDK, including its iteration order. Iterators fail fast with `ConcurrentModificationException` where the JDK's do, a `HashMap`'s `keySet`, `values` and `entrySet` are live views, every collection answers `spliterator()`, `Collections.unmodifiable*` and `synchronized*` are views, and `List/of`, `Set/of` and `Map/of` are immutable. `java.util.jar.JarInputStream` and `JarOutputStream` read and write jars, and `java.util.Timer` schedules `TimerTask` proxies. A `java.util` mutator called on one of Clojure's immutable collections is `UnsupportedOperationException`, as on the JVM (`removeIf` only once its predicate matches).
-- **`java.util.concurrent`**: `Executors` / `ThreadPoolExecutor` / `FutureTask`, `ArrayBlockingQueue` / `LinkedBlockingQueue` (blocking `put`/`take`, timed `offer`/`poll`, the `Collection` half, a capacity below 1 refused at construction), `TimeUnit`, `atomic.*`, `ConcurrentHashMap`, `ConcurrentLinkedQueue` / `ConcurrentLinkedDeque`, `CopyOnWriteArrayList` / `CopyOnWriteArraySet`, `ConcurrentSkipListMap` / `ConcurrentSkipListSet`, `Semaphore`, `locks.ReentrantReadWriteLock`, `ThreadLocal` / `InheritableThreadLocal` (a plain `ThreadLocal` is per thread; only the inheritable one hands a forked thread its parent's value).
-- **`java.util.regex.Pattern` / `Matcher`**: `compile` (with flags), `quote`, `.split`, `.pattern`; a `Matcher`'s `find` (and `find(int)`), `matches`, `lookingAt`, `group`, `start`/`end`, `region`, `reset`. The engine reads Java's grammar — `\p{…}` classes (Unicode category names are real categories, the POSIX names are ASCII), the line-terminator set `\n \r \r\n NEL LS PS` for `.` `^` `$` with `(?d)` narrowing it to `\n`, `(?i)(?m)(?s)(?x)`, look-around, atomic groups, back-references, `\Q…\E`. Group-free patterns compile to a DFA on a bounded work budget; past it (a 50-way alternation with `.*` branches) the backtracking matcher, which is `java.util.regex`'s own engine, takes over.
-- **`java.io.File`**: construction plus `getPath` `getName` `getAbsolutePath` `getCanonicalPath` `exists` `isDirectory` `listFiles` `toURI` (an existing directory's ends in `/`) …; **`java.nio.file`** `Path` / `Paths` / `Files` (read, write, size, attributes, `createFile`, `walk`, `PathMatcher`).
-- **Readers, writers, streams**: `StringReader` / `StringWriter` / `PushbackReader`, `BufferedReader` (`readLine` and `.lines` end a line on `\n`, `\r` or `\r\n`, as the JVM's do), `InputStreamReader` / `OutputStreamWriter` with a charset, `FileInputStream` / `FileOutputStream` / `ByteArrayInputStream` / `ByteArrayOutputStream` / `SequenceInputStream` (over two streams or an `Enumeration` of them: each is read to its end and closed, and reads after `close` are the end of input), `PrintWriter` / `PrintStream`. `RandomAccessFile` in modes `"r"`, `"rw"`, `"rws"` and `"rwd"` reads, writes, `seek`s and `setLength`s (the `DataInput`/`DataOutput` methods such as `readInt` are not there yet). `io/reader` and `BufferedReader` wrap a `java.io.Reader` you wrote with `reify` or `proxy`, driving its `read`. **`java.nio`** `ByteBuffer` (heap and direct, `compact`), `CharBuffer`. `Collections/enumeration` and `Collections/list` bridge the `Enumeration` world.
+- **`java.util.ArrayList` / `HashMap`**: the mutable `add`/`get`/`put`/`size`/`remove`/`keySet`/… surface. `LinkedHashMap` and
+  `LinkedHashSet` keep insertion order with O(1) operations and JDK 21's sequenced methods (`putFirst`, `pollLastEntry`,
+  `reversed`, `addFirst`, …); an access-ordered map (`(LinkedHashMap. 16 0.75 true)`) moves what `get` and `put` reach to
+  the tail and asks `removeEldestEntry` after each new mapping, so `(proxy [java.util.LinkedHashMap] [16 0.75 true] (removeEldestEntry [e] (> (count this) 100)))` is an LRU cache. `EnumSet` and
+  `EnumMap` are there too (see [Declaring an enum](#declaring_an_enum)). `Vector`, `Stack`, `Hashtable`, `BitSet`, `PriorityQueue`, `ArrayDeque`,
+  `WeakHashMap` and `IdentityHashMap` follow the JDK, including its iteration order. Iterators fail fast with
+  `ConcurrentModificationException` where the JDK's do, a `HashMap`'s `keySet`, `values` and `entrySet` are live views, every
+  collection answers `spliterator()`, `Collections.unmodifiable*` and `synchronized*` are views, and `List/of`, `Set/of` and `Map/of`
+  are immutable. `java.util.jar.JarInputStream` and `JarOutputStream` read and write jars, and `java.util.Timer` schedules `TimerTask` proxies. A
+  `java.util` mutator called on one of Clojure's immutable collections is `UnsupportedOperationException`, as on the JVM
+  (`removeIf` only once its predicate matches).
+- **`java.util.concurrent`**: `Executors` / `ThreadPoolExecutor` / `FutureTask`, `ArrayBlockingQueue` / `LinkedBlockingQueue` (blocking `put`/`take`, timed
+  `offer`/`poll`, the `Collection` half, a capacity below 1 refused at construction), `TimeUnit`, `atomic.*`,
+  `ConcurrentHashMap`, `ConcurrentLinkedQueue` / `ConcurrentLinkedDeque`, `CopyOnWriteArrayList` / `CopyOnWriteArraySet`, `ConcurrentSkipListMap` / `ConcurrentSkipListSet`, `Semaphore`, `locks.ReentrantReadWriteLock`,
+  `ThreadLocal` / `InheritableThreadLocal` (a plain `ThreadLocal` is per thread; only the inheritable one hands a forked thread
+  its parent's value).
+- **`java.util.regex.Pattern` / `Matcher`**: `compile` (with flags), `quote`, `.split`, `.pattern`; a `Matcher`'s `find` (and `find(int)`),
+  `matches`, `lookingAt`, `group`, `start`/`end`, `region`, `reset`. The engine reads Java's grammar:
+  `\p{…}` classes (Unicode category names are real categories, the POSIX names are ASCII), the
+  line-terminator set `\n \r \r\n NEL LS PS` for `.` `^` `$` with `(?d)` narrowing it to `\n`,
+  `(?i)(?m)(?s)(?x)`, look-around, atomic groups, back-references, `\Q…\E`. Group-free patterns compile to a
+  DFA on a bounded work budget; past it (a 50-way alternation with `.*` branches) the backtracking
+  matcher, which is `java.util.regex`'s own engine, takes over.
+- **`java.io.File`**: construction plus `getPath` `getName` `getAbsolutePath` `getCanonicalPath` `exists` `isDirectory` `listFiles` `toURI` (an
+  existing directory's ends in `/`) …; **`java.nio.file`** `Path` / `Paths` / `Files` (read, write, size,
+  attributes, `createFile`, `walk`, `PathMatcher`).
+- **Readers, writers, streams**: `StringReader` / `StringWriter` / `PushbackReader`, `BufferedReader` (`readLine` and `.lines` end a line on `\n`, `\r`
+  or `\r\n`, as the JVM's do), `InputStreamReader` / `OutputStreamWriter` with a charset, `FileInputStream` / `FileOutputStream` / `ByteArrayInputStream` /
+  `ByteArrayOutputStream` / `SequenceInputStream` (over two streams or an `Enumeration` of them: each is read to its end and closed,
+  and reads after `close` are the end of input), `PrintWriter` / `PrintStream`. `RandomAccessFile` in modes `"r"`,
+  `"rw"`, `"rws"` and `"rwd"` reads, writes, `seek`s and `setLength`s (the `DataInput`/`DataOutput`
+  methods such as `readInt` are not there yet). `io/reader` and `BufferedReader` wrap a `java.io.Reader` you wrote with
+  `reify` or `proxy`, driving its `read`. **`java.nio`** `ByteBuffer` (heap and direct, `compact`), `CharBuffer`.
+  `Collections/enumeration` and `Collections/list` bridge the `Enumeration` world.
 
 ### Time, net, encoding
 
-- **`java.util.Date`**: the `#inst` reader literal and `java.util.Date` / `java.sql.Date` / `Calendar`, plus `java.text.SimpleDateFormat` / `NumberFormat`. The base **`java.time`** value types (`Instant`, `LocalDate`/`LocalTime`/`LocalDateTime`, `Duration`, `Period`, `Year`/`YearMonth`, the `Month`/`DayOfWeek`/`Chrono*` enums) are in core too, autoloaded on first use with no dependency (RFC 0008). What formats or names a zone (`DateTimeFormatter`, `ZoneOffset`/`ZoneId`, `ZonedDateTime`/`OffsetDateTime`, localized formatting, `java.util.Locale`) lives in the [time](https://github.com/jolt-lang/time) library.
-- **`java.net.URL`** / **`URI`**: `java.net.URI`'s five constructors (the single string, which validates as the JVM's does, and the four component forms, which quote each component), `URI/create`, the component accessors in both their raw and percent-decoded forms (`getPath` / `getRawPath`, …), `resolve`, `normalize`, `relativize`, `isAbsolute` / `isOpaque`, `toURL`, and `compareTo` so URIs sort. `java.net.URL` construction and accessors; `java.net.http.HttpTimeoutException` and the socket exceptions.
-- **`java.net.Socket` / `ServerSocket` / `InetSocketAddress` / `InetAddress` / `NetworkInterface`**: blocking TCP (IPv4 and IPv6) over POSIX sockets. Touching any of these classes loads `jolt.socket` on demand, so no require is needed (`(require 'jolt.socket)` still works and is what an AOT build should declare). The usual surface works like Java: streams via `.getInputStream`/`.getOutputStream` (a write to a peer-closed socket throws `IOException`), `ServerSocket` binds the wildcard address (or a `bindAddr`; `ServerSocket(port)` is dual-stack as the JDK's is), port 0 gets a kernel-assigned port that `.getLocalPort` reports, accepted sockets know their peer, and `InetAddress/getByName` resolves. `InetAddress/getByName` and `getAllByName` take IPv6 literals, bracketed or not and with a `%zone`, and names that resolve to v6, answering `Inet6Address` in the JDK's form (`/0:0:0:0:0:0:0:1`) with its `equals`, `hashCode` and address predicates; a name with both families lists IPv4 first. A socket's family follows the address it connects or binds to, and `NetworkInterface` lists v6 addresses and `getInterfaceAddresses`. Host identity is there too: `InetAddress/getLocalHost`, `getAllByName` (an array, as on the JVM), `getByAddress`, `.getCanonicalHostName`, `.getAddress`, `Socket.getLocalAddress` / `getLocalSocketAddress`, `ServerSocket.getInetAddress`, and `NetworkInterface`'s `getNetworkInterfaces` / `getByName` / `getByInetAddress` / `.getInetAddresses` / `.getHardwareAddress`, read from `getifaddrs(3)`. A refused bind throws `java.net.BindException` with the OS's reason, and a read of a reset connection throws `SocketException: Connection reset`. Socket options work as on the JDK: `setReuseAddress`/`getReuseAddress` on both classes (a listener has `SO_REUSEADDR` by default, as on POSIX JDKs), `Socket`'s `TcpNoDelay`, `KeepAlive`, `SoLinger`, `OOBInline`, `TrafficClass` and buffer sizes, and `setOption`/`getOption`/`supportedOptions` with `java.net.StandardSocketOptions`; an option set before a connect or bind reaches the socket in use. `connect` with a timeout and `setSoTimeout` are deadlines that throw `SocketTimeoutException`, and `available()` reports the bytes buffered in the kernel. What remains different is tracked in `known-divergences.edn`.
+- **`java.util.Date`**: the `#inst` reader literal and `java.util.Date` / `java.sql.Date` / `Calendar`, plus `java.text.SimpleDateFormat` / `NumberFormat`. The
+  base **`java.time`** value types (`Instant`, `LocalDate`/`LocalTime`/`LocalDateTime`, `Duration`, `Period`, `Year`/`YearMonth`,
+  the `Month`/`DayOfWeek`/`Chrono*` enums) are in core too, autoloaded on first use with no dependency
+  (RFC 0008). What formats or names a zone (`DateTimeFormatter`, `ZoneOffset`/`ZoneId`, `ZonedDateTime`/`OffsetDateTime`, localized
+  formatting, `java.util.Locale`) lives in the [time](https://github.com/jolt-lang/time) library.
+- **`java.net.URL`** / **`URI`**: `java.net.URI`'s five constructors (the single string, which validates as the JVM's
+  does, and the four component forms, which quote each component), `URI/create`, the component accessors in
+  both their raw and percent-decoded forms (`getPath` / `getRawPath`, …), `resolve`, `normalize`, `relativize`, `isAbsolute`
+  / `isOpaque`, `toURL`, and `compareTo` so URIs sort. `java.net.URL` construction and accessors; `java.net.http.HttpTimeoutException` and
+  the socket exceptions.
+- **`java.net.Socket` / `ServerSocket` / `InetSocketAddress` / `InetAddress` / `NetworkInterface`**: blocking TCP (IPv4 and IPv6) over POSIX sockets. Touching any of these classes loads
+  `jolt.socket` on demand, so no require is needed (`(require 'jolt.socket)` still works and is what an AOT build should
+  declare). The usual surface works like Java: streams via `.getInputStream`/`.getOutputStream` (a write to a peer-closed
+  socket throws `IOException`), `ServerSocket` binds the wildcard address (or a `bindAddr`; `ServerSocket(port)` is dual-stack as
+  the JDK's is), port 0 gets a kernel-assigned port that `.getLocalPort` reports, accepted sockets know their
+  peer, and `InetAddress/getByName` resolves. `InetAddress/getByName` and `getAllByName` take IPv6 literals, bracketed or not and with a
+  `%zone`, and names that resolve to v6, answering `Inet6Address` in the JDK's form (`/0:0:0:0:0:0:0:1`) with its
+  `equals`, `hashCode` and address predicates; a name with both families lists IPv4 first. A socket's
+  family follows the address it connects or binds to, and `NetworkInterface` lists v6 addresses and `getInterfaceAddresses`.
+  Host identity is there too: `InetAddress/getLocalHost`, `getAllByName` (an array, as on the JVM), `getByAddress`, `.getCanonicalHostName`,
+  `.getAddress`, `Socket.getLocalAddress` / `getLocalSocketAddress`, `ServerSocket.getInetAddress`, and `NetworkInterface`'s `getNetworkInterfaces` / `getByName` / `getByInetAddress` / `.getInetAddresses` /
+  `.getHardwareAddress`, read from `getifaddrs(3)`. A refused bind throws `java.net.BindException` with the OS's reason, and a read of a
+  reset connection throws `SocketException: Connection reset`. Socket options work as on the JDK: `setReuseAddress`/`getReuseAddress` on both
+  classes (a listener has `SO_REUSEADDR` by default, as on POSIX JDKs), `Socket`'s `TcpNoDelay`, `KeepAlive`,
+  `SoLinger`, `OOBInline`, `TrafficClass` and buffer sizes, and `setOption`/`getOption`/`supportedOptions` with `java.net.StandardSocketOptions`; an
+  option set before a connect or bind reaches the socket in use. `connect` with a timeout and `setSoTimeout`
+  are deadlines that throw `SocketTimeoutException`, and `available()` reports the bytes buffered in the kernel. What
+  remains different is tracked in `known-divergences.edn`.
 - **`java.util.UUID`**: `randomUUID`, `fromString`.
-- **`java.util.Properties`**: a string-keyed `Hashtable` with a `defaults` chain: `getProperty` / `setProperty` / `stringPropertyNames` / `propertyNames`, plus the `Map` reads (`get`, `count`, `seq`, `into`). `System/getProperties` returns one that shares the override store, so a `setProperty` through it is what `System/getProperty` then reports, and values Jolt computes on read (`user.dir`, `java.class.path`) stay current rather than being frozen at the call.
-- **`java.util.Base64`**: the basic, URL-safe and MIME encoders and decoders (`getMimeEncoder` wraps at 76 with CRLF or at a length and separator you give; the MIME decoder skips everything outside the alphabet, as the JDK's does).
-- **`java.nio.charset`**: `Charset` (`forName`, `defaultCharset`, `availableCharsets`), `StandardCharsets`, `CharsetDecoder` with both `decode` overloads, `CodingErrorAction` and `CoderResult` — the chunked decode loop that leaves a partial multi-byte character in the input buffer for the next read works for UTF-8, ISO-8859-1 and US-ASCII; any other charset decodes its whole input at once.
+- **`java.util.Properties`**: a string-keyed `Hashtable` with a `defaults` chain: `getProperty` / `setProperty` / `stringPropertyNames` / `propertyNames`, plus
+  the `Map` reads (`get`, `count`, `seq`, `into`). `System/getProperties` returns one that shares the
+  override store, so a `setProperty` through it is what `System/getProperty` then reports, and values Jolt computes on
+  read (`user.dir`, `java.class.path`) stay current rather than being frozen at the call.
+- **`java.util.Base64`**: the basic, URL-safe and MIME encoders and decoders (`getMimeEncoder` wraps at 76 with CRLF or at a
+  length and separator you give; the MIME decoder skips everything outside the alphabet, as the JDK's
+  does).
+- **`java.nio.charset`**: `Charset` (`forName`, `defaultCharset`, `availableCharsets`), `StandardCharsets`, `CharsetDecoder` with both `decode` overloads,
+  `CodingErrorAction` and `CoderResult`: the chunked decode loop that leaves a partial multi-byte character in the input
+  buffer for the next read works for UTF-8, ISO-8859-1 and US-ASCII; any other charset decodes its
+  whole input at once.
 - **`java.text.Normalizer`**: all four normalization forms and `isNormalized`.
-- **`java.lang.ProcessBuilder` / `Process` / `Runtime.exec`**: `command`, `directory`, `environment`, the redirect setters with a `Redirect` or a `File`, `inheritIO`, `start`; a `Process`'s streams, `waitFor` (timed too), `exitValue`, `destroy` / `destroyForcibly`, `pid`, `isAlive`, `onExit`. A child gets its own stdio and nothing else, as the JVM's does — no inherited sockets or files. The program is spawned directly, as the JDK does, with the directory as a chdir file action and a merged stderr as a dup2 (the shell `/bin/sh -c "cd DIR && exec PROG ARGS"` that releases before 0.8.22 went through is still used for a file redirect, for a directory where `posix_spawn_file_actions_addchdir_np` is missing, and for a program that is not an ELF/Mach-O image or `#!` script; `JOLT_SPAWN_VIA_SHELL=1` keeps it for everything). A program named without a path is looked up on jolt's own PATH, as the JDK does.
-- **Exceptions**: `Throwable` `Exception` `RuntimeException` `IllegalArgumentException` `IllegalStateException` `IOException` `NumberFormatException` `ArithmeticException` `NullPointerException` and friends, each with the `(E.)` / `(E. msg)` / `(E. msg cause)` constructors.
+- **`java.lang.ProcessBuilder` / `Process` / `Runtime.exec`**: `command`, `directory`, `environment`, the redirect setters with a `Redirect` or a `File`, `inheritIO`,
+  `start`; a `Process`'s streams, `waitFor` (timed too), `exitValue`, `destroy` / `destroyForcibly`, `pid`,
+  `isAlive`, `onExit`. A child gets its own stdio and nothing else, as the JVM's does: no inherited
+  sockets or files. The program is spawned directly, as the JDK does, with the directory as a chdir
+  file action and a merged stderr as a dup2 (the shell `/bin/sh -c "cd DIR && exec PROG ARGS"` that releases before 0.8.22 went
+  through is still used for a file redirect, for a directory where `posix_spawn_file_actions_addchdir_np` is missing, and for a
+  program that is not an ELF/Mach-O image or `#!` script; `JOLT_SPAWN_VIA_SHELL=1` keeps it for everything). A
+  program named without a path is looked up on jolt's own PATH, as the JDK does.
+- **Exceptions**: `Throwable` `Exception` `RuntimeException` `IllegalArgumentException` `IllegalStateException` `IOException` `NumberFormatException` `ArithmeticException` `NullPointerException` and friends, each
+  with the `(E.)` / `(E. msg)` / `(E. msg cause)` constructors.
 
-  Every exception class inherits the `java.lang.Throwable` methods, as it does on
-  the JVM: `.getMessage` `.getLocalizedMessage` `.getCause` `.toString`
-  `.printStackTrace` (both overloads) `.getStackTrace` `.getSuppressed`
-  `.fillInStackTrace`. This holds equally for an `ex-info`, a constructed
-  `(Exception. "…")`, and an error the host itself raised; the value a `catch`
-  binds answers the same set whichever it is. `.printStackTrace` prints a real
-  backtrace (see [Stack traces](/docs/tools-deps.html#stack_traces)).
-  `.getStackTrace` is empty: Jolt reifies no `StackTraceElement` array, because
-  tail-call optimization means there is no faithful per-frame array to hand back.
+Every exception class inherits the `java.lang.Throwable` methods, as it does on the JVM: `.getMessage` `.getLocalizedMessage` `.getCause`
+  `.toString` `.printStackTrace` (both overloads) `.getStackTrace` `.getSuppressed` `.fillInStackTrace`. This holds equally for an `ex-info`, a
+  constructed `(Exception. "…")`, and an error the host itself raised; the value a `catch` binds answers the
+  same set whichever it is. `.printStackTrace` prints a real backtrace (see [Stack traces](/docs/tools-deps.html#stack_traces)). `.getStackTrace` is empty: Jolt
+  reifies no `StackTraceElement` array, because tail-call optimization means there is no faithful per-frame array
+  to hand back.
 
-`clojure.reflect` is present (`reflect` on a value or a class answers its members from the same tables interop dispatches through; `Reflector/getMethods` serves the interpreted call path libraries like SCI take), and so is the class hierarchy (`supers`, `bases`, `isa?`, `instance?`). `BigDecimal` values exist — `1M`, `+`/`*`/`/` with `with-precision`, printing and equality — but the `java.math.BigDecimal` method surface (`.add`, `.scale`, `.setScale`) is not shimmed. `gen-class` of a Java class is absent; `proxy` and `reify` work against the interfaces and abstract classes Jolt models (`Reader`, `Runnable`, `Comparator`, `ThreadLocal`, …). STM (`ref`/`dosync`/`alter`/`commute`/`ref-set`/`ensure`) is present, with commit-log transactions.
+`clojure.reflect` is present (`reflect` on a value or a class answers its members from the same tables interop
+dispatches through; `Reflector/getMethods` serves the interpreted call path libraries like SCI take), and so is the
+class hierarchy (`supers`, `bases`, `isa?`, `instance?`). `BigDecimal` values exist (`1M`,
+`+`/`*`/`/` with `with-precision`, printing and equality), but the `java.math.BigDecimal` method surface
+(`.add`, `.scale`, `.setScale`) is not shimmed. `gen-class` of a Java class is absent; `proxy` and
+`reify` work against the interfaces and abstract classes Jolt models (`Reader`, `Runnable`, `Comparator`,
+`ThreadLocal`, …). STM (`ref`/`dosync`/`alter`/`commute`/`ref-set`/`ensure`) is present, with
+commit-log transactions.
 
 ## Using a JVM library that needs a class Jolt doesn't ship
 
-Most Clojure libraries run on Jolt unchanged. When one reaches for a `java.*`
-class outside the built-in set above, you don't have to wait for a Jolt release:
-you can **register the shim yourself, at load time**, from ordinary Jolt code. No
-rebuild, no host edits. Put the registration calls at the top level of a
-namespace your app requires before the library is used (a small `myapp.shims`
-namespace is a good home).
+Most Clojure libraries run on Jolt unchanged. When one reaches for a `java.*` class outside the
+built-in set above, you don't have to wait for a Jolt release: you can **register the shim yourself, at load time**, from ordinary Jolt
+code. No rebuild, no host edits. Put the registration calls at the top level of a namespace your app
+requires before the library is used (a small `myapp.shims` namespace is a good home).
 
-The built-in shims are written the same way, just in the runtime instead of your
-project, so anything Jolt does for `AtomicReference`, `ByteBuffer`, or `URI`,
-you can do for a class it's missing.
+The built-in shims are written the same way, just in the runtime instead of your project, so
+anything Jolt does for `AtomicReference`, `ByteBuffer`, or `URI`, you can do for a class it's missing.
 
 ### The workflow: let the error tell you what to add
 
-Run the library and read the exception. Each shape of "missing host" error maps
-to one registration function:
+Run the library and read the exception. Each shape of "missing host" error maps to one registration
+function:
 
 | The error you hit | What to register |
 | --- | --- |
 | `Unknown class java.util.StringJoiner` (a static/field ref, or the class is wholly unknown) | `__register-class-statics!` / `__register-class-ctor!` |
-| `No dependency provides java.time.ZoneOffset` (a JDK class core does not implement) | the library that provides it — [time](https://github.com/jolt-lang/time) v0.0.8+, [crypto](https://github.com/jolt-lang/crypto) v0.0.5+ — or your own shim, declared under [`:jolt/provides`](/docs/tools-deps.html#host_classes_a_library_provides) |
+| `No dependency provides java.time.ZoneOffset` (a JDK class core does not implement) | the library that provides it: [time](https://github.com/jolt-lang/time) v0.0.8+, [crypto](https://github.com/jolt-lang/crypto) v0.0.5+: or your own shim, declared under [`:jolt/provides`](/docs/tools-deps.html#host_classes_a_library_provides) |
 | `No constructor for class java.util.StringJoiner` | `__register-class-ctor!` |
 | `No method add on host …` (a `(.method obj …)` call) | `__register-class-methods!` |
 | `(instance? SomeClass x)` returns `false` when it shouldn't | `__register-instance-check!` |
 | `isa?` / `ancestors` / `instance?`-through-a-parent is wrong | `jolt.host/register-class-supers!` |
 | `No matching method x found taking N args for class java.io.File` (Jolt ships the class, not that method) | `jolt.host/extend-class!` |
 
-Add the one it names, re-run, repeat until the library is happy. **Method,
-static, and class names are strings that match the literal name in the interop
-form**: `"add"` shims `(.add x …)`, `"java.util.StringJoiner"` shims
-`(java.util.StringJoiner. …)`.
+Add the one it names, re-run, repeat until the library is happy. **Method, static, and class names are strings that match the literal name in the interop form**: `"add"` shims `(.add x …)`,
+`"java.util.StringJoiner"` shims `(java.util.StringJoiner. …)`.
 
 ### A worked example: `java.util.StringJoiner`
 
-Say a library builds strings with `java.util.StringJoiner`, which Jolt doesn't
-ship. A stateful object is a **tagged table**: `jolt.host/tagged-table` creates
-one carrying a `:jolt/type` tag, and `ref-put!` / `ref-get` set and read its
-fields. Instance methods are keyed by that tag.
+Say a library builds strings with `java.util.StringJoiner`, which Jolt doesn't ship. A stateful object is a **tagged table**:
+`jolt.host/tagged-table` creates one carrying a `:jolt/type` tag, and `ref-put!` / `ref-get` set and read its fields. Instance
+methods are keyed by that tag.
 
 ```clojure
 (ns myapp.shims
@@ -136,14 +230,13 @@ fields. Instance methods are keyed by that tag.
 (instance? java.util.StringJoiner (java.util.StringJoiner. ","))     ;=> true
 ```
 
-One subtlety: `(str a-tagged-value)` and `pr-str` show its raw wrapper form, not
-your `toString` shim; compute a length or a display string from the fields
-(as `joined` does above) rather than `(count (str self))`.
+One subtlety: `(str a-tagged-value)` and `pr-str` show its raw wrapper form, not your `toString` shim; compute a length
+or a display string from the fields (as `joined` does above) rather than `(count (str self))`.
 
 ### Static-only classes
 
-A utility class with no instances (`java.lang.Math`, `java.util.Base64`) needs
-only statics: fields and static methods, again keyed by string name:
+A utility class with no instances (`java.lang.Math`, `java.util.Base64`) needs only statics: fields and static methods,
+again keyed by string name:
 
 ```clojure
 (__register-class-statics! "java.util.Base64"
@@ -153,11 +246,9 @@ only statics: fields and static methods, again keyed by string name:
 
 ### Declaring an enum
 
-An enum class is more than its constants: the JVM gives every one `values` and
-`valueOf`, and `java.lang.Enum` gives every constant `name`, `ordinal`,
-`compareTo` and friends. Declare the class with `jolt.host/register-enum!`,
-handing it the constants in the JDK's declaration order, and Jolt supplies all
-of that:
+An enum class is more than its constants: the JVM gives every one `values` and `valueOf`, and `java.lang.Enum`
+gives every constant `name`, `ordinal`, `compareTo` and friends. Declare the class with `jolt.host/register-enum!`, handing
+it the constants in the JDK's declaration order, and Jolt supplies all of that:
 
 ```clojure
 (deftype Suit [label])
@@ -176,27 +267,23 @@ user.Suit/SPADES                     ;=> the constant, by identity
 (java.util.EnumSet/allOf (class hearts)) ;=> an EnumSet over both
 ```
 
-A constant is whatever value you already use for it: a `deftype`, a tagged
-table, anything with a stable identity. Its own methods win, so a `toString` or
-`compareTo` your type defines is the one that answers, and Enum's methods fill
-in only what it leaves out. A constant prints the JVM's way,
-`#object[user.Suit 0x1b2c3d4e "HEARTS"]`, and `str` is its name, unless the type
-defines `toString` or your library registers its own printing for it. `valueOf` refuses an unknown name with the JVM's
-`IllegalArgumentException` ("No enum constant user.Suit.CLUBS") and a nil one
-with `NullPointerException`.
+A constant is whatever value you already use for it: a `deftype`, a tagged table, anything with a
+stable identity. Its own methods win, so a `toString` or `compareTo` your type defines is the one that
+answers, and Enum's methods fill in only what it leaves out. A constant prints the JVM's way,
+`#object[user.Suit 0x1b2c3d4e "HEARTS"]`, and `str` is its name, unless the type defines `toString` or your library registers its own
+printing for it. `valueOf` refuses an unknown name with the JVM's `IllegalArgumentException` ("No enum constant
+user.Suit.CLUBS") and a nil one with `NullPointerException`.
 
-The values must report the class you name (`(class hearts)` above is
-`user.Suit`), and each must be one object for the life of the program: a
-constructor that hands back a new, equal object each time breaks `identical?`,
-`valueOf` and `EnumSet` membership alike. Build the constants once and return
-them. The java.time enums Jolt ships (`Month`, `DayOfWeek`, `ChronoUnit`,
-`ChronoField`) are declared this way.
+The values must report the class you name (`(class hearts)` above is `user.Suit`), and each must be one object
+for the life of the program: a constructor that hands back a new, equal object each time breaks
+`identical?`, `valueOf` and `EnumSet` membership alike. Build the constants once and return them. The
+java.time enums Jolt ships (`Month`, `DayOfWeek`, `ChronoUnit`, `ChronoField`) are declared this way.
 
 ### Fitting a class into the hierarchy
 
-`instance?` on an exact class works from the instance-check above. To make
-`isa?`, `ancestors`, and `instance?`-through-a-supertype hold, declare the
-class's supers (its superclass and interfaces) with the `jolt.host` seam:
+`instance?` on an exact class works from the instance-check above. To make `isa?`, `ancestors`, and
+`instance?`-through-a-supertype hold, declare the class's supers (its superclass and interfaces) with
+the `jolt.host` seam:
 
 ```clojure
 (host/register-class-supers! "java.util.StringJoiner" ["java.lang.CharSequence"
@@ -205,49 +292,40 @@ class's supers (its superclass and interfaces) with the `jolt.host` seam:
 ;; protocol/multimethod that dispatches on CharSequence sees a StringJoiner.
 ```
 
-Your own `deftype`/`defrecord` classes join the same graph **automatically** at
-definition; you only need `register-class-supers!` for a shim of an outside
-class. A record's ancestry carries the record interfaces (`clojure.lang.IRecord`,
-`IPersistentMap`, `Associative`, …), a bare deftype carries `clojure.lang.IType`,
-and every protocol the type implements inline appears as an implemented
-interface, so `(ancestors MyRecord)`, `(isa? MyRecord clojure.lang.IPersistentMap)`,
-and hierarchy relationships `derive`d on a class's supers all answer like the JVM.
+Your own `deftype`/`defrecord` classes join the same graph **automatically** at definition; you only need `register-class-supers!`
+for a shim of an outside class. A record's ancestry carries the record interfaces (`clojure.lang.IRecord`, `IPersistentMap`,
+`Associative`, …), a bare deftype carries `clojure.lang.IType`, and every protocol the type implements inline appears
+as an implemented interface, so `(ancestors MyRecord)`, `(isa? MyRecord clojure.lang.IPersistentMap)`, and hierarchy relationships `derive`d on a class's
+supers all answer like the JVM.
 
-A deftype *implementing* a `clojure.lang` collection interface drives the core
-functions through its methods, like the JVM: `Indexed` → `nth`, `Counted` →
-`count`, `ILookup` → `get`/keyword lookup, `Associative` → `assoc`,
-`ISeq`/`Seqable` → `seq`/`first`/`rest`, `IPersistentCollection` → `conj`,
-`Reversible` → `rseq`, `Sorted` → `subseq`/`rsubseq`, `IDeref` → `deref`/`@`,
-`IFn` → the value is callable, `IReduceInit` → `reduce`. Methods can be
-arity-overloaded across interfaces (`seq [this]` and `seq [this ascending]`), and
-a marker protocol with no methods still answers `satisfies?`/`instance?`.
+A deftype *implementing* a `clojure.lang` collection interface drives the core functions through its methods, like
+the JVM: `Indexed` → `nth`, `Counted` → `count`, `ILookup` → `get`/keyword lookup, `Associative` → `assoc`,
+`ISeq`/`Seqable` → `seq`/`first`/`rest`, `IPersistentCollection` → `conj`, `Reversible` → `rseq`, `Sorted` →
+`subseq`/`rsubseq`, `IDeref` → `deref`/`@`, `IFn` → the value is callable, `IReduceInit` →
+`reduce`. Methods can be arity-overloaded across interfaces (`seq [this]` and `seq [this ascending]`), and a marker
+protocol with no methods still answers `satisfies?`/`instance?`.
 
-Extending a class Jolt *does* ship — adding a method its shim doesn't cover — is
-a different job with its own seam; see
-[Extending a class Jolt already shims](#extending_a_class_jolt_already_shims)
-below.
+Extending a class Jolt *does* ship (adding a method its shim doesn't cover) is a different job with
+its own seam; see [Extending a class Jolt already shims](#extending_a_class_jolt_already_shims) below.
 
 ### Instance checks compose
 
-An instance-check predicate returns `true`/`false` to decide, or `nil` to **defer**
-to the next registered check and the built-ins, so several libraries can
-register checks without clobbering each other. This is the mechanism Jolt's HTTP
-client library uses to emulate `java.net.URL` and `HttpURLConnection` so
+An instance-check predicate returns `true`/`false` to decide, or `nil` to **defer** to the next
+registered check and the built-ins, so several libraries can register checks without clobbering each
+other. This is the mechanism Jolt's HTTP client library uses to emulate `java.net.URL` and `HttpURLConnection` so
 `clj-http-lite` runs unchanged.
 
 ### Extending a class Jolt already shims
 
-The registries above add a class Jolt doesn't have. The other half of the
-problem is a class Jolt *does* ship but only part of — `java.io.File` answers
-about thirty methods, not the whole JVM surface — and a library reaches for one
-of the rest. The error names a class you already have:
+The registries above add a class Jolt doesn't have. The other half of the problem is a class Jolt
+*does* ship but only part of (`java.io.File` answers about thirty methods, not the whole JVM surface), and
+a library reaches for one of the rest. The error names a class you already have:
 
 ```
 No matching method setWritable found taking 1 args for class java.io.File
 ```
 
-`jolt.host/extend-class!` adds that one method and leaves the shim answering
-everything else exactly as before:
+`jolt.host/extend-class!` adds that one method and leaves the shim answering everything else exactly as before:
 
 ```clojure
 (ns myapp.shims
@@ -268,7 +346,7 @@ everything else exactly as before:
 (.getName (java.io.File. "notes.txt"))             ;=> "notes.txt"  — untouched
 ```
 
-One spec can describe a whole class, not only its methods:
+A single spec can describe a whole class along with its methods:
 
 ```clojure
 (host/extend-class! "java.util.zip.Deflater"
@@ -277,21 +355,17 @@ One spec can describe a whole class, not only its methods:
    :ctor    (fn [] …)})                      ; (java.util.zip.Deflater.)
 ```
 
-`:statics` and `:ctor` are the same registries as `__register-class-statics!`
-and `__register-class-ctor!`, so they keep those semantics: statics *merge* into
-whatever the class already has, and a `:ctor` *replaces* the constructor
-process-wide. They are here so one spec can describe a class Jolt doesn't ship
-at all; the gap-filling guarantee below is about `:methods`.
+`:statics` and `:ctor` are the same registries as `__register-class-statics!` and `__register-class-ctor!`, so they keep those semantics:
+statics *merge* into whatever the class already has, and a `:ctor` *replaces* the constructor
+process-wide. They are here so one spec can describe a class Jolt doesn't ship at all; the
+gap-filling guarantee below is about `:methods`.
 
-A method name with a leading dash answers the field spelling: `"-length"` shims
-`(.-length x)`.
+A method name with a leading dash answers the field spelling: `"-length"` shims `(.-length x)`.
 
-**An addition can't change what Jolt already answers.** By default a
-registration is consulted only where the call would otherwise fail, so extending
-a class is safe even when another library extends the same one — the two collide
-only if they claim the same missing method. That is the opposite of replacing
-the class with `__register-class-ctor!`, which every namespace in the process
-inherits whether it wanted your version or not.
+**An addition can't change what Jolt already answers.** By default a registration is consulted only where the call would otherwise fail, so
+extending a class is safe even when another library extends the same one: the two collide only if
+they claim the same missing method. That is the opposite of replacing the class with `__register-class-ctor!`, which
+every namespace in the process inherits whether it wanted your version or not.
 
 **To replace a method Jolt does implement, say so.**
 
@@ -301,35 +375,30 @@ inherits whether it wanted your version or not.
    :override true})
 ```
 
-An override is process-wide: every `(.getCanonicalPath f)` in every namespace
-runs your method, including in code that never asked for it. Prefer the default
-tier, and reach for `:override` only when Jolt's answer is wrong for everyone
-rather than inconvenient for you. `JOLT_DEBUG=1` reports each override as it
-registers, so surprising behaviour downstream is one environment variable away
-from its cause instead of a bisect.
+An override is process-wide: every `(.getCanonicalPath f)` in every namespace runs your method, including in code
+that never asked for it. Prefer the default tier, and reach for `:override` only when Jolt's answer is
+wrong for everyone rather than inconvenient for you. `JOLT_DEBUG=1` reports each override as it registers,
+so surprising behaviour downstream is one environment variable away from its cause instead of a
+bisect.
 
-**Names resolve through the class hierarchy.** `"java.io.File"` and `"File"`
-both match, and a registration on a supertype answers for its subtypes — extend
-`java.io.Reader` and a `StringReader` receiver gets the method. By the same rule
-a registration on `java.lang.Object` reaches every value, which is occasionally
-what you want and usually not.
+**Names resolve through the class hierarchy.** `"java.io.File"` and `"File"` both match, and a registration on a supertype answers for its subtypes:
+extend `java.io.Reader` and a `StringReader` receiver gets the method. By the same rule a registration on `java.lang.Object`
+reaches every value, which is occasionally what you want and usually not.
 
-**One limit.** Methods on `String`, `Keyword` and `StringBuilder` — and on
-anything they inherit from, such as `CharSequence` — cannot be *overridden*.
-Where the compiler can prove the receiver's type it compiles those calls
-straight to a primitive, so an override would take effect at some call sites and
-not others; `extend-class!` refuses the registration rather than let that
-happen. Adding a method those classes don't have is unaffected.
+**One limit.** Methods on `String`, `Keyword` and `StringBuilder`, and on anything they inherit from, such as `CharSequence`:
+cannot be *overridden*. Where the compiler can prove the receiver's type it compiles those calls straight
+to a primitive, so an override would take effect at some call sites and not others; `extend-class!` refuses
+the registration rather than let that happen. Adding a method those classes don't have is
+unaffected.
 
-Your own shimmed class is extensible here too, once `(class x)` knows about it:
-`(clojure.core/__register-class! pred class-fn tags-fn)` makes its values report
-a class name (and dispatch protocols extended to that class), and
-`extend-class!` then addresses them by that name like any built-in.
+Your own shimmed class is extensible here too, once `(class x)` knows about it: `(clojure.core/__register-class! pred class-fn tags-fn)` makes its values
+report a class name (and dispatch protocols extended to that class), and `extend-class!` then addresses them
+by that name like any built-in.
 
 ### The registration API at a glance
 
-The `__register-*` functions live in `clojure.core` (no require); the
-tagged-table, hierarchy and class-extension seams live in `jolt.host`:
+The `__register-*` functions live in `clojure.core` (no require); the tagged-table, hierarchy and class-extension
+seams live in `jolt.host`:
 
 - `(__register-class-ctor! "pkg.Name" (fn [args…] …))`: `(pkg.Name. args…)`
 - `(__register-class-statics! "pkg.Name" {"FIELD" v, "method" (fn […] …)})`: `pkg.Name/FIELD`, `(pkg.Name/method …)`
@@ -337,67 +406,53 @@ tagged-table, hierarchy and class-extension seams live in `jolt.host`:
 - `(__register-instance-check! (fn [class-name-str v] true|false|nil))`: `(instance? pkg.Name v)`
 - `(jolt.host/register-class-supers! "pkg.Name" ["pkg.Super" "pkg.Iface" …])`: hierarchy for `isa?`/`ancestors`
 - `(jolt.host/register-enum! "pkg.Name" [["CONST" v] …])`: an enum class, with `values`, `valueOf`, `Enum/valueOf` and Enum's methods
-- `(jolt.host/extend-class! "pkg.Name" {:methods {…} :statics {…} :ctor f :override bool})`: add to — or replace — a shim Jolt already has
+- `(jolt.host/extend-class! "pkg.Name" {:methods {…} :statics {…} :ctor f :override bool})`: add to, or replace: a shim Jolt already has
 - `jolt.host/tagged-table`, `jolt.host/ref-put!`, `jolt.host/ref-get`, `jolt.host/table?`: build and read a stateful wrapper
 
-If a shim would be useful to everyone, it's also a great contribution to the
-runtime itself; the built-in shims use exactly these registries. See
-[Writing Libraries](/docs/writing-libraries.html) and Jolt's `host/chez/java`
-sources.
+If a shim would be useful to everyone, it's also a great contribution to the runtime itself; the
+built-in shims use exactly these registries. See [Writing Libraries](/docs/writing-libraries.html) and Jolt's `host/chez/java` sources.
 
-These registries add a **class**. If instead you want to supply **data** to
-something Jolt already implements (per-locale currency symbols, month names,
-number separators), that is an
-[extension point](/docs/extension-points.html): core declares the contract and
-answers for one root key, and your library registers the rest.
+These registries add a **class**. If instead you want to supply **data** to something Jolt already
+implements (per-locale currency symbols, month names, number separators), that is an [extension point](/docs/extension-points.html): core
+declares the contract and answers for one root key, and your library registers the rest.
 
 ## Running work on the main thread
 
-Some native calls must run on the process's **main** (primordial) thread. A GUI
-toolkit is the usual case: on macOS a Cocoa/GTK-quartz call off the main thread
-aborts the process ("setting the main menu on a non-main thread"). Jolt has no
-JVM AWT thread, so it exposes a small marshalling API in `jolt.host` that a GUI
-library builds on. Most applications never call these directly; you use a UI
-library (e.g. [glimmer](https://github.com/jolt-lang/glimmer)) that does. If you
-bind a toolkit yourself, this is the seam.
+Some native calls must run on the process's **main** (primordial) thread. A GUI toolkit is the usual
+case: on macOS a Cocoa/GTK-quartz call off the main thread aborts the process ("setting the main
+menu on a non-main thread"). Jolt has no JVM AWT thread, so it exposes a small marshalling API in
+`jolt.host` that a GUI library builds on. Most applications never call these directly; you use a UI
+library (e.g. [glimmer](https://github.com/jolt-lang/glimmer)) that does. If you bind a toolkit yourself, this is the seam.
 
-The model is a **main-thread pump**: one thread becomes a queue-draining event
-loop, and other threads hand it thunks to run there.
+The model is a **main-thread pump**: one thread becomes a queue-draining event loop, and other threads hand it
+thunks to run there.
 
-- `(jolt.host/call-on-main-thread thunk)`: run `thunk` on the pump thread and
-  **block** until it finishes, returning its value (or re-raising its error). If
-  no pump is active it runs `thunk` inline on the calling thread, and a call
+- `(jolt.host/call-on-main-thread thunk)`: run `thunk` on the pump thread and **block** until it finishes, returning its value (or
+  re-raising its error). If no pump is active it runs `thunk` inline on the calling thread, and a call
   already on the pump runs inline too (reentrant).
-- `(jolt.host/call-on-main-thread-async thunk)`: schedule `thunk` on the pump
-  and **return immediately** (`nil`), without waiting. This is what lets a GUI
-  library's `run` start the toolkit's event loop (which blocks the pump for the
-  app's whole lifetime) while the call that started it returns, so an nREPL
-  session stays live for reactive edits. With no pump active it runs inline. *(New
-  in 0.4.14.)*
-- `(jolt.host/run-main-pump)`: turn the calling thread **into** the pump: drain
-  and run queued jobs FIFO, blocking until `stop-main-pump`. Call this on the
-  main thread of a program whose main thread should service GUI work.
-- `(jolt.host/stop-main-pump)`: tell a running pump to finish draining and
-  return.
-- `(jolt.host/park-until-interrupt)`: park the calling (main) thread until a
-  keyboard interrupt (`^C`), running shutdown hooks and exiting when it arrives,
-  **and** own the pump while parked. This is the variant a foreground server uses:
-  the nREPL server parks the primordial thread here so a UI event loop evaluated
-  from the REPL runs on the real main thread (not off-main, which would abort),
-  while `^C` still shuts the server down cleanly. Unlike `run-main-pump`'s bare
-  wait, it idles in an interrupt-checked poll so `^C` is delivered.
+- `(jolt.host/call-on-main-thread-async thunk)`: schedule `thunk` on the pump and **return immediately** (`nil`), without waiting. This is what lets a
+  GUI library's `run` start the toolkit's event loop (which blocks the pump for the app's whole
+  lifetime) while the call that started it returns, so an nREPL session stays live for reactive edits.
+  With no pump active it runs inline. *(New in 0.4.14.)*
+- `(jolt.host/run-main-pump)`: turn the calling thread **into** the pump: drain and run queued jobs FIFO, blocking until
+  `stop-main-pump`. Call this on the main thread of a program whose main thread should service GUI work.
+- `(jolt.host/stop-main-pump)`: tell a running pump to finish draining and return.
+- `(jolt.host/park-until-interrupt)`: park the calling (main) thread until a keyboard interrupt (`^C`), running shutdown
+  hooks and exiting when it arrives, **and** own the pump while parked. This is the variant a
+  foreground server uses: the nREPL server parks the primordial thread here so a UI event loop
+  evaluated from the REPL runs on the real main thread (not off-main, which would abort), while
+  `^C` still shuts the server down cleanly. Unlike `run-main-pump`'s bare wait, it idles in an
+  interrupt-checked poll so `^C` is delivered.
 
-Because both blocking and async calls fall back to running inline when no pump is
-active, code written against this API also works in a plain `-M:run` launch,
-where the main thread is already the caller; the library resolves the seam at
-call time and needs no separate non-GUI path.
+Because both blocking and async calls fall back to running inline when no pump is active, code
+written against this API also works in a plain `-M:run` launch, where the main thread is already the
+caller; the library resolves the seam at call time and needs no separate non-GUI path.
 
 ## Calling Scheme directly: `jolt.scheme`
 
-The layers above (the Java-shaped shims, `jolt.ffi` for C, the `jolt.host`
-seams) are the portable interop story. `jolt.scheme` is the escape hatch
-under them: call a host Scheme procedure by name, or evaluate Scheme text,
-from any Jolt program.
+The layers above (the Java-shaped shims, `jolt.ffi` for C, the `jolt.host` seams) are the portable interop
+story. `jolt.scheme` is the escape hatch under them: call a host Scheme procedure by name, or evaluate
+Scheme text, from any Jolt program.
 
 ```clojure
 (require '[jolt.scheme :as scheme])
@@ -412,17 +467,14 @@ from any Jolt program.
   (scheme/call "vector-ref" v 0))                ;=> 1
 ```
 
-`call` resolves the top-level procedure at run time and applies it; `proc`
-returns it as a value (usable with `map`, stored in a var by `defsfn`);
-`eval-string` evaluates Scheme text and returns the last form's value, with
-definitions persisting. An unbound name or a Scheme error surfaces as a
+`call` resolves the top-level procedure at run time and applies it; `proc` returns it as a value
+(usable with `map`, stored in a var by `defsfn`); `eval-string` evaluates Scheme text and returns the
+last form's value, with definitions persisting. An unbound name or a Scheme error surfaces as a
 catchable exception.
 
-`scheme` is `eval-string` without the quoting: the body is written in Jolt
-and rendered to Scheme source at macroexpansion, so a Scheme expression
-reads like a `do` block. Multiple forms run in order as a `(begin ...)`, the
-last value is returned, and a `define` splices into the interaction
-environment.
+`scheme` is `eval-string` without the quoting: the body is written in Jolt and rendered to Scheme source at
+macroexpansion, so a Scheme expression reads like a `do` block. Multiple forms run in order as a
+`(begin ...)`, the last value is returned, and a `define` splices into the interaction environment.
 
 ```clojure
 (scheme/scheme (let ((x 3)) (* x 14)))       ;=> 42
@@ -432,25 +484,20 @@ environment.
                (+ counter 1))                ;=> 1
 ```
 
-The body is read with Jolt's reader, so Scheme spellings Jolt's reader
-rejects are written in Jolt spelling and rendered across: `true` and `false`
-become `#t` and `#f`, `\A` becomes `#\A`, and `[1 2 3]` becomes the datum
-vector `#(1 2 3)`. That cuts both ways: a vector is data, not binding
-syntax, so a `let` needs Scheme-style `((x 3))` bindings, and keywords, maps
-and sets have no Scheme reading and are refused at macroexpansion. Reader
-sugar that expands to `clojure.core` calls (`@x`, syntax-quote) lands as
-unbound Scheme names, so write `(unquote ...)` longhand.
+The body is read with Jolt's reader, so Scheme spellings Jolt's reader rejects are written in Jolt
+spelling and rendered across: `true` and `false` become `#t` and `#f`, `\A` becomes
+`#\A`, and `[1 2 3]` becomes the datum vector `#(1 2 3)`. That cuts both ways: a vector is data, not
+binding syntax, so a `let` needs Scheme-style `((x 3))` bindings, and keywords, maps and sets have
+no Scheme reading and are refused at macroexpansion. Reader sugar that expands to `clojure.core` calls
+(`@x`, syntax-quote) lands as unbound Scheme names, so write `(unquote ...)` longhand.
 
-The contract is **raw**: numbers, strings, booleans and characters are the
-same representations on both sides and cross untouched; everything else
-crosses as whatever it is on the other side. A Scheme vector arriving in Jolt
-is an opaque host value; hand it back to Scheme to use it. A Jolt collection
-handed to Scheme is Jolt's representation, not a Scheme list. `nil` is Jolt's
-nil, not `'()` and not `#f`.
+The contract is **raw**: numbers, strings, booleans and characters are the same representations on
+both sides and cross untouched; everything else crosses as whatever it is on the other side. A
+Scheme vector arriving in Jolt is an opaque host value; hand it back to Scheme to use it. A Jolt
+collection handed to Scheme is Jolt's representation, not a Scheme list. `nil` is Jolt's nil, not
+`'()` and not `#f`.
 
-Two caveats. This is **host-specific by design**: code
-using `jolt.scheme` is tied to the Chez runtime and its primitives, unlike
-everything else on this page. And names resolve at **run time**, so a
-tree-shaken binary (`--tree-shake`) only finds what the kept runtime still
-carries; an exotic primitive a build shook out is an unbound-name error, not
-a silent nil.
+Two caveats. This is **host-specific by design**: code using `jolt.scheme` is tied to the Chez runtime and its primitives,
+unlike everything else on this page. And names resolve at **run time**, so a tree-shaken binary (`--tree-shake`)
+only finds what the kept runtime still carries; an exotic primitive a build shook out is an
+unbound-name error, not a silent nil.

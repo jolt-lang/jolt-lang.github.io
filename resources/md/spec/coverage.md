@@ -1,25 +1,25 @@
-# Appendix A — Coverage Dashboard (generated)
+# Appendix A: Coverage Dashboard (generated)
 
-Generated 2026-09-11 by `tools/spec_coverage.clj` — do not edit by hand.
+Generated 2026-09-11 by `tools/spec_coverage.clj`: do not edit by hand.
 
-Surface: **694** clojure.core vars (ClojureDocs export; 648 with
-community examples). jolt interns 659 of them.
+Surface: **694** clojure.core vars (ClojureDocs export; 648 with community examples). jolt interns
+659 of them.
 
 | Status | Count | Meaning |
 |---|---|---|
 | implemented+tested | 640 | in jolt and exercised by spec/conformance |
-| implemented-untested | 19 | in jolt, no direct test — spec entries will add them |
+| implemented-untested | 19 | in jolt, no direct test: spec entries will add them |
 | resolvable-not-interned | 0 | works in code but invisible to ns introspection (conformance finding) |
-| missing-portable | 0 | portable semantics, jolt lacks it — implementation gap |
+| missing-portable | 0 | portable semantics, jolt lacks it: implementation gap |
 | special-form | 15 | specified in §3, not a library var |
 | dynamic-var | 0 | classification needed: portable default vs host-dependent |
 | agents-taps | 1 | out of scope pending concurrency design note |
 | stm-refs | 0 | out of scope pending concurrency design note |
 | jvm-specific | 19 | catalogued, not specified |
 
-Classifications are initial and mechanical — reclassifying is an ordinary
-spec change. A var is *Verified* only when its §9 entry exists and carries no
-UNVERIFIED field; that column will be added as entries land.
+Classifications are initial and mechanical: reclassifying is an ordinary spec change. A var is
+*Verified* only when its §9 entry exists and carries no UNVERIFIED field; that column will be added as
+entries land.
 
 ## Per-var status
 

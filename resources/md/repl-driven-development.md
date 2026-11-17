@@ -1,8 +1,12 @@
-Jolt is built for the Clojure workflow: keep a process running, connect your editor to it, and grow the program by evaluating one form at a time. Because the REPL and the nREPL server run in **dev mode** (every call derefs its var, so a redefinition takes effect on the next call), you can redefine a function or restart a component without bouncing the process.
+Jolt is built for the Clojure workflow: keep a process running, connect your editor to it, and grow
+the program by evaluating one form at a time. Because the REPL and the nREPL server run in **dev mode**
+(every call derefs its var, so a redefinition takes effect on the next call), you can redefine a
+function or restart a component without bouncing the process.
 
 ## The line REPL
 
-`jolt repl` starts a plain REPL in the current directory. It resolves the `deps.edn` first, so your project's source roots and native libraries are already on the load path:
+`jolt repl` starts a plain REPL in the current directory. It resolves the `deps.edn` first, so your
+project's source roots and native libraries are already on the load path:
 
 ```bash
 $ jolt repl
@@ -12,11 +16,16 @@ user=> (app/greeting "world")
 "Hello, world"
 ```
 
-This is handy for a quick poke at a namespace, but the real workflow is driving the same kind of session from your editor.
+This is handy for a quick poke at a namespace, but the real workflow is driving the same kind of
+session from your editor.
 
 ## Starting an nREPL server
 
-`jolt nrepl-server [port]` starts an [nREPL](https://nrepl.org/) server your editor connects to. It defaults to port 7888 (override with the argument or `JOLT_NREPL_PORT`), resolves the project's `deps.edn`, loads the source roots and native libraries, and writes a `.nrepl-port` file in the project directory so editors auto-detect the port. A port of `0` asks the OS for any free port, and the banner and `.nrepl-port` then report the port actually bound.
+`jolt nrepl-server [port]` starts an [nREPL](https://nrepl.org/) server your editor connects to. It defaults to port 7888 (override with
+the argument or `JOLT_NREPL_PORT`), resolves the project's `deps.edn`, loads the source roots and native
+libraries, and writes a `.nrepl-port` file in the project directory so editors auto-detect the port. A
+port of `0` asks the OS for any free port, and the banner and `.nrepl-port` then report the port
+actually bound.
 
 ```bash
 $ cd myapp
@@ -25,7 +34,11 @@ jolt 0.8.24 nREPL server started on port 7888 (127.0.0.1) — .nrepl-port writte
 ;; connect your editor; ^C to stop
 ```
 
-Two flags change where the port goes. `--no-port-file` writes no file, for a second server beside one that already owns `.nrepl-port`. `--port-file PATH` writes the port to `PATH` instead, resolved against the directory you ran `jolt` from. Either way the server removes the file it wrote when it stops. If the file can't be written (its directory doesn't exist, say), the server still starts and prints the reason on stderr.
+Two flags change where the port goes. `--no-port-file` writes no file, for a second server beside one that
+already owns `.nrepl-port`. `--port-file PATH` writes the port to `PATH` instead, resolved against the directory you
+ran `jolt` from. Either way the server removes the file it wrote when it stops. If the file can't
+be written (its directory doesn't exist, say), the server still starts and prints the reason on
+stderr.
 
 ```bash
 $ jolt nrepl-server --port-file .cache/nrepl-port 0
@@ -36,17 +49,27 @@ Leave it running. Everything you do from here on happens in your editor, against
 
 ### Starting a server from code
 
-The same server is available programmatically, which is how a host application or a library embeds a REPL into a running jolt process:
+The same server is available programmatically, which is how a host application or a library embeds a
+REPL into a running jolt process:
 
 ```clojure
 (def stop (jolt.nrepl/start 7888))
 ```
 
-`start` binds the socket synchronously, so a startup failure such as an in-use port throws to the caller rather than dying on a background thread, then accepts connections and returns immediately. The port argument takes `0` to ask the OS for a free port. The second argument composes deps.edn `:nrepl/middleware` symbols over the built-in handler ([Middleware](#middleware)); the third is an opts map:
+`start` binds the socket synchronously, so a startup failure such as an in-use port throws to the
+caller rather than dying on a background thread, then accepts connections and returns immediately.
+The port argument takes `0` to ask the OS for a free port. The second argument composes deps.edn
+`:nrepl/middleware` symbols over the built-in handler ([Middleware](#middleware)); the third is an opts map:
 
-- `:port-file` — where to write the bound port so an editor can find the server. Defaults to `.nrepl-port` in the working directory; `nil` writes no file. A program that starts its own server from somewhere other than the project root — a host application loading a `--library` build, say — points this at the project's `.nrepl-port`.
+- `:port-file` (where to write the bound port so an editor can find the server. Defaults to `.nrepl-port` in
+  the working directory; `nil` writes no file. A program that starts its own server from somewhere
+  other than the project root, a host application loading a `--library` build, say, points this at the
+  project's `.nrepl-port`.
 
-The return value is a zero-arg stop fn: it stops the accept loop, closes the listen socket, frees the port, and removes the port file it wrote. Calling it more than once is a no-op. Its metadata carries `:port`, the port actually bound (the OS's pick when you asked for `0`), and `:port-file`, the absolute path written or nil:
+The return value is a zero-arg stop fn: it stops the accept loop, closes the listen socket, frees
+the port, and removes the port file it wrote. Calling it more than once is a no-op. Its metadata
+carries `:port`, the port actually bound (the OS's pick when you asked for `0`), and `:port-file`,
+the absolute path written or nil:
 
 ```clojure
 (meta stop)  ; => {:port 7888, :port-file "…/myapp/.nrepl-port"}
@@ -55,13 +78,15 @@ The return value is a zero-arg stop fn: it stops the accept loop, closes the lis
 
 ### Connecting your editor
 
-The server speaks bencode over a loopback TCP socket and writes `.nrepl-port`, so the usual Clojure tooling connects with no extra configuration:
+The server speaks bencode over a loopback TCP socket and writes `.nrepl-port`, so the usual Clojure
+tooling connects with no extra configuration:
 
 - **CIDER** (Emacs): `cider-connect` to `localhost:7888`, or `cider-connect-clj` and let it read `.nrepl-port`.
 - **Calva** (VS Code): *Connect to a running REPL in your project*, pick *Generic* / *deps.edn*; it reads `.nrepl-port` automatically.
 - **Cursive** (IntelliJ): a *Remote* nREPL run configuration pointing at the port.
 
-Start the server first and use these connect commands. An editor's default *jack-in* on a `deps.edn` project starts the JVM with `clojure`, not jolt. With [jolt-lang/nrepl](https://github.com/jolt-lang/nrepl) in your deps, that stops with:
+Start the server first and use these connect commands. An editor's default *jack-in* on a `deps.edn`
+project starts the JVM with `clojure`, not jolt. With [jolt-lang/nrepl](https://github.com/jolt-lang/nrepl) in your deps, that stops with:
 
 ```
 Could not locate jolt/ffi__init.class, jolt/ffi.clj or jolt/ffi.cljc on classpath.
@@ -82,7 +107,9 @@ To make Calva's Jack-in command start jolt instead, add a custom connect sequenc
 }
 ```
 
-The built-in handler implements `clone`, `describe`, `eval`, `load-file`, and `close`, enough to connect and evaluate. Heavier features (sessions, interruptible eval, completion, lookup) are added as nREPL middleware; see [Middleware](#middleware) below.
+The built-in handler implements `clone`, `describe`, `eval`, `load-file`, and `close`, enough to connect
+and evaluate. Heavier features (sessions, interruptible eval, completion, lookup) are added as nREPL
+middleware; see [Middleware](#middleware) below.
 
 ## The develop loop
 
@@ -104,17 +131,21 @@ Load the file (CIDER `C-c C-k`, Calva *Load Current File*), then evaluate a call
 (greeting "Jolt")   ;; => "Hello, Jolt"
 ```
 
-Now change `greeting` to `(str "Hey, " name "!")` and re-evaluate that one form (CIDER `C-c C-c`, Calva *Evaluate Top Level Form*). The var is redefined in place; the next call sees the new definition, with no restart:
+Now change `greeting` to `(str "Hey, " name "!")` and re-evaluate that one form (CIDER `C-c C-c`, Calva *Evaluate Top Level Form*). The var
+is redefined in place; the next call sees the new definition, with no restart:
 
 ```clojure
 (greeting "Jolt")   ;; => "Hey, Jolt!"
 ```
 
-You never leave the running process. New `require`s work the same way; evaluate `(require '[clojure.string :as str])` and the namespace loads off the source roots on the spot.
+You never leave the running process. New `require`s work the same way; evaluate `(require '[clojure.string :as str])` and the
+namespace loads off the source roots on the spot.
 
 ## Running an app from the REPL
 
-For a long-running app (a server, a worker, anything with state), keep the live bits in a var you can stop and restart, and drive its lifecycle from the REPL instead of from `-main`. A small `start!`/`stop!` pair over an atom is enough:
+For a long-running app (a server, a worker, anything with state), keep the live bits in a var you
+can stop and restart, and drive its lifecycle from the REPL instead of from `-main`. A small
+`start!`/`stop!` pair over an atom is enough:
 
 ```clojure
 (ns myapp.core)
@@ -145,17 +176,23 @@ From the editor's REPL:
 (app/stop!)         ;; tear it down when you're done
 ```
 
-`defonce` keeps the atom from being clobbered when you reload the file, and passing the handler as a var (`#'handler`) means redefining it is picked up live. When you change something structural (the server config, the lifecycle itself), call `(app/stop!)` then `(app/start!)` to cycle it.
+`defonce` keeps the atom from being clobbered when you reload the file, and passing the handler as a
+var (`#'handler`) means redefining it is picked up live. When you change something structural (the
+server config, the lifecycle itself), call `(app/stop!)` then `(app/start!)` to cycle it.
 
-`-main` stays the production entry point: it just calls `start!` and blocks. In development you skip it and steer the system by hand.
+`-main` stays the production entry point: it just calls `start!` and blocks. In development you skip
+it and steer the system by hand.
 
 ## Reloading a whole file
 
-To reload a file from disk rather than evaluating form by form, use the nREPL `load-file` op (`C-c C-k` in CIDER, *Load Current File* in Calva). It re-reads the file in its namespace, so every changed definition lands at once. This is the usual move after a batch of edits.
+To reload a file from disk rather than evaluating form by form, use the nREPL `load-file` op (`C-c C-k` in
+CIDER, *Load Current File* in Calva). It re-reads the file in its namespace, so every changed definition lands
+at once. This is the usual move after a batch of edits.
 
 ## Middleware
 
-The core server is intentionally small. A library can add the heavier nREPL ops as middleware (a `(fn [handler] (fn [request] ...))`), listed in `deps.edn`:
+The core server is intentionally small. A library can add the heavier nREPL ops as middleware (a
+`(fn [handler] (fn [request] ...))`), listed in `deps.edn`:
 
 ```clojure
 {:paths ["src"]
@@ -163,31 +200,38 @@ The core server is intentionally small. A library can add the heavier nREPL ops 
                     my.nrepl/wrap-interrupt]}
 ```
 
-Jolt composes the listed middleware over the built-in handler when the server starts, so completion, interruptible eval, and lookup are opt-in per project rather than baked into every server.
+Jolt composes the listed middleware over the built-in handler when the server starts, so completion,
+interruptible eval, and lookup are opt-in per project rather than baked into every server.
 
 ## Wrapping each evaluation
 
-`jolt.nrepl/*eval-wrapper*` is a hook around each evaluation. When it is bound to a function, `jolt.nrepl/evaluate` calls it with a thunk of the code's evaluation, inside its own `try` and `*ns*` binding, so the wrapper sees a throw before it becomes the error reply. A tool can run each evaluation under [`jolt.debug`](/docs/api/debug.html#keeping_the_frames_of_each_failed_repl_evaluation)'s `call-with-break-handler`, a timer or a binding of its own:
+`jolt.nrepl/*eval-wrapper*` is a hook around each evaluation. When it is bound to a function, `jolt.nrepl/evaluate` calls it with a
+thunk of the code's evaluation, inside its own `try` and `*ns*` binding, so the wrapper sees a
+throw before it becomes the error reply. A tool can run each evaluation under [`jolt.debug`](/docs/api/debug.html#keeping_the_frames_of_each_failed_repl_evaluation)'s `call-with-break-handler`, a
+timer or a binding of its own:
 
 ```clojure
 (binding [jolt.nrepl/*eval-wrapper* (fn [thunk] (time (thunk)))]
   ...)
 ```
 
-Bound around a session's `clone`, it covers every eval in that session, since jolt-lang/nrepl starts the session's worker with the clone's bindings.
+Bound around a session's `clone`, it covers every eval in that session, since jolt-lang/nrepl starts
+the session's worker with the clone's bindings.
 
 ## Evaluating text under a source path
 
-`jolt.host/eval-string` and `jolt.host/load-string` take an optional second argument, the path of the file the text came from. The forms carry it as `:file`, as a file load's do, so a def's recorded position, a trace and `jolt.profile`'s counts name that file, and `*file*` and `*source-path*` are the path and its name. A third argument gives the source name `*source-path*` holds. `jolt.nrepl/evaluate` takes these as `:file` and `:file-name`, and the built-in `load-file` op passes the request's `file-path` and `file-name`. `clojure.core/load-string` still takes the string alone.
+`jolt.host/eval-string` and `jolt.host/load-string` take an optional second argument, the path of the file the text came from. The
+forms carry it as `:file`, as a file load's do, so a def's recorded position, a trace and `jolt.profile`'s
+counts name that file, and `*file*` and `*source-path*` are the path and its name. A third argument gives the
+source name `*source-path*` holds. `jolt.nrepl/evaluate` takes these as `:file` and `:file-name`, and the built-in `load-file` op
+passes the request's `file-path` and `file-name`. `clojure.core/load-string` still takes the string alone.
 
 ## Editor linting: clj-kondo and clojure-lsp
 
-clj-kondo (and clojure-lsp, which runs it) analyzes sources from the JVM
-classpath, and Jolt's stdlib isn't on one, so it flags two things that are
-tooling noise, not errors: vars introduced by `jolt.ffi/defcfn` show as
-*unresolved symbol* (every `c-socket`-style binding in an FFI block), and
-`jolt.*` requires show as *unresolved namespace*. Teach it otherwise in your
-project's `.clj-kondo/config.edn`:
+clj-kondo (and clojure-lsp, which runs it) analyzes sources from the JVM classpath, and Jolt's
+stdlib isn't on one, so it flags two things that are tooling noise, not errors: vars introduced by
+`jolt.ffi/defcfn` show as *unresolved symbol* (every `c-socket`-style binding in an FFI block), and `jolt.*` requires show as
+*unresolved namespace*. Teach it otherwise in your project's `.clj-kondo/config.edn`:
 
 ```clojure
 {:lint-as {jolt.ffi/defcfn    clojure.core/def
@@ -199,22 +243,30 @@ project's `.clj-kondo/config.edn`:
                       jolt.util]}}}
 ```
 
-`:lint-as` tells the analyzer that `defcfn`'s first argument introduces a var,
-which resolves every use of the binding; the namespace excludes silence the
-requires it cannot find sources for. A library that defines its own macros can
-ship this the usual way (a `clj-kondo.exports/<org>/<lib>/config.edn` in its
-resources), and clj-kondo picks it up from the dependency.
+`:lint-as` tells the analyzer that `defcfn`'s first argument introduces a var, which resolves every use
+of the binding; the namespace excludes silence the requires it cannot find sources for. A library
+that defines its own macros can ship this the usual way (a `clj-kondo.exports/<org>/<lib>/config.edn` in its resources), and clj-kondo
+picks it up from the dependency.
 
 ## Dev mode vs a compiled binary
 
-The REPL and nREPL server are dynamic on purpose: calls go through the var, so redefinition works. A `jolt build` binary is the other end of that trade; a `--direct-link` build binds calls directly and gives up runtime redefinition for speed. Develop against the REPL; ship the binary. See [Getting Started](/docs/getting-started.html#compiling_a_standalone_binary) for the build modes.
+The REPL and nREPL server are dynamic on purpose: calls go through the var, so redefinition works. A
+`jolt build` binary is the other end of that trade; a `--direct-link` build binds calls directly and gives up
+runtime redefinition for speed. Develop against the REPL; ship the binary. See [Getting Started](/docs/getting-started.html#compiling_a_standalone_binary) for the build
+modes.
 
 ### Direct linking at the REPL
 
-Code compiled at runtime can opt into the passes a build runs, the same way it does on the JVM. Bind or alter `*compiler-options*` with `:direct-linking true`, and every form compiled after that gets direct calls, inlining, and record/protocol inference:
+Code compiled at runtime can opt into the passes a build runs, the same way it does on the JVM. Bind
+or alter `*compiler-options*` with `:direct-linking true`, and every form compiled after that gets direct calls, inlining, and
+record/protocol inference:
 
 ```clojure
 (alter-var-root #'*compiler-options* assoc :direct-linking true)
 ```
 
-Loaded this way, dispatch-heavy code runs about twice as fast. Some loads now run as fast as a built binary. You get the JVM's trade-off: a caller keeps the body it was compiled against when a small callee is redefined, and `with-redefs` does not reach a direct-linked caller. A var marked `^:dynamic` or `^:redef` opts out, including one made dynamic later with `.setDynamic`. It is off by default, so the REPL stays fully redefinable unless you turn it on.
+Loaded this way, dispatch-heavy code runs about twice as fast. Some loads now run as fast as a built
+binary. You get the JVM's trade-off: a caller keeps the body it was compiled against when a small
+callee is redefined, and `with-redefs` does not reach a direct-linked caller. A var marked `^:dynamic` or
+`^:redef` opts out, including one made dynamic later with `.setDynamic`. It is off by default, so the REPL
+stays fully redefinable unless you turn it on.

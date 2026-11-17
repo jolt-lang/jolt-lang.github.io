@@ -1,18 +1,20 @@
-Jolt is a Clojure implementation that runs on [Chez Scheme](https://cisco.github.io/ChezScheme/). It reads Clojure source, analyzes it to a host-neutral IR, emits Scheme, and runs it on Chez. The compiler is self-hosted (written in Clojure and compiling itself) and ships a Clojure-compatible standard library.
+Jolt is a Clojure implementation that runs on [Chez Scheme](https://cisco.github.io/ChezScheme/). It reads Clojure source, analyzes it to a
+host-neutral IR, emits Scheme, and runs it on Chez. The compiler is self-hosted (written in Clojure
+and compiling itself) and ships a Clojure-compatible standard library.
 
 ## Requirements
 
-The prebuilt binaries need only the base system libraries: **Linux x86_64**
-requires glibc 2.35 or newer (Ubuntu 22.04+, Debian 12+, RHEL 9+; the
-installer verifies the binary runs and reports the exact glibc mismatch if
-not); **macOS arm64** requires macOS 14+. Anything else (Intel Mac,
-musl/Alpine, older glibc) builds from source; see [From source](#from_source).
+The prebuilt binaries need only the base system libraries: **Linux x86_64** requires glibc 2.35 or newer
+(Ubuntu 22.04+, Debian 12+, RHEL 9+; the installer verifies the binary runs and reports the exact
+glibc mismatch if not); **macOS arm64** requires macOS 14+. Anything else (Intel Mac, musl/Alpine, older
+glibc) builds from source; see [From source](#from_source).
 
 ## Install
 
 **If you are using an Intel Mac, musl/Alpine, or an older glibc, the prebuilt binaries below are not supported. Follow the [From source](#from_source) instructions instead.**
 
-The quickest way is the prebuilt `jolt` binary (Linux and macOS). It bundles the runtime, compiler, and standard library, so there is no JVM, no Chez, and nothing else to install.
+The quickest way is the prebuilt `jolt` binary (Linux and macOS). It bundles the runtime, compiler,
+and standard library, so there is no JVM, no Chez, and nothing else to install.
 
 With Homebrew:
 
@@ -20,7 +22,8 @@ With Homebrew:
 brew install jolt-lang/jolt/jolt
 ```
 
-Or with the install script (it installs to `~/.local/bin`, or `/usr/local/bin` when run as root; `PREFIX=<dir>` puts the binary in `<dir>/bin`, and `--dir <dir>` / `--version <version>` override everything):
+Or with the install script (it installs to `~/.local/bin`, or `/usr/local/bin` when run as root; `PREFIX=<dir>` puts the
+binary in `<dir>/bin`, and `--dir <dir>` / `--version <version>` override everything):
 
 ```bash
 curl -sL https://raw.githubusercontent.com/jolt-lang/jolt/main/install | bash
@@ -34,7 +37,8 @@ jolt -e '(+ 1 2)'        # => 3
 
 ### From source
 
-Jolt also runs straight from a clone with no build step; the bootstrap seed is checked in. This path needs [Chez Scheme](https://cisco.github.io/ChezScheme/), invoked as `chez`:
+Jolt also runs straight from a clone with no build step; the bootstrap seed is checked in. This path
+needs [Chez Scheme](https://cisco.github.io/ChezScheme/), invoked as `chez`:
 
 ```bash
 git clone --recurse-submodules https://github.com/jolt-lang/jolt.git
@@ -42,7 +46,8 @@ cd jolt
 bin/jolt -e '(+ 1 2)'        # => 3
 ```
 
-The submodules pull the vendored regex and SCI sources used by the tests. (The conformance test suite additionally uses Clojure on the JVM as an oracle, but running Jolt does not.)
+The submodules pull the vendored regex and SCI sources used by the tests. (The conformance test
+suite additionally uses Clojure on the JVM as an oracle, but running Jolt does not.)
 
 The examples below assume the installed `jolt`; from a clone, run `bin/jolt` instead.
 
@@ -59,7 +64,8 @@ $ jolt -e '(/ 1 2)'
 
 ## Running a project
 
-`jolt` is both the runtime and the dependency front-end. Point it at a file, a namespace, or a `deps.edn` project:
+`jolt` is both the runtime and the dependency front-end. Point it at a file, a namespace, or a
+`deps.edn` project:
 
 ```bash
 jolt run FILE          # run a Clojure file
@@ -68,7 +74,8 @@ jolt -M:alias [args]   # run an alias's :main-opts
 jolt path              # print the resolved source roots
 ```
 
-You can also point Jolt at a directory of Clojure source with no dependency machinery, using `JOLT_PATH` (a colon-separated list of directories, like a classpath):
+You can also point Jolt at a directory of Clojure source with no dependency machinery, using `JOLT_PATH`
+(a colon-separated list of directories, like a classpath):
 
 ```bash
 JOLT_PATH=/path/to/lib/src jolt run myfile.clj
@@ -84,7 +91,9 @@ jolt -f build              # ...when the file's name is a command or a task
 jolt - < script.clj        # read the program from stdin
 ```
 
-So a first line of `#!/usr/bin/env jolt` makes the file an executable script, the way a `bb` one is — all it needs is a `jolt` on `PATH`: an installed binary, or a symlink to a checkout's `bin/jolt`. `#!` is a comment to end of line in Clojure's reader, so the line costs the program nothing:
+So a first line of `#!/usr/bin/env jolt` makes the file an executable script, the way a `bb` one is: all it
+needs is a `jolt` on `PATH`: an installed binary, or a symlink to a checkout's `bin/jolt`. `#!` is
+a comment to end of line in Clojure's reader, so the line costs the program nothing:
 
 ```bash
 $ cat hello
@@ -95,40 +104,61 @@ $ ./hello world
 hello world
 ```
 
-Arguments after the script are `*command-line-args*` — the first standalone `--` ends option parsing — `*file*` is the script, stdin is left for the program to read, and `(System/exit n)` sets the process's exit status (an uncaught exception exits 1). An `(ns …)` form with `:require`s is fine, and when the directory has a `deps.edn` the script sees the project's paths and dependencies, like any other run. A script can also declare its dependencies inline, with no `deps.edn` at all: see [Adding deps from a script](/docs/building-and-deps.html#adding_deps_from_a_script).
+Arguments after the script are `*command-line-args*` (the first standalone `--` ends option parsing) `*file*` is
+the script, stdin is left for the program to read, and `(System/exit n)` sets the process's exit status (an
+uncaught exception exits 1). An `(ns …)` form with `:require`s is fine, and when the directory has a
+`deps.edn` the script sees the project's paths and dependencies, like any other run. A script can also
+declare its dependencies inline, with no `deps.edn` at all: see [Adding deps from a script](/docs/building-and-deps.html#adding_deps_from_a_script).
 
-A built-in command wins a name it shares with a file — `jolt build` is always the compiler — which is what `-f` is for. A task loses to one: a `greet` file on disk is what `jolt greet` means when the project also has a `greet` task. Windows has no kernel shebang, so there `jolt script` is how a script runs.
+A built-in command wins a name it shares with a file (`jolt build` is always the compiler) which is what
+`-f` is for. A task loses to one: a `greet` file on disk is what `jolt greet` means when the project
+also has a `greet` task. Windows has no kernel shebang, so there `jolt script` is how a script runs.
 
-Startup is Jolt's boot floor: the runtime and compiler image are instantiated on every run, which measures around 0.17s against babashka's 0.01s on the same machine. A script called in a loop is better compiled once — give it an `(ns …)` with a `-main` and [build it into a binary](#compiling_a_standalone_binary).
+Startup is Jolt's boot floor: the runtime and compiler image are instantiated on every run, which
+measures around 0.17s against babashka's 0.01s on the same machine. A script called in a loop is
+better compiled once: give it an `(ns …)` with a `-main` and [build it into a binary](#compiling_a_standalone_binary).
 
 ## Diagnostics
 
 Jolt has a few compile-time diagnostics beyond the default error report.
 
-**"Did you mean?"**: when a bare symbol doesn't resolve, the error lists the closest in-scope names by edit distance (current-namespace vars, `clojure.core` publics, and lexical locals):
+**"Did you mean?"**: when a bare symbol doesn't resolve, the error lists the closest in-scope names by edit
+distance (current-namespace vars, `clojure.core` publics, and lexical locals):
 
 ```bash
 $ jolt -e '(prinltn 1)'
 Unable to resolve symbol: prinltn in this context (did you mean print, printf, println?)
 ```
 
-**`JOLT_DIAG=edn`**: emit an uncaught error as a single line of valid EDN to stderr instead of the human report, so an editor or tool can read it back. The map carries the human `:message` and the source `:line`/`:column`/`:file`; an unresolved symbol also carries structured `:type`/`:symbol`/`:suggestions`/`:ns`. Default output is unchanged.
+**`JOLT_DIAG=edn`**: emit an uncaught error as a single line of valid EDN to stderr instead of the human report,
+so an editor or tool can read it back. The map carries the human `:message` and the source
+`:line`/`:column`/`:file`; an unresolved symbol also carries structured
+`:type`/`:symbol`/`:suggestions`/`:ns`. Default output is unchanged.
 
-**`JOLT_CHECK`**: opt-in success-type lint ([RFC 0006](/docs/rfc)): each runtime-compiled top-level form is run through the success-type checker and any findings print to stderr as located warnings (`line:col: warning: …`), e.g. `` 1:10: warning: `+` requires a number, but argument 2 is a keyword ``. Off by default (zero cost, no behavior change); a checker error never breaks a compile.
+**`JOLT_CHECK`**: opt-in success-type lint ([RFC 0006](/docs/rfc)): each runtime-compiled top-level form is run through the
+success-type checker and any findings print to stderr as located warnings (`line:col: warning: …`), e.g. ``
+1:10: warning: `+` requires a number, but argument 2 is a keyword ``. Off by default (zero
+cost, no behavior change); a checker error never breaks a compile.
 
-**`JOLT_DEBUG`**: verbose dependency resolution (the fetching / using-cache / skipping progress lines that are otherwise quiet) plus the host static-shim drift warning. See [dependency resolution](#dependencies) below.
+**`JOLT_DEBUG`**: verbose dependency resolution (the fetching / using-cache / skipping progress lines that
+are otherwise quiet) plus the host static-shim drift warning. See [dependency resolution](#dependencies) below.
 
-**`JOLT_WARNINGS=1`**: the runtime's own warnings about the process: a library claiming a class this jolt already provides, a registration dropped because another dependency declares the class, a native symbol defined by two declared libraries (`jolt.ffi/defining-libraries` answers that without it), a `data_readers` namespace that failed to load. Off by default, because stderr belongs to your program: a full-screen TUI can't intercept them and can't live with them interleaved into its frames. Errors and uncaught-exception reports are not affected.
+**`JOLT_WARNINGS=1`**: the runtime's own warnings about the process: a library claiming a class this jolt already
+provides, a registration dropped because another dependency declares the class, a native symbol
+defined by two declared libraries (`jolt.ffi/defining-libraries` answers that without it), a `data_readers` namespace that failed
+to load. Off by default, because stderr belongs to your program: a full-screen TUI can't intercept
+them and can't live with them interleaved into its frames. Errors and uncaught-exception reports are
+not affected.
 
-**`JOLT_GC_STALL`**: report a garbage collection stalled by a thread parked in a foreign call that isn't `:blocking` (see [native interop](/docs/native-interop.html)). `JOLT_GC_STALL=1` reports after two seconds; `JOLT_GC_STALL=<seconds>` sets the threshold (`1.0` for one second). Off by default; the stall itself is the same either way.
+**`JOLT_GC_STALL`**: report a garbage collection stalled by a thread parked in a foreign call that isn't `:blocking`
+(see [native interop](/docs/native-interop.html)). `JOLT_GC_STALL=1` reports after two seconds; `JOLT_GC_STALL=<seconds>` sets the threshold (`1.0` for one
+second). Off by default; the stall itself is the same either way.
 
 ## Memory
 
-Jolt bounds its heap the way the JVM does. By default the ceiling is **25% of
-physical memory** — the share the JVM's `MaxRAMPercentage` uses — and under a
-container limit it reads the container's memory rather than the host's, as
-`UseContainerSupport` does. Exceeding it raises `java.lang.OutOfMemoryError`, so
-it is catchable:
+Jolt bounds its heap the way the JVM does. By default the ceiling is **25% of physical memory** (the share the JVM's
+`MaxRAMPercentage` uses), and under a container limit it reads the container's memory rather than the host's,
+as `UseContainerSupport` does. Exceeding it raises `java.lang.OutOfMemoryError`, so it is catchable:
 
 ```clojure
 (try
@@ -137,17 +167,16 @@ it is catchable:
     (println "over the ceiling:" (.getMessage e))))
 ```
 
-The ceiling bounds the heap's **total** size, as `-Xmx` does: the live data, the
-space new objects are allocated in, and the free memory the collector keeps. Near
-the ceiling Jolt allocates in smaller windows and hands free memory back to the
-operating system rather than growing past it; the error is raised only when the
-live data itself no longer fits. `(.maxMemory (Runtime/getRuntime))` reports the
-ceiling in bytes, and `totalMemory`/`freeMemory` report the heap inside it.
-Unlike the JVM's collector, Chez's cannot compact in place, so near the ceiling a
-collection needs some working room: the total stays within about 10% of it.
+The ceiling bounds the heap's **total** size, as `-Xmx` does: the live data, the space new objects
+are allocated in, and the free memory the collector keeps. Near the ceiling Jolt allocates in
+smaller windows and hands free memory back to the operating system rather than growing past it; the
+error is raised only when the live data itself no longer fits. `(.maxMemory (Runtime/getRuntime))` reports the ceiling in bytes,
+and `totalMemory`/`freeMemory` report the heap inside it. Unlike the JVM's collector, Chez's cannot compact in
+place, so near the ceiling a collection needs some working room: the total stays within about 10% of
+it.
 
-**`JOLT_MAX_HEAP`** overrides the default, the way `-Xmx` does. An integer of
-bytes with an optional `k`, `m` or `g` suffix:
+**`JOLT_MAX_HEAP`** overrides the default, the way `-Xmx` does. An integer of bytes with an optional `k`,
+`m` or `g` suffix:
 
 ```bash
 JOLT_MAX_HEAP=2g    jolt run build.clj    # cap at 2 GB
@@ -155,14 +184,12 @@ JOLT_MAX_HEAP=512m  jolt run build.clj    # cap at 512 MB
 JOLT_MAX_HEAP=off   jolt run build.clj    # no ceiling
 ```
 
-Raise it for a workload that legitimately needs more than a quarter of the
-machine — a large generative test suite, or compiling a big dependency tree.
-`off` restores the behaviour of releases before 0.8.5, where nothing bounded the
-heap at all.
+Raise it for a workload that legitimately needs more than a quarter of the machine: a large
+generative test suite, or compiling a big dependency tree. `off` restores the behaviour of
+releases before 0.8.5, where nothing bounded the heap at all.
 
-There is a floor. The runtime's own image is live before your program starts, so
-a ceiling under that cannot be satisfied and Jolt says so rather than failing
-somewhere inside namespace loading:
+There is a floor. The runtime's own image is live before your program starts, so a ceiling under
+that cannot be satisfied and Jolt says so rather than failing somewhere inside namespace loading:
 
 ```bash
 $ JOLT_MAX_HEAP=16m jolt -e '(println :hi)'
@@ -171,43 +198,38 @@ bytes, already using 125831840. Give it at least twice that, or
 JOLT_MAX_HEAP=off for no ceiling.
 ```
 
-In practice **256 MB is the smallest useful setting**, and a built binary that
-embeds an application needs more than a bare `jolt` does.
+In practice **256 MB is the smallest useful setting**, and a built binary that embeds an application needs more than a bare `jolt`
+does.
 
 ### Why there is a ceiling
 
-Chez grows its heap on demand and has no `-Xmx`, so before 0.8.5 a program that
-outgrew the machine was killed by the kernel's OOM killer: `SIGKILL`, no
-diagnostic, no stack, and an empty log, because the kill gives the process no
-chance to flush. The ceiling turns that into an error you can read, catch and
-act on.
+Chez grows its heap on demand and has no `-Xmx`, so before 0.8.5 a program that outgrew the machine
+was killed by the kernel's OOM killer: `SIGKILL`, no diagnostic, no stack, and an empty log, because
+the kill gives the process no chance to flush. The ceiling turns that into an error you can read,
+catch and act on.
 
-It also collects harder before giving up. Chez defers a maximum-generation
-collection until the live set has doubled, which is the wrong instinct when
-memory is tight, so above three quarters of the ceiling Jolt forces the
-collection that would otherwise have been deferred. A program that was merely
-holding reclaimable garbage keeps running; one that genuinely needs the memory
-gets the error. When even a full collection leaves the live data above that
-three-quarter mark, the next forced one waits until half the remaining room is
-used, so a program working close to the ceiling keeps making progress instead of
-collecting after every allocation burst. Below the mark it waits for a quarter of
-the room, which leaves the collection space to work in. When the older
-generations hold more than the free room, that collection also goes a generation
-at a time, so it never holds copies of all of them at once.
+It also collects harder before giving up. Chez defers a maximum-generation collection until the live
+set has doubled, which is the wrong instinct when memory is tight, so above three quarters of the
+ceiling Jolt forces the collection that would otherwise have been deferred. A program that was
+merely holding reclaimable garbage keeps running; one that genuinely needs the memory gets the
+error. When even a full collection leaves the live data above that three-quarter mark, the next
+forced one waits until half the remaining room is used, so a program working close to the ceiling
+keeps making progress instead of collecting after every allocation burst. Below the mark it waits
+for a quarter of the room, which leaves the collection space to work in. When the older generations
+hold more than the free room, that collection also goes a generation at a time, so it never holds
+copies of all of them at once.
 
 ### Tuning the collector
 
-The nursery, the space new objects are allocated in between collections, is
-sized automatically. It starts at 16 MB and grows while collection takes a large
-share of the run time, bounded by how much data the program actually keeps, so a
-program that allocates heavily but holds little does not pay for a large nursery
-in memory. A program that allocates little never leaves 16 MB. As with the JVM's
-adaptive sizing, nothing is resized until five collections have been seen, and
-the share of time counts each collection by how long it ran, so a short program
-is not moved off 16 MB by the first collection after startup.
+The nursery, the space new objects are allocated in between collections, is sized automatically. It
+starts at 16 MB and grows while collection takes a large share of the run time, bounded by how much
+data the program actually keeps, so a program that allocates heavily but holds little does not pay
+for a large nursery in memory. A program that allocates little never leaves 16 MB. As with the JVM's
+adaptive sizing, nothing is resized until five collections have been seen, and the share of time
+counts each collection by how long it ran, so a short program is not moved off 16 MB by the first
+collection after startup.
 
-The defaults suit most programs. For the rest, each knob is named after the JVM
-flag it mirrors:
+The defaults suit most programs. For the rest, each knob is named after the JVM flag it mirrors:
 
 | Variable | JVM flag | Default | Meaning |
 |---|---|---|---|
@@ -223,65 +245,54 @@ flag it mirrors:
 | `JOLT_GC_HEAP_FREE_LIMIT` | `-XX:GCHeapFreeLimit` | `2` | the free share of the ceiling below which it counts |
 | `JOLT_STACK_LIMIT` | `-Xss` | 80% of the heap ceiling | how deep one thread's stack may grow; see [Stack depth](#stack_depth) below |
 
-The GC overhead limit is the JVM's: when five collections in a row find the program
-spending more than `JOLT_GC_TIME_LIMIT` percent of its time collecting with less than
-`JOLT_GC_HEAP_FREE_LIMIT` percent of the ceiling free, it gets an `OutOfMemoryError`
-("GC overhead limit exceeded") instead of running on at a crawl.
+The GC overhead limit is the JVM's: when five collections in a row find the program spending more
+than `JOLT_GC_TIME_LIMIT` percent of its time collecting with less than `JOLT_GC_HEAP_FREE_LIMIT` percent of the ceiling free, it
+gets an `OutOfMemoryError` ("GC overhead limit exceeded") instead of running on at a crawl.
 
-The headroom bound is soft: when collection takes more than twice the target
-share three collections running at the bound, the nursery doubles past it, since
-that is a program the larger nursery is for. That growth is checked: if the share
-of time spent collecting over the next eight collections rose by more than a tenth,
-the nursery tries one jump to 8x, since some programs only gain once most of a big
-window dies, and otherwise goes back and holds at the old size for a while. Sizes
-take a `k`, `m` or `g` suffix. A value Jolt cannot read is refused at startup with
-its name, rather than ignored.
+The headroom bound is soft: when collection takes more than twice the target share three collections
+running at the bound, the nursery doubles past it, since that is a program the larger nursery is
+for. That growth is checked: if the share of time spent collecting over the next eight collections
+rose by more than a tenth, the nursery tries one jump to 8x, since some programs only gain once most
+of a big window dies, and otherwise goes back and holds at the old size for a while. Sizes take a
+`k`, `m` or `g` suffix. A value Jolt cannot read is refused at startup with its name,
+rather than ignored.
 
-The older generations are collected once the heap grows past twice what was live
-after the last full collection (and at least 64 MB past it), so garbage promoted
-out of the nursery does not wait for a schedule. When full collections take more
-than the target share of the time, that allowance grows by half at a time, up to
-8x the live data, and it shrinks back toward 2x when they get cheap. A program that
-promotes a lot of medium-lived data runs far fewer full collections that way, at
-the cost of a higher peak. `System/gc` and `(.gc (Runtime/getRuntime))` run a full
-collection and re-measure the live data the allowance is sized from.
+The older generations are collected once the heap grows past twice what was live after the last full
+collection (and at least 64 MB past it), so garbage promoted out of the nursery does not wait for a
+schedule. When full collections take more than the target share of the time, that allowance grows by
+half at a time, up to 8x the live data, and it shrinks back toward 2x when they get cheap. A program
+that promotes a lot of medium-lived data runs far fewer full collections that way, at the cost of a
+higher peak. `System/gc` and `(.gc (Runtime/getRuntime))` run a full collection and re-measure the live data the allowance is
+sized from.
 
-`JOLT_GC_LOG=1` prints one line per collection to stderr, the way `-verbose:gc`
-does:
+`JOLT_GC_LOG=1` prints one line per collection to stderr, the way `-verbose:gc` does:
 
 ```
 gc: 57ms (88% of 65ms) heap 159MB total 204MB peak 268MB live-after-full 159MB trip 24MB full:ceiling 34ms old-x2.0
 ```
 
-That is how long the collection took and its share of the time since the last
-one; the heap in use after it and the total the collector holds from the
-operating system; `peak`, the most the process has held so far, so the
-collection that set a high-water mark is the one where it jumps; the live data
-after the last full collection; and `trip`, the nursery it leaves. A trailing
-`full:` says the policy also collected every generation, and why: `grown` when
-the heap passed its allowance over the live data, `ceiling` when it passed three
-quarters of the ceiling. It then gives that collection's time and the current
-allowance factor.
+That is how long the collection took and its share of the time since the last one; the heap in use
+after it and the total the collector holds from the operating system; `peak`, the most the process
+has held so far, so the collection that set a high-water mark is the one where it jumps; the live
+data after the last full collection; and `trip`, the nursery it leaves. A trailing `full:` says the
+policy also collected every generation, and why: `grown` when the heap passed its allowance over the
+live data, `ceiling` when it passed three quarters of the ceiling. It then gives that collection's
+time and the current allowance factor.
 
 ### Stack depth
 
-Chez keeps a deep stack on the heap: when a thread's stack outgrows its segment,
-the frames below move into a heap object and the call carries on. Recursion is
-therefore cheap and deep — ten million frames take well under a second and about
-100 MB — and Jolt does not cap it at the JVM's size. The JVM throws
-`StackOverflowError` at the end of the thread's stack (`-Xss`, 512 KB to 1 MB by
-default), which is ten to twenty thousand Clojure frames.
+Chez keeps a deep stack on the heap: when a thread's stack outgrows its segment, the frames below
+move into a heap object and the call carries on. Recursion is therefore cheap and deep (ten million
+frames take well under a second and about 100 MB), and Jolt does not cap it at the JVM's size. The
+JVM throws `StackOverflowError` at the end of the thread's stack (`-Xss`, 512 KB to 1 MB by default), which is
+ten to twenty thousand Clojure frames.
 
-Instead the limit is sized from memory, the way
-[Guile](https://www.gnu.org/software/guile/manual/html_node/Stack-Overflow.html)
-sizes its stack check at 80% of what the process may use. The stack is heap
-memory, so what the process may use is the [heap ceiling](#memory): by default
-the limit is **80% of the heap ceiling** (so 20% of RAM, or of a container's
-limit, with the ceiling at its default). With no ceiling (`JOLT_MAX_HEAP=off`)
-it is 80% of `RLIMIT_AS` (`ulimit -v`) if that is set, else of `RLIMIT_DATA`
-(`ulimit -d`), else of physical RAM. It is set at startup and applies to each
-thread's stack on its own. Past it the recursion throws
-`java.lang.StackOverflowError`, as on the JVM:
+Instead the limit is sized from memory, the way [Guile](https://www.gnu.org/software/guile/manual/html_node/Stack-Overflow.html) sizes its stack check at 80% of what the
+process may use. The stack is heap memory, so what the process may use is the [heap ceiling](#memory): by default
+the limit is **80% of the heap ceiling** (so 20% of RAM, or of a container's limit, with the ceiling at its default).
+With no ceiling (`JOLT_MAX_HEAP=off`) it is 80% of `RLIMIT_AS` (`ulimit -v`) if that is set, else of `RLIMIT_DATA` (`ulimit -d`),
+else of physical RAM. It is set at startup and applies to each thread's stack on its own. Past it
+the recursion throws `java.lang.StackOverflowError`, as on the JVM:
 
 ```clojure
 (defn f [x] (inc (f x)))
@@ -291,15 +302,13 @@ thread's stack on its own. Past it the recursion throws
     (println "too deep:" (.getMessage e))))
 ```
 
-`StackOverflowError` is an `Error`, not an `Exception`, so `(catch Exception e …)`
-lets it through; `(catch StackOverflowError e …)`, `(catch Error e …)` and
-`(catch Throwable e …)` catch it. Unwinding gives the stack's memory back, and the
-thread — a REPL, an nREPL session, a future — carries on. A caught one keeps its
-stack trace but not the stack it was thrown from, so holding on to it is cheap. Its message names the
-limit and how to change it; the JVM's is `nil`.
+`StackOverflowError` is an `Error`, not an `Exception`, so `(catch Exception e …)` lets it through; `(catch StackOverflowError e …)`, `(catch Error e …)` and `(catch Throwable e …)`
+catch it. Unwinding gives the stack's memory back, and the thread (a REPL, an nREPL session, a
+future) carries on. A caught one keeps its stack trace but not the stack it was thrown from, so
+holding on to it is cheap. Its message names the limit and how to change it; the JVM's is `nil`.
 
-**`JOLT_STACK_LIMIT`** sets the limit, in bytes with an optional `k`, `m` or `g`
-suffix in either case, or turns it off with `-1`, `0`, `off` or `none`:
+**`JOLT_STACK_LIMIT`** sets the limit, in bytes with an optional `k`, `m` or `g` suffix in either case,
+or turns it off with `-1`, `0`, `off` or `none`:
 
 ```bash
 JOLT_STACK_LIMIT=512m jolt run app.clj    # overflow past 512 MB of stack
@@ -307,29 +316,27 @@ JOLT_STACK_LIMIT=2g   jolt run app.clj    # past 2 GB
 JOLT_STACK_LIMIT=off  jolt run app.clj    # no limit: grow until the heap ceiling, as before 0.8.22
 ```
 
-Any other value is refused at startup with its name, as `JOLT_MAX_HEAP`'s are.
-`(jolt.host/stack-limit)` answers the limit in effect, in bytes, or `nil` when
-there is none.
+Any other value is refused at startup with its name, as `JOLT_MAX_HEAP`'s are. `(jolt.host/stack-limit)` answers the limit in
+effect, in bytes, or `nil` when there is none.
 
-An explicit limit is used as given, even above the heap ceiling, where the
-recursion would meet the ceiling first and get an `OutOfMemoryError` instead.
-The default is generous, so a runaway recursion takes a while to reach it: on a
-64 GB machine (a 16 GB ceiling, so a 12.8 GB stack limit) about 40 seconds. To
-have it reported quickly, set a smaller limit — `JOLT_STACK_LIMIT=256m` is
-still several million frames.
+An explicit limit is used as given, even above the heap ceiling, where the recursion would meet the
+ceiling first and get an `OutOfMemoryError` instead. The default is generous, so a runaway recursion takes a
+while to reach it: on a 64 GB machine (a 16 GB ceiling, so a 12.8 GB stack limit) about 40 seconds.
+To have it reported quickly, set a smaller limit: `JOLT_STACK_LIMIT=256m` is still several million frames.
 
-The limit is checked when the collector runs rather than on every call, which is
-what keeps it free for ordinary code. A stack can pass it by up to one nursery's
-worth (16 MB and up) before the check sees it.
+The limit is checked when the collector runs rather than on every call, which is what keeps it free
+for ordinary code. A stack can pass it by up to one nursery's worth (16 MB and up) before the check
+sees it.
 
-On the [Gambit backend](/docs/scheme-backends.html) there is no limit: the stack
-grows until Gambit's own memory runs out, as it did everywhere before. On Windows
-there is no default (neither rlimits nor `sysconf` exist there), so the stack is
-unbounded unless `JOLT_STACK_LIMIT` sets a limit.
+On the [Gambit backend](/docs/scheme-backends.html) there is no limit: the stack grows until Gambit's own memory runs out, as it did
+everywhere before. On Windows there is no default (neither rlimits nor `sysconf` exist there), so the
+stack is unbounded unless `JOLT_STACK_LIMIT` sets a limit.
 
 ## Compiling a standalone binary
 
-`jolt build` ahead-of-time compiles a project into a single self-contained executable. The runtime, `clojure.core`, the standard library, and your application (together with its `deps.edn` dependencies) are linked in, so the result needs no Chez install, no JVM, and no source on disk to run.
+`jolt build` ahead-of-time compiles a project into a single self-contained executable. The runtime,
+`clojure.core`, the standard library, and your application (together with its `deps.edn` dependencies) are
+linked in, so the result needs no Chez install, no JVM, and no source on disk to run.
 
 ```bash
 jolt build -m myapp.core -o myapp   # compile myapp.core's -main into ./myapp
@@ -339,15 +346,23 @@ jolt build -m myapp.core -o myapp   # compile myapp.core's -main into ./myapp
 Three build modes trade dynamism for speed:
 
 - default (**release**): a closed-world binary on the proven code generator.
-- `--opt` (**optimized**): also runs the type-inference, inlining, and scalar-replacement passes over the closed-world program.
+- `--opt` (**optimized**): also runs the type-inference, inlining, and scalar-replacement passes over the
+  closed-world program.
 - `--dev`: an unoptimized build.
 
 ### Closed-world optimizations
 
-Two opt-in flags trade runtime dynamism for speed and a smaller binary. They commit to a *closed world* (the program is known in full at build time and isn't extended at runtime), so they are off by default; a plain build stays fully dynamic.
+Two opt-in flags trade runtime dynamism for speed and a smaller binary. They commit to a *closed world*
+(the program is known in full at build time and isn't extended at runtime), so they are off by
+default; a plain build stays fully dynamic.
 
-- `--direct-link`: a call between your own functions binds to its target directly, skipping the var lookup and generic dispatch a dynamic call pays. The cost is that those vars can no longer be redefined at runtime (mark one `^:redef` or `^:dynamic` to keep it dynamic). On a call-heavy workload this is several times faster.
-- `--tree-shake`: ship only the code reachable from `-main`. The build walks the call graph across your app, its libraries, **and** `clojure.core`, and drops every function that nothing on the path to `-main` can reach. An app that never `eval`s also drops the compiler (analyzer + back end) from the binary.
+- `--direct-link`: a call between your own functions binds to its target directly, skipping the var lookup
+  and generic dispatch a dynamic call pays. The cost is that those vars can no longer be redefined at
+  runtime (mark one `^:redef` or `^:dynamic` to keep it dynamic). On a call-heavy workload this is several
+  times faster.
+- `--tree-shake`: ship only the code reachable from `-main`. The build walks the call graph across your
+  app, its libraries, **and** `clojure.core`, and drops every function that nothing on the path to `-main`
+  can reach. An app that never `eval`s also drops the compiler (analyzer + back end) from the binary.
 
 You can set either in `deps.edn` instead of on the command line:
 
@@ -355,24 +370,31 @@ You can set either in `deps.edn` instead of on the command line:
 {:jolt/build {:direct-link true :tree-shake true}}
 ```
 
-A third flag trades the other way. The boot image ships as a prebuilt heap image
-(*vfasl*), which starts faster and takes more room; `--boot small` keeps the image but
-compresses it with gzip, and `--boot plain` drops it altogether. For an app whose
-download size matters more than its startup — typically a mobile one — `small` is
-usually the one: on the apps measured it is about a third smaller than a plain boot
-*and* still faster to start. `JOLT_BOOT=small` and `:jolt/build {:boot :small}` do the
-same. Measure on your own target; the ratios depend on what your image holds. See
-[The boot image](/docs/building-and-deps.html#the_boot_image).
+A third flag trades the other way. The boot image ships as a prebuilt heap image (*vfasl*), which
+starts faster and takes more room; `--boot small` keeps the image but compresses it with gzip, and `--boot plain`
+drops it altogether. For an app whose download size matters more than its startup (typically a
+mobile one) `small` is usually the one: on the apps measured it is about a third smaller than a
+plain boot *and* still faster to start. `JOLT_BOOT=small` and `:jolt/build {:boot :small}` do the same. Measure on your own
+target; the ratios depend on what your image holds. See [The boot image](/docs/building-and-deps.html#the_boot_image).
 
-Tree-shaking typically removes 1–2 MB. A small app pulls in a handful of `clojure.core` functions and a few functions per library, but a normal build bakes in all of them; tree-shaking keeps only what runs. For example, `malli-app` goes from ~10.0 MB to ~8.1 MB with identical behavior.
+Tree-shaking typically removes 1-2 MB. A small app pulls in a handful of `clojure.core` functions and a few
+functions per library, but a normal build bakes in all of them; tree-shaking keeps only what runs.
+For example, `malli-app` goes from ~10.0 MB to ~8.1 MB with identical behavior.
 
 ### Native libraries
 
-If your app binds a C library through the FFI, a build **statically links** it into the executable by default when the `:jolt/native` spec provides a `:static` archive, so the binary runs with no shared object on the target. Pass `--dynamic` (or set `:jolt/build {:dynamic-natives true}`) to keep the runtime `load-shared-object` behavior instead. Static linking needs a C compiler at build time; the produced binary needs none. See [Native interop](native-interop.html#static_vs_dynamic_linking_in_a_built_binary) for the spec and details.
+If your app binds a C library through the FFI, a build **statically links** it into the executable by default
+when the `:jolt/native` spec provides a `:static` archive, so the binary runs with no shared object on the
+target. Pass `--dynamic` (or set `:jolt/build {:dynamic-natives true}`) to keep the runtime `load-shared-object` behavior instead. Static linking
+needs a C compiler at build time; the produced binary needs none. See [Native interop](native-interop.html#static_vs_dynamic_linking_in_a_built_binary) for the spec and
+details.
 
 ### When tree-shaking can't help: runtime resolution
 
-Tree-shaking is **sound**: it never drops code that could actually run. To stay sound it has to give up on any program whose reachable code looks a function up *by name at runtime*: `eval`, `resolve`, `ns-resolve`, `requiring-resolve`, `find-var`, `load-string`, and friends. A static call graph can't see where those land, so if any reachable code uses one, the build keeps everything and tells you why:
+Tree-shaking is **sound**: it never drops code that could actually run. To stay sound it has to give
+up on any program whose reachable code looks a function up *by name at runtime*: `eval`, `resolve`, `ns-resolve`,
+`requiring-resolve`, `find-var`, `load-string`, and friends. A static call graph can't see where those land, so if any
+reachable code uses one, the build keeps everything and tells you why:
 
 ```
 jolt build: tree-shake skipped (reachable code resolves vars at runtime):
@@ -380,14 +402,22 @@ jolt build: tree-shake skipped (reachable code resolves vars at runtime):
   clojure.tools.logging/call-str -> clojure.core/ns-resolve
 ```
 
-This is almost always a **library**, not your code. Mature Clojure libraries use `resolve` for plugin systems and optional integrations (a logging backend chosen at runtime, a template filter that lazily loads an optional JSON or pretty-printing dependency). On the JVM that flexibility is free; in a closed-world binary it blocks the analysis.
+This is almost always a **library**, not your code. Mature Clojure libraries use `resolve` for plugin
+systems and optional integrations (a logging backend chosen at runtime, a template filter that
+lazily loads an optional JSON or pretty-printing dependency). On the JVM that flexibility is free;
+in a closed-world binary it blocks the analysis.
 
 To make an app tree-shakeable, remove runtime resolution from the *reachable* path:
 
-- A library that resolves a backend or factory that is fixed on Jolt can reference it directly. (The Jolt `tools.logging` port does this; it has one native backend, so it dropped the JVM's dynamic factory selection.)
-- An optional integration (a Selmer `|json` filter resolving a JSON library you don't use) keeps the whole binary unshakeable even when the feature is never invoked; dropping or hard-wiring it on Jolt frees the analysis.
+- A library that resolves a backend or factory that is fixed on Jolt can reference it directly. (The
+  Jolt `tools.logging` port does this; it has one native backend, so it dropped the JVM's dynamic factory
+  selection.)
+- An optional integration (a Selmer `|json` filter resolving a JSON library you don't use) keeps the
+  whole binary unshakeable even when the feature is never invoked; dropping or hard-wiring it on Jolt
+  frees the analysis.
 
-Unreached code that uses `resolve` is fine; it's shaken away like anything else and never triggers the bail. Only resolution on the live path matters.
+Unreached code that uses `resolve` is fine; it's shaken away like anything else and never triggers the
+bail. Only resolution on the live path matters.
 
 ## REPL and editor integration
 
@@ -398,11 +428,15 @@ jolt nrepl-server [port]   # an nREPL server (default port 7888)
                            # [--no-port-file | --port-file PATH]
 ```
 
-`nrepl-server` writes a `.nrepl-port` file and auto-resolves a `deps.edn` in the directory, so the server starts with your app and its dependencies loaded. Connect CIDER, Calva, or Cursive to the port. See [REPL-Driven Development](/docs/repl-driven-development.html) for the full workflow.
+`nrepl-server` writes a `.nrepl-port` file and auto-resolves a `deps.edn` in the directory, so the server starts
+with your app and its dependencies loaded. Connect CIDER, Calva, or Cursive to the port. See [REPL-Driven Development](/docs/repl-driven-development.html)
+for the full workflow.
 
 ## Dependencies
 
-`jolt` reads a `deps.edn` in the current directory, fetches its dependencies, and prepends the resolved source directories to the load path for the run. Git, local, and Maven dependencies are supported (a Maven jar carries Clojure source, which is what Jolt loads):
+`jolt` reads a `deps.edn` in the current directory, fetches its dependencies, and prepends the
+resolved source directories to the load path for the run. Git, local, and Maven dependencies are
+supported (a Maven jar carries Clojure source, which is what Jolt loads):
 
 ```clojure
 {:paths ["src"]
@@ -416,21 +450,33 @@ jolt nrepl-server [port]   # an nREPL server (default port 7888)
 jolt run -m myapp.main
 ```
 
-As in tools.deps, a git dependency whose lib name encodes a host can omit `:git/url`; `io.github.OWNER/REPO` (and the `com.github.`, `io.gitlab.`/`com.gitlab.`, `io.bitbucket.`/`org.bitbucket.`, and `ht.sr.~OWNER` prefixes) derives the clone URL from the name, so `io.github.paintparty/lasertag {:git/sha "aa898c1967d10fc198385f1914893b9c75410d16"}` resolves with no URL. The `:git/sha` (a full commit SHA) is still required.
+As in tools.deps, a git dependency whose lib name encodes a host can omit `:git/url`; `io.github.OWNER/REPO` (and the
+`com.github.`, `io.gitlab.`/`com.gitlab.`, `io.bitbucket.`/`org.bitbucket.`, and `ht.sr.~OWNER` prefixes) derives the clone URL from the
+name, so `io.github.paintparty/lasertag {:git/sha "aa898c1967d10fc198385f1914893b9c75410d16"}` resolves with no URL. The `:git/sha` (a full commit SHA) is still required.
 
-See [Writing Libraries](/docs/writing-libraries.html) for the full `deps.edn` surface (aliases, tasks, transitive deps), and [Supported Libraries](/docs/libraries.html) for Clojure libraries known to work.
+See [Writing Libraries](/docs/writing-libraries.html) for the full `deps.edn` surface (aliases, tasks, transitive deps), and [Supported Libraries](/docs/libraries.html) for Clojure
+libraries known to work.
 
 ### System requirements for dependency resolution
 
-The `jolt` binary itself is self-contained. Resolving *dependencies* uses a few standard tools, each needed only for the coordinate types you use; a dependency that can't be fetched is skipped, never fatal:
+The `jolt` binary itself is self-contained. Resolving *dependencies* uses a few standard tools, each
+needed only for the coordinate types you use; a dependency that can't be fetched is skipped, never
+fatal:
 
 - **Git dependencies** (`:git/url` + `:git/sha`) need `git` on `PATH`.
-- **Maven dependencies** (`:mvn/version`) are downloaded over HTTPS with Jolt's own TLS (no `curl`), which uses the system **OpenSSL** (`libssl`/`libcrypto`) via FFI, and extracted with `unzip`. A jar already in your local `~/.m2/repository` (e.g. fetched by a JVM Clojure toolchain) is reused with no download.
+- **Maven dependencies** (`:mvn/version`) are downloaded over HTTPS with Jolt's own TLS (no `curl`), which uses the
+  system **OpenSSL** (`libssl`/`libcrypto`) via FFI, and extracted with `unzip`. A jar already in your local
+  `~/.m2/repository` (e.g. fetched by a JVM Clojure toolchain) is reused with no download.
 
 By platform:
 
-- **macOS**: install OpenSSL with Homebrew (`brew install openssl@3`); Jolt loads the Homebrew copy because the protected system `/usr/lib` OpenSSL can't be loaded into a non-Apple binary. `git` and `unzip` ship with the Xcode command-line tools.
-- **Linux**: the distro `libssl3`/`libcrypto3` (or `libssl`/`libcrypto`) packages, plus `git` and `unzip`, all from your package manager.
-- **Windows**: install [Git for Windows](https://git-scm.com/download/win); it puts `git` on `PATH` and bundles the OpenSSL (`libssl-3-x64.dll`/`libcrypto-3-x64.dll`) and `unzip` that Jolt needs (or install [OpenSSL for Windows](https://slproweb.com/products/Win32OpenSSL.html) and `unzip` separately). Run `jolt` from a shell where those are on `PATH` (Git Bash works).
+- **macOS**: install OpenSSL with Homebrew (`brew install openssl@3`); Jolt loads the Homebrew copy because the
+  protected system `/usr/lib` OpenSSL can't be loaded into a non-Apple binary. `git` and `unzip` ship
+  with the Xcode command-line tools.
+- **Linux**: the distro `libssl3`/`libcrypto3` (or `libssl`/`libcrypto`) packages, plus `git` and `unzip`, all
+  from your package manager.
+- **Windows**: install [Git for Windows](https://git-scm.com/download/win); it puts `git` on `PATH` and bundles the OpenSSL (`libssl-3-x64.dll`/`libcrypto-3-x64.dll`) and
+  `unzip` that Jolt needs (or install [OpenSSL for Windows](https://slproweb.com/products/Win32OpenSSL.html) and `unzip` separately). Run `jolt` from a shell where
+  those are on `PATH` (Git Bash works).
 
 Cross-compilation and `jolt build` additionally need a C toolchain (`cc`, `ar`); see [Building & Deps](/docs/building-and-deps.html).
