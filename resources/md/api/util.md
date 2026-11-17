@@ -39,7 +39,7 @@ var:
 That works in the REPL but **cannot be reproduced by an AOT build**: the `intern`s run as a runtime side effect over
 reflective state, so `jolt build` emits nothing for them and the wrapper's vars are unbound
 in the binary. `import-vars` instead emits static `def`/`defmacro` forms that resolve the
-source at call time: they bake into a binary and do not depend on load order.
+source at call time. They bake into a binary and do not depend on load order.
 
 This is how [`jolt.fs`](/docs/api/fs.html) wraps the vendored babashka.fs, and it is the pattern to use when
 you vendor a library and want to present it under your own namespace.

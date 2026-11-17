@@ -1,6 +1,6 @@
-`jolt.ffi` is Jolt's foreign-function interface: it loads C shared libraries and declares typed
+`jolt.ffi` is Jolt's foreign-function interface. It loads C shared libraries and declares typed
 bindings over their functions, then marshals memory by hand. There is no automatic struct
-introspection and no garbage collection of foreign memory: you manage it, the way you would in C.
+introspection and no garbage collection of foreign memory. You manage it, the way you would in C.
 
 For the end-to-end guide to writing a binding (declaring the library in `deps.edn`, static vs dynamic
 linking, out-parameters, structs by offset, and binary data) see [Native Interop (FFI)](/docs/native-interop.html). This page is the compact
@@ -73,7 +73,7 @@ the other: see [babashka.ffi compatibility](#babashka.ffi_compatibility) for the
 **Variadic C functions.** `:&` inside the argtype vector marks the boundary: the types before it are the fixed
 (named) parameters, the types after it are the tail this binding passes. `:varargs` is Jolt's older
 spelling of the same marker. The call is emitted with the variadic calling convention, which Apple
-arm64 requires: it passes variadic arguments on the stack, and a fixed-arity binding silently
+arm64 requires. It passes variadic arguments on the stack, and a fixed-arity binding silently
 corrupts them. C's default argument promotions still apply after the marker, so pass anything
 narrower than `int` as `:int` (and `float` as `:double`).
 
@@ -301,8 +301,8 @@ Argument and return types are keywords:
   one-byte alignment.
 - `:void`: return ignored (`nil`)
 - A `:float` result (and `read` / `read-array` / a struct field / a callback argument of `:float`) answers
-  a **`java.lang.Float`** as it reaches Clojure on the JVM; a `:double` stays a Double. Since 0.8.21: they answered a
-  Double before. A bare `defcfn` binding of a `:float` or `:double` result declares that kind, so
+  a **`java.lang.Float`** as it reaches Clojure on the JVM; a `:double` stays a Double. Before 0.8.21 both
+  answered a Double. A bare `defcfn` binding of a `:float` or `:double` result declares that kind, so
   arithmetic over the call unboxes it instead of taking generic dispatch.
 
 ## Memory and libraries
@@ -415,7 +415,7 @@ Four kinds, differing only in who may use them and who closes them:
 | `global-arena` | any thread | never: it lives as long as the process |
 | `auto-arena` | any thread | the collector, once the arena is unreachable |
 
-A **confined** arena is the one to reach for inside a function: it is cheapest to reason about, and using
+A **confined** arena is the one to reach for inside a function. It is cheapest to reason about, and using
 it from another thread raises rather than letting two threads race on one block list: a failure that
 otherwise has no error of its own, only a fault inside the allocator. A **shared** arena is for memory
 that outlives the call and is released elsewhere. An **automatic** arena is for the case no scope can
@@ -436,13 +436,13 @@ cover: a callback C may invoke from a thread Jolt never started.
 `alloc`, `string->ptr`, `clone`, `reinterpret` and `callback` all take an arena in the same first position. An
 arena releases three kinds of thing: blocks (in reverse allocation order), callbacks, and `reinterpret`
 views, whose cleanup function runs while the memory is still readable. A cleanup that raises does
-not strand the rest of the group: everything is released and the first failure is re-thrown.
+not strand the rest of the group. Everything is released and the first failure is re-thrown.
 
 > **Do not close an arena while C still holds one of its pointers.** C can read released memory, and nothing raises.
 
 ### Pointer sizes
 
-A Jolt pointer is a bare machine address: it carries no length. `size` answers what Jolt was
+A Jolt pointer is a bare machine address. It carries no length. `size` answers what Jolt was
 *told* a pointer addresses, which is what lets `copy` and `clone` work without a byte count:
 
 - `size` `p`: the recorded size, or `0` for a pointer Jolt was never told about (every

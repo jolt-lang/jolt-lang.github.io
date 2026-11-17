@@ -66,7 +66,7 @@ The port argument takes `0` to ask the OS for a free port. The second argument c
   other than the project root, a host application loading a `--library` build, say, points this at the
   project's `.nrepl-port`.
 
-The return value is a zero-arg stop fn: it stops the accept loop, closes the listen socket, frees
+The return value is a zero-arg stop fn. It stops the accept loop, closes the listen socket, frees
 the port, and removes the port file it wrote. Calling it more than once is a no-op. Its metadata
 carries `:port`, the port actually bound (the OS's pick when you asked for `0`), and `:port-file`,
 the absolute path written or nil:
@@ -180,7 +180,7 @@ From the editor's REPL:
 var (`#'handler`) means redefining it is picked up live. When you change something structural (the
 server config, the lifecycle itself), call `(app/stop!)` then `(app/start!)` to cycle it.
 
-`-main` stays the production entry point: it just calls `start!` and blocks. In development you skip
+`-main` stays the production entry point. It just calls `start!` and blocks. In development you skip
 it and steer the system by hand.
 
 ## Reloading a whole file
@@ -266,7 +266,7 @@ record/protocol inference:
 ```
 
 Loaded this way, dispatch-heavy code runs about twice as fast. Some loads now run as fast as a built
-binary. You get the JVM's trade-off: a caller keeps the body it was compiled against when a small
+binary. You get the JVM's trade-off. A caller keeps the body it was compiled against when a small
 callee is redefined, and `with-redefs` does not reach a direct-linked caller. A var marked `^:dynamic` or
 `^:redef` opts out, including one made dynamic later with `.setDynamic`. It is off by default, so the REPL
 stays fully redefinable unless you turn it on.

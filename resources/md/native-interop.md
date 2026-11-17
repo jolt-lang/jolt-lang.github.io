@@ -3,7 +3,7 @@ a foreign-function interface (`jolt.ffi`) that binds C shared libraries directly
 libraries work: the [db](https://github.com/jolt-lang/db) library binds `libsqlite3`/`libpq`, and the [http-client](https://github.com/jolt-lang/http-client) binds POSIX sockets,
 OpenSSL, and zlib. This page is the guide for writing your own.
 
-The FFI is a thin, explicit layer: you declare the library, bind each C function with its argument
+The FFI is a thin, explicit layer. You declare the library, bind each C function with its argument
 and return types, and marshal memory by hand. There is no automatic struct introspection and no
 garbage collection of foreign memory; you manage it, the way you would in C.
 
@@ -100,7 +100,7 @@ jolt native      # compiles it
 jolt run -m app  # loads it
 ```
 
-Running a **task** does not require the project's own libraries to be present: it warns and carries
+Running a **task** does not require the project's own libraries to be present. It warns and carries
 on, because the task may be the very thing that builds one. Every other command still refuses to
 start without a required library, so a missing artifact never reaches your code as a confusing
 binding error.
@@ -619,7 +619,7 @@ Four C symbols are the whole documented ABI:
 
 Everything else the shared object exports is an implementation detail. The link folds Chez's `libkernel.a`
 into the object, so the symbol table also carries the Chez C API (`Sscheme_init`, `Sbuild_heap`, `Scompact_heap`, …)
-alongside jolt's own stub internals (`jolt_set_lookup_addr`). Those are not part of the ABI: they are not
+alongside jolt's own stub internals (`jolt_set_lookup_addr`). Those are not part of the ABI. They are not
 versioned, they are specific to the Chez backend, and calling them behind the runtime's back is
 undefined. Reach the runtime through `jolt_lookup` and the exports you declared with `export!`; anything the
 host needs that the four symbols above don't cover is an `export!` away.
@@ -655,7 +655,7 @@ Two things it does not do:
   collector and the allocator. For the reading itself, `(Runtime/getRuntime)` answers `totalMemory` and `freeMemory`; `maxMemory`
   reports `Long/MAX_VALUE`, because Chez grows the heap on demand with no configured ceiling.
 - **It is not compaction.** Chez's `Scompact_heap`, which does consolidate the heap into fewer OS chunks, is in the symbol
-  table but is not supported here, and it is the wrong tool for a memory-pressure callback: it moves
+  table but is not supported here, and it is the wrong tool for a memory-pressure callback. It moves
   live objects into the *static* generation, which is never collected again. Called once at a quiescent
   point, that is merely irreversible; called on every pressure notification it ratchets the heap floor
   up to the high-water mark of whatever was live at each call, and none of it is ever given back.

@@ -65,7 +65,7 @@ or C FFI directly, the way JVM Clojure drops to Java.
 ## Why Not Wait for Leyden?
 
 Project Leyden addresses JVM startup and memory footprint through ahead-of-time
-compilation under closed-world constraints. Jolt's closed world goes further: Chez gives
+compilation under closed-world constraints. Jolt's closed world goes further. Chez gives
 proper tail calls, which the JVM cannot; values carry no Java object header; and numeric
 types live in registers (NaN boxing, tagged pointers), so tight numeric loops avoid the
 boxing and GC pressure that JVM Clojure needs type hints to escape. Jolt's AOT is

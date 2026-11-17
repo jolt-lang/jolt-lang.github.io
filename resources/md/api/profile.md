@@ -15,7 +15,7 @@ The compile switch for the counters also has a mode for debugging, described und
 
 ## Profiling at the REPL
 
-Instrumentation is a compile-time switch: it applies to code compiled after you turn it on. Turn it
+Instrumentation is a compile-time switch. It applies to code compiled after you turn it on. Turn it
 on, then load or reload what you want to measure.
 
 ```clojure

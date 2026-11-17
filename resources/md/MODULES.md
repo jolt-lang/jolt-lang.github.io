@@ -18,7 +18,7 @@ live?" and "what else do I need to touch?"
 **The reader is in `host/chez/reader.ss`** (Scheme, a seed source), *not* in `jolt-core/jolt/` with the rest of the compiler. Re-mint applies
 to it.
 
-`rt.ss` is the runtime's load-order manifest: it `(load …)`s every shim in dependency order with a
+`rt.ss` is the runtime's load-order manifest. It `(load …)`s every shim in dependency order with a
 per-file comment. Read it to see how the runtime is composed and where a given `.ss` fits.
 
 ## `host/chez/*.ss` by family

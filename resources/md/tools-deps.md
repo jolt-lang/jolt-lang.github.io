@@ -75,7 +75,7 @@ expressions aren't a separate task form.
 
 ### What's still missing
 
-`:deps/prep-lib` is recognized but never run: jolt has no prep step, so a library needing one is named in a
+`:deps/prep-lib` is recognized but never run. Jolt has no prep step, so a library needing one is named in a
 warning instead of silently producing a half-built root. A library whose prep step compiles a C shim
 names the task that builds it in its `:jolt/native` spec instead (`:build "native"`), and jolt runs that task the
 first time the shim is missing; see [Native interop](/docs/native-interop.html#building_it_for_the_projects_that_use_it). Maven `:classifier`/`:extension` coordinates, `pom.xml` as a project
@@ -226,7 +226,7 @@ the old and new spellings are both integers, so an older runtime writes to the w
 reports nothing. That is the shape of failure a declared floor turns into a message: though not that
 particular one, which no floor can catch; see [What a floor cannot do](#what_a_floor_cannot_do) below.
 
-A **library** is the natural declarer: it knows which Jolt its FFI bindings or host shims need, and the
+A **library** is the natural declarer. It knows which Jolt its FFI bindings or host shims need, and the
 application pulling it in does not. The floor is read from every dependency's `deps.edn` as well as the
 project's, and an unmet one names what is needed, what is running, and which dependency asked. Where
 several floors go unmet, the newest is the one reported.
@@ -306,7 +306,7 @@ The use for this is a script ported from babashka whose `:bb` branches are the o
 does not match `:bb` on its own, because a `:bb` branch is written for babashka's host model and
 not Jolt's. See [Cljc Interop](/docs/cljc-interop.html#jolt_does_not_satisfy_bb).
 
-The key is additive: it can add a key Jolt does not carry, never remove one, so `:clj` still reads
+The key is additive. It can add a key Jolt does not carry, never remove one, so `:clj` still reads
 and a `:jolt` clause still wins over both. Only the project may declare it: the feature set decides
 which branch every library in the program is read through, the same reason `:jolt/provides` refuses two
 claims on one class.
@@ -445,7 +445,7 @@ function records itself on entry into a bounded ring-of-rings buffer, which keep
 frames (including the immediate error site) while a tight tail loop stays bounded and its non-tail
 caller context survives.
 
-The per-frame line rides along with it: the compiler sets the current line before each call, and a
+The per-frame line rides along with it. The compiler sets the current line before each call, and a
 function's entry records whatever line its *caller* was on. A frame's own line is therefore the one
 recorded by the frame below it, and the innermost frame's is the live line at the throw. Because the
 buffer is a history rather than a stack, frames from an earlier call that already returned can still

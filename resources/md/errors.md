@@ -39,7 +39,7 @@ A character literal that names nothing: an unknown `\name`, or an octal escape o
 
 An `@`, `` ` `` or `~` read as EDN (`clojure.edn`). EDN has no reader macros, and those three are refused outright rather than ending the token they sit in: inside or after a token it is an `Invalid constituent
 character`, where a form should start an `Invalid leading character`. A `RuntimeException` on both runtimes. Source reading
-is unaffected: there they are ordinary macro characters.
+is unaffected; there they are ordinary macro characters.
 
 ### `read/invalid-data-reader`
 
@@ -166,7 +166,7 @@ A qualified symbol whose namespace half is namespace-shaped (dotted, with a lowe
 the last dot), and names no loaded namespace at all: a missing `require`, or a typo in the namespace
 part. The JVM reports the same thing, as `No such namespace`. A LOADED namespace missing only the var is `analyze/no-such-var`
 instead. A Capitalized name with no dot (`Nope/foo`) is deliberately NOT this error and reports at the
-call: it may be an `:import`-ed class short name whose provider has not autoloaded yet. Carries
+call. It may be an `:import`-ed class short name whose provider has not autoloaded yet. Carries
 :symbol, :namespace and :ns alongside the position.
 
 ### `analyze/unresolved-symbol`

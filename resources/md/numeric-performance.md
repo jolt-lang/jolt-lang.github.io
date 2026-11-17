@@ -5,7 +5,7 @@ value is a `double` (flonum) or a `long` (fixnum), it emits the native Chez oper
 (`fl+`/`fl*`/`flsqrt`, `fx+`/`fx*`) instead of the generic numeric-tower path that inspects
 the operand's type at runtime. This page is about how that proof happens and how you help it along.
 
-Everything here is a pure optimization: it never changes a result, only how fast it runs. A program
+Everything here is a pure optimization. It never changes a result, only how fast it runs. A program
 that gives jolt no type information still runs correctly through the generic path; it is just slower
 in a hot loop.
 

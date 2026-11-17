@@ -1,4 +1,4 @@
-`jolt.deps` is the dependency front-end: it resolves `deps.edn` coordinates into source roots
+`jolt.deps` is the dependency front-end. It resolves `deps.edn` coordinates into source roots
 the loader searches. The CLI runs it for you on every `jolt run`/`repl`/`build` (see
 [Building & Running](/docs/building-and-deps.html)); this page covers the programmatic API: chiefly `add-deps`, which resolves
 dependencies from inside a running script.

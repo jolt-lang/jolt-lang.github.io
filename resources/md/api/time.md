@@ -5,7 +5,7 @@ Core carries the `#inst` reader literal, the `java.util` / `java.text` date laye
 `sql.Date`/`Timestamp`, `Calendar`, `TimeZone`, `SimpleDateFormat`), and the **base `java.time` value types** that compute from epoch
 arithmetic alone: `Instant`, `LocalDate`/`LocalTime`/`LocalDateTime`, `Duration`, `Period`,
 `Year`/`YearMonth`/`MonthDay`, and the `Month`/`DayOfWeek`/`ChronoUnit`/ `ChronoField` enums. These
-work with **no dependency**: they autoload the first time a program touches one, so date-free
+work with **no dependency**. They autoload the first time a program touches one, so date-free
 programs pay nothing.
 
 The jolt-lang/time library owns the single implementation of everything that formats or
@@ -88,4 +88,4 @@ day names come from `strftime`.
 
 Base value-type conformance is covered by core's suite; tick's full test suite and the
 formatting/zone/DST/localized coverage run in the library's suite. `java.util.zip`-based helpers
-are the only gap: there is no `java.util.zip` shim yet.
+are the only gap. There is no `java.util.zip` shim yet.

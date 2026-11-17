@@ -152,7 +152,7 @@ preserve correctness.
 ## A compute-bound body does not starve its carrier
 
 Fibers on one carrier take turns whether or not they reach a channel operation. The scheduler
-is preemptive: Chez polls a timer at procedure calls and loop back edges, so even a tight
+is preemptive. Chez polls a timer at procedure calls and loop back edges, so even a tight
 arithmetic loop yields, at a quantum of roughly 0.45 ms.
 
 ```clojure
@@ -197,7 +197,7 @@ running on.
 ## What parks and what pins
 
 A fiber runs on a **carrier**, an OS thread shared by many fibers. Parking frees the carrier for
-other fibers. Blocking does not: it holds the carrier, and Jolt cannot move the queued fibers
+other fibers. Blocking does not. It holds the carrier, and Jolt cannot move the queued fibers
 elsewhere, because a captured continuation can only be resumed on the thread that captured it.
 Adding carriers does not help; the stranded fibers are already bound to the blocked one.
 

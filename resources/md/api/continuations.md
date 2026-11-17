@@ -4,8 +4,8 @@ runtime already runs on them (the fiber park/resume switch, the throw site a bac
 from, the state image), so this namespace hands an existing capability to your code rather than
 adding machinery.
 
-JVM Clojure has no equivalent and cannot have one: the JVM can't capture its stack. Code that uses
-this is Jolt-only by design, like [`jolt.scheme`](/docs/host-interop.html). It's purely additive: nothing about an existing Clojure
+JVM Clojure has no equivalent and cannot have one, because the JVM can't capture its stack. Code that uses
+this is Jolt-only by design, like [`jolt.scheme`](/docs/host-interop.html). Nothing about an existing Clojure
 program changes because this namespace exists.
 
 ```clojure
@@ -35,7 +35,7 @@ program changes because this namespace exists.
 ## What it's for
 
 An escape is the `return` you would otherwise write with `reduced`, a `some` over a transformed seq,
-or an exception used for control flow. It differs from those in reach: it unwinds out of **any**
+or an exception used for control flow. It differs from those in reach. It unwinds out of **any**
 depth, including out of a function you handed to someone else's higher-order code.
 
 ```clojure
@@ -77,7 +77,7 @@ They also never half-work. Each misuse raises `IllegalStateException` naming the
 ```clojure
 (let [e (k/letcc [e] e)] (e 1))
 ; IllegalStateException:
-; jolt.continuations: this escape is no longer live — its call-cc already returned
+; jolt.continuations. This escape is no longer live — its call-cc already returned
 ```
 
 The three rules: an escape can't be invoked twice, can't be invoked after its `call-cc` returned, and

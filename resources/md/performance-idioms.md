@@ -1,5 +1,5 @@
 Most Clojure runs at the same speed on Jolt whether or not you think about the runtime underneath. A
-few shapes don't: they are cheap on the JVM or in JavaScript because of a representation trick those
+few shapes don't. They are cheap on the JVM or in JavaScript because of a representation trick those
 runtimes have and Chez Scheme does not, and they show up as the whole cost of a program that is
 otherwise fine. This page is the short list, each with the reason, the idiom that avoids it, and
 what it measured. All numbers are one machine (Apple M1 Max) in one `--opt` binary; the ratios are
@@ -10,7 +10,7 @@ Everything here is about speed only. None of it changes a result.
 ## Build strings with a `StringBuilder`, not `str` in a loop
 
 A Chez string is one flat array of 32-bit code points. `(str a b)` allocates a new string of `(+ (count a) (count b))`
-characters and copies both in: there is no rope, no shared tail, no in-place append. So an
+characters and copies both in. There is no rope, no shared tail, no in-place append. So an
 accumulator that grows by `str` copies everything it has so far on every step, and building an
 *n*-character string that way is O(n²) in bytes copied, at four bytes per character:
 
@@ -36,7 +36,7 @@ Joining 2,000 six-character tokens into one 12 KB string:
 | `StringBuilder` `.append` + `.toString` | 115 µs | 266 KB |
 | `(str/join parts)` / `(apply str parts)` | 120 µs | 425 KB |
 
-`str/join` and `(apply str ...)` are fine: they size the result once. The trap is specifically an accumulator
+`str/join` and `(apply str ...)` are fine. They size the result once. The trap is specifically an accumulator
 that is *read back as a string between appends*. Jolt's `StringBuilder` is chunked (`append` is O(1) and the chunks are joined the first time
 something reads the buffer), so `.length`, `.append` and a final `.toString` are the pattern. `.charAt`,
 `.setLength` and `.toString` each force one join; a loop that reads `charAt` after every append is the O(n²)

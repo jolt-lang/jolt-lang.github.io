@@ -3,7 +3,7 @@
 An extension point is a named contract that lets **Jolt core define behaviour whose data it does not carry**, and lets a library supply that data later.
 
 The class-shim registries in [Host Interop](/docs/host-interop.html) let a library add a *class*. Extension points are the other
-half: they let a library add *data* to something core already implements. Per-locale currency
+half. They let a library add *data* to something core already implements. Per-locale currency
 symbols, month names and number separators are the working examples; core knows how to format, it
 just cannot ship CLDR.
 
@@ -77,7 +77,7 @@ typo fails where you wrote it rather than at some later call site.
 
 ## Choosing `:fallback`
 
-This is the decision that matters, and it is not a style preference.
+The choice is not a style preference.
 
 **`:strict`**: the default is correct *only* for `:root`. Any other unregistered key raises, naming the
 point, the key and the hint:
@@ -93,7 +93,7 @@ are both plausible renderings of different numbers.
 
 **`:default`**: the default answers any key. Use it when falling back is the *correct* behaviour, and skip it when it would only be a convenient one.
 
-`:date-names` and `:number-symbols` are `:default` for a concrete reason: the JVM's own contract for an unrecognised
+`:date-names` and `:number-symbols` are `:default` for a concrete reason. The JVM's own contract for an unrecognised
 locale is to fall back to the root locale rather than fail. `:default` reproduces that mechanism
 exactly, and `:strict` would raise where the JVM returns a value.
 

@@ -31,7 +31,7 @@ give Jolt its own branch, place `:jolt` **before** `:clj`:
 ### Jolt does not satisfy `:bb`
 
 Jolt is not babashka, and a `:bb` branch is not a "non-JVM host" branch (it is written for
-babashka's host model. Where that model differs from Jolt's, the branch is wrong here: it reaches
+babashka's host model. Where that model differs from Jolt's, the branch is wrong here. It reaches
 for namespaces babashka bundles and Jolt may not (Jolt now ships a [`cheshire.core`](/docs/libraries.html#data_and_schemas), but not every bb
 built-in), asserts babashka's class model (classes as symbols in hierarchies, `sci.impl.fns` class names),
 and skips work Jolt can do because babashka can't (`java.nio`'s `DirectoryStream`, `LazilyPersistentVector`, `clojure.lang.Util`, `java.lang.reflect.Array`)
@@ -45,7 +45,7 @@ Jolt matched `:bb` from 0.7.10 through 0.8.5 and no longer does. If you are port
  :jolt/features [:bb]}
 ```
 
-That is additive: it widens the set, it cannot narrow it, so `:clj` still reads and a `:jolt`
+That is additive. It widens the set and cannot narrow it, so `:clj` still reads and a `:jolt`
 clause still wins over both. Only the **project** may declare it: the feature set decides which branch
 every library in the program is read through, so a dependency does not get to change it under you.
 
@@ -84,7 +84,7 @@ file wins:
 2. `<ns>.clj`
 3. `<ns>.cljc`
 
-This mirrors how `.clj` wins over `.cljc` on the JVM, extended one step: a library can ship a
+This mirrors how `.clj` wins over `.cljc` on the JVM, extended one step. A library can ship a
 portable `foo.cljc` (or `foo.clj`) alongside a `foo.jolt` that Jolt loads, while every other dialect keeps
 using the portable file.
 
@@ -149,5 +149,5 @@ resolve the same way: Jolt checks its own branch first, then falls back to `:clj
 
 For the rare case where the feature set itself needs to change at runtime (loading a library that
 expects a non-standard key, for instance), `clojure.core/__reader-features-set!` replaces the active set. It is a host seam (the
-leading `__` marks it as Jolt-internal), so it is not portable: it exists on Jolt and not on
+leading `__` marks it as Jolt-internal), so it is not portable. It exists on Jolt and not on
 Clojure or ClojureScript, and code that calls it must itself live behind a `:jolt` branch.

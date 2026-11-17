@@ -18,7 +18,7 @@ would load a source file.
 
 ## Saving the whole program
 
-`dump-world!` walks the var table and writes every data var's root: nothing in your application has to
+`dump-world!` walks the var table and writes every data var's root. Nothing in your application has to
 enumerate what its state consists of. `restore-world!` rebinds those vars in the current process and returns
 how many.
 

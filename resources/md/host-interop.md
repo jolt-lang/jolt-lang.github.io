@@ -42,7 +42,7 @@ are accepted but no-ops.
 - **`java.lang.System`**: `currentTimeMillis` `nanoTime` `exit` `getProperty` `setProperty` `getProperties` `getenv`. The built-in property keys:
   `os.name` (`"Mac OS X"`/`"Linux"`/`"Windows"`), `os.arch` in the JVM's spelling (`aarch64`/`amd64`), `os.version`
   (macOS product version / kernel release), `user.name`, `user.dir`, `user.home`, `java.io.tmpdir`, `java.class.path`,
-  `line.separator`, `file.separator`, `path.separator`, and `jolt.version`. `java.version` is nil **deliberately**: jolt has no JDK to report, and
+  `line.separator`, `file.separator`, `path.separator`, and `jolt.version`. `java.version` is nil **deliberately**. Jolt has no JDK to report, and
   claiming one would flip JVM-only code paths in libraries that parse it. Branch on `jolt.version` (or a
   `:jolt` reader conditional) instead.
 - **`java.lang.Thread`**: `sleep` (real), `yield`/`interrupted` (no-ops), `currentThread`.
@@ -163,7 +163,7 @@ commit-log transactions.
 ## Using a JVM library that needs a class Jolt doesn't ship
 
 Most Clojure libraries run on Jolt unchanged. When one reaches for a `java.*` class outside the
-built-in set above, you don't have to wait for a Jolt release: you can **register the shim yourself, at load time**, from ordinary Jolt
+built-in set above, you don't have to wait for a Jolt release. You can **register the shim yourself, at load time**, from ordinary Jolt
 code. No rebuild, no host edits. Put the registration calls at the top level of a namespace your app
 requires before the library is used (a small `myapp.shims` namespace is a good home).
 
@@ -246,7 +246,7 @@ again keyed by string name:
 
 ### Declaring an enum
 
-An enum class is more than its constants: the JVM gives every one `values` and `valueOf`, and `java.lang.Enum`
+An enum class is more than its constants. The JVM gives every one `values` and `valueOf`, and `java.lang.Enum`
 gives every constant `name`, `ordinal`, `compareTo` and friends. Declare the class with `jolt.host/register-enum!`, handing
 it the constants in the JDK's declaration order, and Jolt supplies all of that:
 
@@ -497,7 +497,7 @@ Scheme vector arriving in Jolt is an opaque host value; hand it back to Scheme t
 collection handed to Scheme is Jolt's representation, not a Scheme list. `nil` is Jolt's nil, not
 `'()` and not `#f`.
 
-Two caveats. This is **host-specific by design**: code using `jolt.scheme` is tied to the Chez runtime and its primitives,
+Two caveats. This is **host-specific by design**. Code using `jolt.scheme` is tied to the Chez runtime and its primitives,
 unlike everything else on this page. And names resolve at **run time**, so a tree-shaken binary (`--tree-shake`)
 only finds what the kept runtime still carries; an exotic primitive a build shook out is an
 unbound-name error, not a silent nil.

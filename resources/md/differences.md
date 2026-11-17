@@ -14,7 +14,7 @@ disagree.
 
 ## No JVM, no Java interop
 
-This is the difference that matters. There is no JVM underneath, so there is no general Java
+There is no JVM underneath, so there is no general Java
 interop, no reflection, and no `gen-class`/`proxy`. Interop syntax (`Class.`, `Class/staticMethod`, `.method`) resolves
 only against a shimmed subset of the `java.*` standard library; a class token is a name, not a loaded
 class. See [Host Interop](/docs/host-interop.html) for what's covered, how to register a class Jolt doesn't ship, and how to add a
@@ -192,7 +192,7 @@ superset: portable JVM code behaves identically, and only code that *depends on 
 (unchecked-add)                        ;; Jolt: 0        JVM: arity error
 ```
 
-`(.-field m)` reading a map as an object is the one worth calling out: it makes a map interchangeable with
+`(.-field m)` reading a map as an object is the one worth calling out. It makes a map interchangeable with
 a record for field access, and it will not port back.
 
 On the I/O side, `line-seq` and `file-seq` are duck-typed and accept a path string, `with-open` closes
@@ -230,6 +230,6 @@ functions working and a few not yet implemented. The per-function coverage lives
 
 A namespace's source can be `foo.jolt` as well as `foo.clj` or `foo.cljc`, and the three are the same
 language; the reader, analyzer, and emitter never look at the extension. `.jolt` is a marker for
-readers and tooling: it says the file uses jolt-specific interop and is not portable Clojure. It
+readers and tooling. It says the file uses jolt-specific interop and is not portable Clojure. It
 resolves first, so a library can ship a portable `foo.cljc` next to a `foo.jolt` that wins on Jolt, the
 way `.clj` wins over `.cljc` on the JVM. `data_readers.jolt` works like `data_readers.clj` too. See [Cljc Interop](/docs/cljc-interop.html).

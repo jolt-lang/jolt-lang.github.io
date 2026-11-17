@@ -130,5 +130,5 @@ non-serializable constant out of an AOT build. A `*data-readers*` entry holding 
 itself, rather than a symbol naming it, works too.
 
 A tag with no reader function is an error naming the tag, as on the JVM. `read-string` is the
-exception: it returns an inert [tagged literal](https://clojure.org/reference/reader#tagged_literals) rather than raising, so data carrying an unknown
+exception. It returns an inert [tagged literal](https://clojure.org/reference/reader#tagged_literals) rather than raising, so data carrying an unknown
 tag can be inspected before you decide what to do with it.

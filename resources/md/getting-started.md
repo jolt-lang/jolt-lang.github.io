@@ -114,7 +114,7 @@ A built-in command wins a name it shares with a file (`jolt build` is always the
 `-f` is for. A task loses to one: a `greet` file on disk is what `jolt greet` means when the project
 also has a `greet` task. Windows has no kernel shebang, so there `jolt script` is how a script runs.
 
-Startup is Jolt's boot floor: the runtime and compiler image are instantiated on every run, which
+Startup is Jolt's boot floor. The runtime and compiler image are instantiated on every run, which
 measures around 0.17s against babashka's 0.01s on the same machine. A script called in a loop is
 better compiled once: give it an `(ns …)` with a `-main` and [build it into a binary](#compiling_a_standalone_binary).
 
@@ -143,7 +143,7 @@ cost, no behavior change); a checker error never breaks a compile.
 **`JOLT_DEBUG`**: verbose dependency resolution (the fetching / using-cache / skipping progress lines that
 are otherwise quiet) plus the host static-shim drift warning. See [dependency resolution](#dependencies) below.
 
-**`JOLT_WARNINGS=1`**: the runtime's own warnings about the process: a library claiming a class this jolt already
+**`JOLT_WARNINGS=1`**: the runtime's own warnings about the process. A library claiming a class this jolt already
 provides, a registration dropped because another dependency declares the class, a native symbol
 defined by two declared libraries (`jolt.ffi/defining-libraries` answers that without it), a `data_readers` namespace that failed
 to load. Off by default, because stderr belongs to your program: a full-screen TUI can't intercept
@@ -391,7 +391,7 @@ details.
 
 ### When tree-shaking can't help: runtime resolution
 
-Tree-shaking is **sound**: it never drops code that could actually run. To stay sound it has to give
+Tree-shaking is **sound**. It never drops code that could actually run. To stay sound it has to give
 up on any program whose reachable code looks a function up *by name at runtime*: `eval`, `resolve`, `ns-resolve`,
 `requiring-resolve`, `find-var`, `load-string`, and friends. A static call graph can't see where those land, so if any
 reachable code uses one, the build keeps everything and tells you why:

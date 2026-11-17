@@ -112,7 +112,7 @@ available:
 ```
 
 It is a separate option rather than a flag on `-Sgraph` because it is the only one that goes to the
-network: it asks each library's repositories for their metadata, which costs a round-trip apiece,
+network. It asks each library's repositories for their metadata, which costs a round-trip apiece,
 while `-Sgraph` reads the resolution jolt already has. A lookup that fails warns on stderr and leaves
 that library unmarked rather than failing the report, so one unreachable repository does not cost
 you the rest of it. `:git/url` and `:local/root` coordinates are printed but have no newer version to report,
@@ -291,7 +291,7 @@ specialize, protocol calls devirtualize), something the per-form REPL path can't
 control how far that optimization goes.
 
 The runtime half of the binary (`clojure.core`, the runtime, the loader) is compiled without Chez inspector
-information in every mode: nothing in a built binary reads it for those frames, and it was 57% of a
+information in every mode. Nothing in a built binary reads it for those frames, and it was 57% of a
 release binary. The app half keeps it in release (a frame's return-point source is what recovers
 inlined frames and exact lines in an error report) and drops it under `--opt`.
 
@@ -454,7 +454,7 @@ the one the lookup ended up in after inlining, which may be the caller of the fn
 A vouch covers a *resolution* the graph cannot follow (`resolve`, `ns-publics`, `requiring-resolve`), and only that. A def
 that runs the compiler (`eval`, `load-string`, an image restore, a computed `require`) bails whatever the
 list says, because the compiler image is direct-linked against the whole of `clojure.core` and cannot run
-over a pruned one. Vouching wrongly does not fail the build: it moves the failure into the binary,
+over a pruned one. Vouching wrongly does not fail the build. It moves the failure into the binary,
 where the lookup sees only what the shake kept: a `resolve` of a def the shake dropped answers `nil`
 where the unshaken binary answers the var, silently. Name a site only when you can say why it is
 dead.
