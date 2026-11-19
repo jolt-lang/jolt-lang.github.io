@@ -543,6 +543,9 @@ The `:jolt/build` map in `deps.edn` accepts these keys:
 - **`:embed [dirs]`**: bake resource files into the binary so `io/resource` resolves with no files on disk
 - **`:exclude-resources [globs]`**: leave dependency files out of the binary ([below](#leaving_dependency_files_out))
 - **`:dynamic-natives true`**: load native shared objects at runtime instead of statically linking
+- **`:trace false`**: build the binary without tail-frame tracing (like `--no-trace`, or `JOLT_TRACE=0` in the build's environment).
+  A traced binary, the default, bakes a cheap frame history into the app so its error reports name the frames tail calls erased;
+  an untraced one skips that cost and reports from the live stack alone. See [error traces](/docs/tools-deps.html#stack_traces).
 
 Example:
 

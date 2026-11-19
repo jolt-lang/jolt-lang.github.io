@@ -42,7 +42,8 @@ are accepted but no-ops.
 - **`java.lang.System`**: `currentTimeMillis` `nanoTime` `exit` `getProperty` `setProperty` `getProperties` `getenv`. The built-in property keys:
   `os.name` (`"Mac OS X"`/`"Linux"`/`"Windows"`), `os.arch` in the JVM's spelling (`aarch64`/`amd64`), `os.version`
   (macOS product version / kernel release), `user.name`, `user.dir`, `user.home`, `java.io.tmpdir`, `java.class.path`,
-  `line.separator`, `file.separator`, `path.separator`, and `jolt.version`. `java.version` is nil **deliberately**. Jolt has no JDK to report, and
+  `line.separator`, `file.separator`, `path.separator`, `jolt.version`, and `jolt.file` (the absolute path of the script being
+  run, unset for `-e` and stdin; see [Running a script](/docs/getting-started.html#running_a_script)). `java.version` is nil **deliberately**. Jolt has no JDK to report, and
   claiming one would flip JVM-only code paths in libraries that parse it. Branch on `jolt.version` (or a
   `:jolt` reader conditional) instead.
 - **`java.lang.Thread`**: `sleep` (real), `yield`/`interrupted` (no-ops), `currentThread`.
@@ -416,6 +417,48 @@ These registries add a **class**. If instead you want to supply **data** to some
 implements (per-locale currency symbols, month names, number separators), that is an [extension point](/docs/extension-points.html): core
 declares the contract and answers for one root key, and your library registers the rest.
 
+## Listing the classes Jolt models
+
+`(jolt.host/class-names)` answers a sorted vector of every class Jolt models, spelled as `Class.getName` spells them, and
+`(jolt.host/all-classes)` answers the same list as `Class` objects. It is Jolt's counterpart of babashka's
+`babashka.classes/all-classes`, for tooling (completion, a "is this class here?" check) that wants the whole set.
+
+```clojure
+(def names (jolt.host/class-names))
+(some #{"java.util.Collections"} names)   ; => "java.util.Collections"
+(class (first (jolt.host/all-classes)))   ; => java.lang.Class
+
+(deftype Point [x y])
+(some #{"user.Point"} (jolt.host/class-names))   ; => "user.Point"
+```
+
+The list covers the class graph, the statics and constructor registries, the host's own value classes, and classes a
+lazily-loaded shim provides, and reading it loads no shim. Short aliases such as `System` and a `reify`'s class are left out.
+Each call reads the tables as they are, so a class a `deftype`, `defrecord` or `register-class-supers!` adds is in the next call.
+
+## Load-time values
+
+`(jolt.host/load-time-value expr)` is Common Lisp's `load-time-value`: `expr` runs **once**, when the top-level form that
+contains it loads, whether from source or from a cached compiled artifact, and every evaluation of the site reads that value.
+It sees no locals, since none exist yet when it runs.
+
+```clojure
+(def counter (atom 0))
+(defn stamp [] (jolt.host/load-time-value (swap! counter inc)))
+[(stamp) (stamp) (stamp)]          ; => [1 1 1]
+
+(def ^:dynamic *ctx* :outer)
+(def f (binding [*ctx* :at-load]
+         (eval '(fn [] (jolt.host/load-time-value *ctx*)))))
+(f)                                ; => :at-load
+(binding [*ctx* :at-call] (f))     ; => :at-load, captured when it loaded
+```
+
+It is the way compiled code can capture something about the place it was loaded into, the way a JVM class keeps its
+defining class loader; [`jolt.loader`](/docs/api/loader.html) uses it so a cached namespace knows which context loaded it.
+It is recognised only under the qualified name `jolt.host/load-time-value`, so a program's own `load-time-value` stays an
+ordinary name.
+
 ## Running work on the main thread
 
 Some native calls must run on the process's **main** (primordial) thread. A GUI toolkit is the usual
@@ -447,6 +490,37 @@ thunks to run there.
 Because both blocking and async calls fall back to running inline when no pump is active, code
 written against this API also works in a plain `-M:run` launch, where the main thread is already the
 caller; the library resolves the seam at call time and needs no separate non-GUI path.
+
+## Signal handlers: `sun.misc.Signal`
+
+`sun.misc.Signal` and `SignalHandler` work as on the JVM. `(Signal/handle (Signal. "HUP") handler)` registers a
+`SignalHandler` and returns the previous one; the handler runs the way the JVM runs one, on a new daemon thread named
+`SIGHUP handler`, whatever thread the signal interrupted and whatever it was doing. `SignalHandler/SIG_DFL` and
+`SignalHandler/SIG_IGN` restore the default or ignore the signal, and `Signal/raise` sends one to the process.
+
+```clojure
+(import '(sun.misc Signal SignalHandler))
+
+(def reloads (atom 0))
+
+(Signal/handle (Signal. "HUP")
+  (reify SignalHandler
+    (handle [_ sig]
+      (println "reloading config on" (.getName sig))
+      (swap! reloads inc))))
+
+(Signal/handle (Signal. "USR1") SignalHandler/SIG_IGN)   ; => the previous handler, SIG_DFL
+```
+
+`kill -HUP <pid>` then runs the handler. A handler for `INT`, `TERM` or `HUP` replaces the shutdown that signal would
+otherwise run, so the program decides whether to exit. A handler must be a `SignalHandler`; a plain fn is refused, as the JVM
+refuses one. `QUIT`, `KILL`, `STOP`, `FPE`, `SEGV`, `ILL` and `BUS` are refused with the JVM's `IllegalArgumentException`
+("Signal already used by VM or OS").
+
+A signal nobody registers a handler for keeps the disposition it had, and a handler a C library installed earlier still
+runs. A Jolt built as a library (`jolt build --library`) takes only the signals its program asks for, and gives them back at
+`jolt_library_shutdown`. The release builds carry a Chez kernel patch that relays any signal to the handler thread; a Jolt built
+on a stock Chez also refuses `TTIN`, `TTOU`, `PROF` and `VTALRM`.
 
 ## Calling Scheme directly: `jolt.scheme`
 

@@ -102,6 +102,38 @@ Small maps are array maps (up to 8 keys of any kind, up to 64 when every key is 
 several fields onto the same map one at a time copies it several times; build it in one literal, or
 use `transient`/`persistent!` around a batch of updates.
 
+## Run untraced when calls dominate
+
+`jolt run`, `-m`, `-M` and the REPL compile your code with [tail-frame tracing](/docs/tools-deps.html#stack_traces) on, so an error report can
+name every frame. Each call pays for that, which only shows in code that is almost nothing but small user-level calls. For
+those, run with `--no-trace` as the first argument (or `JOLT_TRACE=0`):
+
+```bash
+jolt --no-trace run -m app.core
+```
+
+An untraced run also does **guarded inlining**. A small fn's body is spliced into each caller behind a test that the fn's var
+still holds the fn the body came from, roughly `(if (identical? <the var's fn> <the fn at load>) <body> <call>)`. Redefining
+the fn, `with-redefs` or `alter-var-root` makes the test fail, so the caller takes the ordinary call and sees the new
+definition; the REPL keeps working as it does with calls. A fn read from the AOT cache is guarded the same way, so a cached
+caller loaded after its callee was redefined at a REPL takes the call too.
+
+```clojure
+(defn clamp [x lo hi] (if (< x lo) lo (if (> x hi) hi x)))
+
+(defn run [n]
+  (loop [i 0 acc 0]
+    (if (< i n) (recur (inc i) (+ acc (clamp (rem i 100) 10 90))) acc)))
+
+(run 1000)                                   ; => 49600, clamp's body inlined
+(with-redefs [clamp (fn [x _ _] 0)] (run 1000))   ; => 0, the guard takes the call
+```
+
+A loop like this one ran 52 ms with the splice off and 29 ms with it on. `^:dynamic` fns, protocol methods and bodies that
+build a closure stay calls. `JOLT_GUARDED_INLINE=0` turns the splice off and leaves tracing off. A traced run keeps every
+call, so the report can name each fn from its own frame. A `jolt build` binary decides tracing at build time; see
+[`--no-trace`](/docs/building-and-deps.html#deps.edn_build_options) there.
+
 ## What is not a lever
 
 - **GC settings.** The collector is generational and its cost is the survivors, not the nursery size. Raising

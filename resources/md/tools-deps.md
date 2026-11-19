@@ -452,24 +452,36 @@ buffer is a history rather than a stack, frames from an earlier call that alread
 appear below the current ones; the innermost frames are the accurate part.
 
 The history is **on by default when running from source**: `jolt run`, `-m`, `-M`, `-e`, and a `repl` or nREPL session. Set
-`JOLT_TRACE=0` to opt out.
+`JOLT_TRACE=0`, or pass `--no-trace` as the **first** argument, to opt out:
+
+```bash
+jolt --no-trace run -m app.core
+jolt --no-trace -M:run
+JOLT_TRACE=0 jolt -m app.core      # the same switch
+```
+
+The variable and the option go through one test, so they turn off exactly the same things. An untraced run also gets
+[guarded inlining](/docs/performance-idioms.html#run_untraced_when_calls_dominate): small fns are spliced into their callers, which
+a traced run cannot do because every call has to leave its own frame for the report.
 
 Because the recording is baked in when a function is compiled, it covers code compiled at runtime,
 which is your own namespaces; `clojure.core` ships precompiled and carries none. That is also why a
 workload doing real work per call measures the same either way, while code that is almost nothing
 but user-level calls pays for it; a `fib` microbenchmark runs about 7x slower, and that is the
-case to set `JOLT_TRACE=0` for. In a live REPL session only code compiled *since* the session started is
+case to turn tracing off for. In a live REPL session only code compiled *since* the session started is
 traced, so reload a namespace to trace code loaded before it (an app's initial `-M:run` load, say,
 before its nREPL started).
 
-With the history off, `jolt run` and the other source modes also **splice small functions into their callers**. Each
-spliced call checks that the var still holds the function its body came from, and falls back to the real call
-otherwise, so a redefinition, `with-redefs` or `alter-var-root` behaves exactly as before. The cost is in the trace: a
-spliced function has no frame of its own, so an exception thrown inside it reports its caller's frame instead,
-much as tail-call optimization erases a tail-called frame. Set `JOLT_GUARDED_INLINE=0` to keep tracing off but leave every call a call.
+With the history off, each spliced call checks that the var still holds the function its body came from, and falls back
+to the real call otherwise, so a redefinition, `with-redefs` or `alter-var-root` behaves exactly as before. The cost is
+in the trace: a spliced function has no frame of its own, so an exception thrown inside it reports its caller's frame
+instead, much as tail-call optimization erases a tail-called frame. Set `JOLT_GUARDED_INLINE=0` to keep tracing off but leave every call a call.
 
-A `jolt build` binary is never traced this way: its prologues are decided at build time, so it carries no
-per-call cost, and its traces come from the live continuation and the AOT source map alone.
+A `jolt build` binary has no runtime switch: whether it is traced is decided when it is built. By default the build bakes
+in a cheaper form of the history (a store at native-call and throw sites, with each site carrying its own line), so a
+deployed binary's report still names the frames tail calls erased. `jolt build --no-trace`, deps.edn
+`:jolt/build {:trace false}`, or `JOLT_TRACE=0` in the build's environment produces an untraced binary, whose traces come
+from the live continuation and the AOT source map alone.
 
 ## Conformance
 
