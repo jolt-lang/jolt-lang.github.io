@@ -462,6 +462,12 @@ case to set `JOLT_TRACE=0` for. In a live REPL session only code compiled *since
 traced, so reload a namespace to trace code loaded before it (an app's initial `-M:run` load, say,
 before its nREPL started).
 
+With the history off, `jolt run` and the other source modes also **splice small functions into their callers**. Each
+spliced call checks that the var still holds the function its body came from, and falls back to the real call
+otherwise, so a redefinition, `with-redefs` or `alter-var-root` behaves exactly as before. The cost is in the trace: a
+spliced function has no frame of its own, so an exception thrown inside it reports its caller's frame instead,
+much as tail-call optimization erases a tail-called frame. Set `JOLT_GUARDED_INLINE=0` to keep tracing off but leave every call a call.
+
 A `jolt build` binary is never traced this way: its prologues are decided at build time, so it carries no
 per-call cost, and its traces come from the live continuation and the AOT source map alone.
 
