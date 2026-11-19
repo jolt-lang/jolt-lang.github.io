@@ -105,6 +105,18 @@ Third-party Clojure/JVM libraries confirmed to run on Jolt.
   `parse-stream`, `parsed-seq`, `generate-string`, `generate-stream`, `encode`/`decode`, `:pretty` and `create-pretty-printer`, `:date-format`, `:escape-non-ascii`,
   `:key-fn`) with output matching cheshire's. Custom encoders (`cheshire.generate`), factory options, Smile/CBOR
   and the Jackson generator API (`with-writer`, `write`, `create-generator`) are left out.
+- **[jsonista](https://github.com/metosin/jsonista)**: ships with Jolt as `jsonista.core`, so libraries written against it load; muuntaja's JSON
+  format (and with it reitit's default formats) is the main one. Real jsonista wraps Jackson; this one is written over the bundled
+  `clojure.data.json`, with jsonista's API: `object-mapper` with its encoding options (`:pretty`, `:escape-non-ascii`, `:strip-nils`,
+  `:order-by-keys`, `:date-format`, `:encode-key-fn`) and decoding options (`:decode-key-fn`, `:bigdecimals`), `default-object-mapper`,
+  `keyword-keys-object-mapper`, `read-value`, `write-value`, `write-value-as-string`, `write-value-as-bytes`, the `ReadValue` and `WriteValue`
+  protocols, and `java-collection-module`. Output matches jsonista 0.3.8's, and a mapper answers `instance?` for
+  `com.fasterxml.jackson.databind.ObjectMapper`. Jackson's own options (`:factory`, `:encoders`, other modules and mappers) throw rather
+  than being ignored. A jsonista jar a project pulls in does not shadow the bundled namespace.
+- **[nrepl/bencode](https://github.com/nrepl/bencode)**: ships with Jolt as `bencode.core`, because babashka bundles it and scripts that speak
+  nREPL's wire format (a small client driving a running REPL, say) name it. It is nrepl/bencode 1.2.0's own file, so `read-bencode`,
+  `write-bencode`, `read-netstring` and `write-netstring` behave as the library does: strings come back as byte arrays. A project
+  that declares `nrepl/bencode` itself still loads its own copy.
 - **[clojure.core.reducers](https://clojure.org/reference/reducers)**: ships with Jolt, as with Clojure. `fold` runs its pieces one after another instead of on
   a fork/join pool, but splits a vector into the same pieces the JVM does, so `fold` and `foldcat` give
   the same results.

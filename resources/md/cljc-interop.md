@@ -32,7 +32,7 @@ give Jolt its own branch, place `:jolt` **before** `:clj`:
 
 Jolt is not babashka, and a `:bb` branch is not a "non-JVM host" branch (it is written for
 babashka's host model. Where that model differs from Jolt's, the branch is wrong here. It reaches
-for namespaces babashka bundles and Jolt may not (Jolt now ships a [`cheshire.core`](/docs/libraries.html#data_and_schemas), but not every bb
+for namespaces babashka bundles and Jolt may not (Jolt now ships [`cheshire.core`](/docs/libraries.html#data_and_schemas), `jsonista.core` and `bencode.core`, but not every bb
 built-in), asserts babashka's class model (classes as symbols in hierarchies, `sci.impl.fns` class names),
 and skips work Jolt can do because babashka can't (`java.nio`'s `DirectoryStream`, `LazilyPersistentVector`, `clojure.lang.Util`, `java.lang.reflect.Array`)
 Jolt shims all of them).

@@ -82,8 +82,17 @@ narrower than `int` as `:int` (and `float` as `:double`).
 ```
 
 The tail belongs to the *binding*, not to the call: bind one signature per tail shape. A bare `:&`
-with nothing after it (babashka.ffi's per-call tail inference) raises, because a `foreign-procedure`'s types are
-fixed when it is compiled.
+with nothing after it is babashka.ffi's form, which infers each call's tail from the values it is given. It works too, but a
+`foreign-procedure`'s types are fixed when it is compiled, so the first call of each new tail shape compiles one
+(under a millisecond) and caches it, and every call after that costs a little more than a declared tail.
+
+```clojure
+(ffi/defcfn c-snprintf "snprintf" [:pointer :size_t :string :&] :int)
+
+(ffi/with-alloc [buf 64]
+  (c-snprintf buf 64 "%d-%s" 42 "x")
+  (ffi/ptr->string buf))               ; => "42-x"
+```
 
 The trailing option may instead be a **map**, which is how you combine flags and how you ask for the
 error code:
@@ -191,7 +200,8 @@ to C when the function wants a pointer to the first element. Offsets for indexed
 from the ABI's element stride rather than stored per element, so metadata stays one entry per
 declared array shape: a million-element array costs no more to describe than a two-element one.
 
-Unions, bitfields, explicit packing, and self-referential descriptors are still not supported; lay
+A union is `[:union [[field type] ...]]` anywhere a nested struct goes; see [Structs by layout](/docs/native-interop.html#structs_by_layout).
+Bitfields, explicit packing, and self-referential descriptors are still not supported; lay
 those out by offset as before.
 
 ## Structs by value
@@ -231,8 +241,8 @@ holding one will not do, in a signature any more than in `layout`.
 
 Nested structs, several aggregate arguments, a fixed aggregate before `:varargs`, and `:blocking` all work.
 A null aggregate pointer raises `NullPointerException` before the native call rather than faulting. Not supported:
-aggregate *variadic* arguments, an aggregate return combined with `:varargs`, and aggregates in `foreign-callable` /
-`export!`: those are rejected at compile time.
+aggregate *variadic* arguments, an aggregate return combined with `:varargs`, and unions passed by value: those are
+rejected at compile time. Callbacks take and return structs by value too; see [below](#structs_by_value_in_callbacks).
 
 ## Calling back into Jolt
 
@@ -274,6 +284,77 @@ aggregate *variadic* arguments, an aggregate return combined with `:varargs`, an
 (with-open [a (ffi/confined-arena)]
   (let [cmp (ffi/callback a compare-ints [:pointer :pointer] :int)]
     (c-qsort arr n (ffi/sizeof :int) cmp)))
+```
+
+### Structs by value in callbacks
+
+`foreign-callable`, `callback` and `export!` take `[:by-value [:struct ...]]` in the argument vector and as the result,
+the same descriptor `foreign-fn` takes, so Jolt can implement a C callback whose signature passes a struct rather than
+a pointer to one.
+
+- A by-value **argument** reaches the fn as a pointer to the bytes C passed. That memory is C's and is valid only until
+  the callback returns, so read what you need (or copy it) before returning.
+- For a by-value **result**, the fn gets C's destination pointer as its *first* argument, ahead of the others, and writes
+  the struct there. Its return value is ignored.
+
+`:collect-safe` works with both. A union is still refused, as it is in `foreign-fn`.
+
+```clojure
+(def span (ffi/layout [:struct [[:ptr :pointer] [:len :size_t]]]))
+
+;; bool on_span(void *userdata, struct span s);
+(def on-span
+  (ffi/foreign-callable
+    (fn [userdata s]
+      (println "len" (ffi/read-field s span :len))
+      true)
+    [:pointer [:by-value [:struct [[:ptr :pointer] [:len :size_t]]]]]
+    :bool))
+
+;; struct span make_span(size_t n);
+(def make-span
+  (ffi/foreign-callable
+    (fn [dest n]                         ; dest comes first
+      (ffi/write-field dest span :ptr 0)
+      (ffi/write-field dest span :len n))
+    [:size_t]
+    [:by-value [:struct [[:ptr :pointer] [:len :size_t]]]]))
+```
+
+## Calling a C function pointer
+
+`defcfn` binds a C *symbol*. A library sometimes hands over a function only as a pointer, typically a callback slot in a
+struct it passes you (a writer's `write(userdata, data, n)`, a request's `reply(req, &reply)`), and those have no name to bind.
+
+- `pointer-fn` `argtypes rettype [:blocking | opts]`: `defcfn`'s signature with no C symbol. It answers a fn whose **first argument is the
+  function pointer** to call; the rest are the signature's arguments, marshaled as `defcfn` marshals them. `:bool`, the float widths,
+  by-value structs (a by-value result's destination pointer comes second, after the function pointer), `:blocking`,
+  `:capture-native-error` and a declared variadic tail all work. A bare `:&` is refused.
+
+The pointer is any `jolt.ffi` pointer: one read out of a struct with `ffi/read`, one from `find-symbol`, or a `foreign-callable`. A
+NULL or `nil` pointer raises `NullPointerException` instead of jumping to address zero. Nothing is cached per pointer, so one
+binding serves every function of that C type.
+
+```clojure
+(def call-strlen (ffi/pointer-fn [:string] :size_t))
+(call-strlen (ffi/find-symbol "strlen") "hello")     ; => 5
+
+;; call the callbacks above through their pointers, as C would
+(def call-on-span
+  (ffi/pointer-fn [:pointer [:by-value [:struct [[:ptr :pointer] [:len :size_t]]]]] :bool))
+(def call-make-span
+  (ffi/pointer-fn [:size_t] [:by-value [:struct [[:ptr :pointer] [:len :size_t]]]]))
+
+(ffi/with-layout [s span]
+  (ffi/write-field s span :ptr 0)
+  (ffi/write-field s span :len 42)
+  (call-on-span on-span 0 s))          ; prints "len 42", => true
+
+(ffi/with-layout [out span]
+  (call-make-span make-span out 7)     ; destination after the function pointer
+  (ffi/read-field out span :len))      ; => 7
+
+(call-strlen nil "x")                  ; NullPointerException
 ```
 
 ## Types
@@ -517,8 +598,8 @@ match the other, so a shim in either direction is a namespace alias plus a short
 Matching: the arena constructors and every arena-taking function, `alloc` / `free`, `read` /
 `write` (including the argument order: the offset is last), `sizeof`, `alignof`, `place`, `copy`,
 `clone`, `size`, `address`, `segment`, `slice`, `reinterpret`, `pointer?`, `null`, `null?`, `ptr->string`,
-`string->ptr`, `read-array`, `write-array`, `find-symbol`, `load-library`, `load-system-library`, `cfn`, `defcfn`, `callback`, the
-`:&` variadic marker, and the type keywords with `:bool` included.
+`string->ptr`, `read-array`, `write-array`, `find-symbol`, `load-library`, `load-system-library`, `cfn`, `defcfn`, `callback`, `byte-buffer`,
+`with-open`, both forms of the `:&` variadic marker, `[:union ...]` layouts, and the type keywords with `:bool` included.
 
 Where the two differ, they differ because the substrate does:
 
@@ -528,19 +609,18 @@ Where the two differ, they differ because the substrate does:
   handed out. `pointer?` is true for any non-negative integer, because that is all a pointer is here.
 - **`cfn` and `callback` are macros.** Chez's `foreign-procedure` needs its types at compile time, which is what makes an emitted binding a
   real typed call and not an interpreter. So argtypes must be a literal vector, the target must be a
-  literal C symbol name rather than a function pointer, and the library-scoped 4-argument `cfn` (and
+  literal C symbol name (a function pointer goes through [`pointer-fn`](#calling_a_c_function_pointer), which takes the pointer as its
+  call's first argument), and the library-scoped 4-argument `cfn` (and
   `defcfn`'s `:library`) *raises with an explanation* instead of quietly searching every loaded library. Jolt already resolves
   a declared `:jolt/native`'s symbols through its own handle, which is the guarantee that argument buys in
   babashka.ffi.
 - **A layout is compiled by the `layout` macro**, and `read` / `write` take that compiled value, where babashka.ffi takes the literal
   descriptor at each call. Chez builds the ABI layout with an `ftype`, at compile time.
-- **No `:union` in a layout, and no `byte-buffer`**: there is no `java.nio` here. `read-bytes`, `read-array` and `read-into!` are the block moves.
-- **No bare `:&`.** babashka.ffi's `[:string :int :&]` infers each call's tail from the values it is given; a compiled
-  `foreign-procedure` has its types fixed before any call, so the tail belongs to the binding: bind one signature
-  per tail shape. The bare marker raises saying so.
+- **A bare `:&` compiles once per tail shape.** babashka.ffi's `[:string :int :&]` infers each call's tail from the values it is given; a compiled
+  `foreign-procedure` has its types fixed before any call, so the first call of each new shape compiles one and caches it.
 
 Jolt adds, with no babashka.ffi equivalent: the arena-less `(alloc n)`, the `with-*` scoped helpers,
 `arena?` / `arena-open?` / `close-arena` / `drain-auto-arenas!`, `layout-size` / `layout-alignment` / `field-offset` / `read-field` / `write-field`, `foreign-fn` /
-`foreign-callable` / `free-callable` / `export!`, `:varargs` (a second spelling of `:&`), `:blocking`, `:capture-native-error`,
+`foreign-callable` / `free-callable` / `export!`, `pointer-fn`, `:varargs` (a second spelling of `:&`), `:blocking`, `:capture-native-error`,
 `errno`, `loaded?`, `defining-libraries`, `on-gc-stall`, `read-bytes` / `write-bytes` / `read-into!`, and the exact-width type
 aliases. `with-open` is `clojure.core/with-open` under babashka.ffi's name.

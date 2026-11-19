@@ -239,6 +239,22 @@ From the db library's SQLite bindings:
 Each defined function is an ordinary Clojure fn you call with Jolt values; arguments and the return
 value are marshaled according to the declared types.
 
+A function the library hands you only as a **pointer**, such as a callback slot in a struct it fills in, has no symbol to
+bind. `ffi/pointer-fn` takes the same signature without the symbol and answers a fn whose first argument is the
+function pointer:
+
+```clojure
+;; typedef bool (*write_fn)(void *userdata, const uint8_t *data, size_t n);
+(def call-write (ffi/pointer-fn [:pointer :pointer :size_t] :bool))
+
+(call-write (ffi/read writer :pointer 0)   ; the struct's write slot
+            (ffi/read writer :pointer 8)   ; its userdata
+            data n)
+```
+
+A NULL pointer raises `NullPointerException` rather than jumping to address zero. See
+[Calling a C function pointer](/docs/api/ffi.html#calling_a_c_function_pointer).
+
 ### `:blocking`
 
 A trailing `:blocking` marks a call that may wait (network I/O, a lock, a sleep). The http-client marks
@@ -571,7 +587,10 @@ the inverse of `foreign-fn`: `foreign-fn` calls *out* of Jolt into C; `export!` 
 
 The argtype/rettype keywords are the same set `foreign-fn`/`ffi-type->chez` accepts: `:int :uint :long :ulong :int64 :uint64 :size_t :ssize_t :iptr :uptr :double :float :pointer` (alias `:void*`)
 `:string :void :uint8` (aliases `:u8`/`:byte`) `:char :bool`, and the exact widths `:int8 :int16 :uint16 :int32 :uint32`. A `:pointer`/`:void*` returns
-an opaque address you pass back unchanged; `:string` copies a C string in/out.
+an opaque address you pass back unchanged; `:string` copies a C string in/out. A struct passed or returned by value is
+`[:by-value [:struct ...]]`, as for `foreign-fn`, and the same holds for `foreign-callable` and `callback`: a by-value argument
+arrives as a pointer to C's bytes, valid until the call returns, and a by-value result hands the fn C's destination pointer
+as its first argument to write into ([details](/docs/api/ffi.html#structs_by_value_in_callbacks)).
 
 ```c
 typedef int (*init_fn)(int, char**);

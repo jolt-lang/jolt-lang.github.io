@@ -110,6 +110,24 @@ uncaught exception exits 1). An `(ns …)` form with `:require`s is fine, and wh
 `deps.edn` the script sees the project's paths and dependencies, like any other run. A script can also
 declare its dependencies inline, with no `deps.edn` at all: see [Adding deps from a script](/docs/building-and-deps.html#adding_deps_from_a_script).
 
+Running a file sets the `jolt.file` system property to its absolute path, as babashka sets `babashka.file`. A script that
+another one may `load-file` (to reuse its functions) can compare it with `*file*` to run its entry point only when it is
+the file being run:
+
+```clojure
+(ns tool)
+
+(defn -main [& args] (println "running tool with" args))
+
+(when (= *file* (System/getProperty "jolt.file"))
+  (apply -main *command-line-args*))
+```
+
+`jolt tool.clj a b` prints `running tool with (a b)`; a script that does `(load-file "tool.clj")` gets `tool/-main` without
+running it, because the property names the file given on the command line, not the one being loaded. A program read from
+stdin or given with `-e` leaves the property unset. A task whose `:main-opts` run a script sets it too, except for the
+`:depends` that `run --parallel` runs side by side, where one process-wide property could name only one of them.
+
 A built-in command wins a name it shares with a file (`jolt build` is always the compiler) which is what
 `-f` is for. A task loses to one: a `greet` file on disk is what `jolt greet` means when the project
 also has a `greet` task. Windows has no kernel shebang, so there `jolt script` is how a script runs.
