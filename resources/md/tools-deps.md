@@ -472,6 +472,11 @@ case to turn tracing off for. In a live REPL session only code compiled *since* 
 traced, so reload a namespace to trace code loaded before it (an app's initial `-M:run` load, say,
 before its nREPL started).
 
+With the history off, each spliced call checks that the var still holds the function its body came from, and falls back
+to the real call otherwise, so a redefinition, `with-redefs` or `alter-var-root` behaves exactly as before. The cost is
+in the trace: a spliced function has no frame of its own, so an exception thrown inside it reports its caller's frame
+instead, much as tail-call optimization erases a tail-called frame. Set `JOLT_GUARDED_INLINE=0` to keep tracing off but leave every call a call.
+
 A `jolt build` binary has no runtime switch: whether it is traced is decided when it is built. By default the build bakes
 in a cheaper form of the history (a store at native-call and throw sites, with each site carrying its own line), so a
 deployed binary's report still names the frames tail calls erased. `jolt build --no-trace`, deps.edn
