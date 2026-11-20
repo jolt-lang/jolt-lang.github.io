@@ -88,7 +88,13 @@ prepends the resolved roots, and de-sugars the argv into a run:
 
 - `run -m NS args` → load `NS`, call its `-main`;
 - `run FILE` → load the file;
-- `-M:alias` → run the alias's `:main-opts`;
+- `-M:alias` → run the alias's `:main-opts`. As with `clojure.main`, these (and any
+  command-line args after them) are any number of init options, run in order, then at
+  most one main option: `-i`/`--init PATH` loads a file (`@path` loads a classpath
+  resource), `-e`/`--eval EXPR` evaluates and prints each non-nil value, then `-m NS`,
+  `-r`, a script path (`-` reads stdin), or nothing. `*command-line-args*` is the args
+  after the main option, and is already bound while the inits run, so
+  `jolt -M -i dev.clj -e '(start)' -m app.core x y` works as it does on the JVM;
 - `-A:alias` → add the alias's paths/deps, then run the rest (the selected aliases stay in effect for
   whatever command follows, so `-A:x path` and `-A:x -M:y` both see them);
 - `-X:alias [ns/fn] [k v …]` → call `:exec-fn` (or the given symbol, qualified through `:ns-default`/`:ns-aliases`) with `:exec-args`
