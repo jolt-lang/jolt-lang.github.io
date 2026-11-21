@@ -40,6 +40,57 @@ The body is a subset of Clojure:
 A region returns a long, double, boolean, `nil`, or an array it owns, which arrives as a fresh
 `double-array` or `long-array`.
 
+## Types and hints
+
+The hints on a region's vector are the only type annotations it needs. They are where Jolt values
+cross into C, so they say exactly what crosses; a region with an unhinted name is a compile error.
+Everything inside the region is inferred, forward from what is already known, with Clojure's numeric
+rules:
+
+| In the region | Its type |
+|---|---|
+| a literal | `1` is a long, `1.0` a double, `true` a boolean |
+| a `let` binding | the type of its value |
+| arithmetic | long if every operand is a long, double as soon as one is a double, folded left pair by pair as Clojure does |
+| a comparison, `zero?`, `not`, `and`, `or` | boolean |
+| `aget` | the array's element type |
+| a `loop` variable | the type of its initial value |
+| a helper call | what the helper's body returns for those argument types |
+
+```clojure
+(native [^doubles xs ^long n]
+  (let [k (* n 2)             ; long
+        x (* k 0.5)           ; double: a long times a double
+        a (double-array k)]   ; an array of doubles the region owns
+    (aset a 0 x)
+    (+ x (aget xs 0))))        ; double
+```
+
+A helper's parameters take no hints. Each call site's argument types are known, so the helper is
+compiled once per combination of them: the same helper over arrays of doubles in one region and
+arrays of longs in another gives two compiled copies. Its result type is inferred from its body. A
+helper that calls itself, or a pair that call each other, is solved from the base case: the
+recursive calls start with no type, the base case gives the body one, and the body is re-checked
+until the type stops changing.
+
+```clojure
+(defnative fib [n] (if (< n 2) n (+ (fib (- n 1)) (fib (- n 2)))))   ; long, from the base case
+```
+
+A return hint on a helper, `(defnative ^long fib [n] ...)`, is optional; when it is there it is
+checked against what the body returns. A helper with no base case is a compile error
+("never returns").
+
+A few programs type-check in Clojure but would answer differently in C, so a region refuses them
+with the fix in the message rather than guess:
+
+| Refused | Why | Write instead |
+|---|---|---|
+| `(loop [s 0] ... (recur (+ s 0.5)))` | the loop variable would change from long to double partway | start it as `0.0` |
+| `(/ a b)` with both longs | in Clojure that is a ratio | `quot`, or make an operand a double |
+| `(= n 1.0)` with `n` a long | `=` is false across number types | `==` |
+| `(if n ...)` with `n` a number | every number is truthy | a boolean test, such as `(pos? n)` |
+
 ## Ownership
 
 A region frees the arrays it creates without a garbage collector, using the ownership rules of
