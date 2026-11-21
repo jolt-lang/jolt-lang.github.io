@@ -96,10 +96,22 @@ longs.
   (native [^doubles xs] (Math/sqrt (sum-of-squares xs))))
 ```
 
-A helper borrows the arrays passed to it: it can read and write them, but not free or return them. It
-can create and return arrays of its own. A helper that calls itself needs a return type hint,
-`(defnative ^long fib [n] ...)`. Outside a region, the name is an ordinary function over the same
-body.
+A helper borrows an array passed to it, unless its body gives the array away: returns it, binds it
+into what it returns, or passes it on to a helper that takes it. Then the helper takes ownership of
+it, and the caller's binding is given away, as if bound to a new name. Nothing is annotated; the
+compiler infers it from the helper's body, and says so when it matters:
+
+```clojure
+(defnative keep-it [a] a)
+
+(native [] (let [a (double-array 3) b (keep-it a)] (aget a 0)))
+;; native region: uses a after it was given away (moved); keep-it took ownership of its
+;; 1st argument (it returns it); use (aclone x) to keep a copy
+```
+
+A helper can create and return arrays of its own. A helper that calls itself needs a return type
+hint, `(defnative ^long fib [n] ...)`. Outside a region, the name is an ordinary function over the
+same body.
 
 ## Safe and unsafe regions
 
