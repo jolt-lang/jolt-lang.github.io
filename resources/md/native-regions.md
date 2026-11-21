@@ -35,7 +35,8 @@ The body is a subset of Clojure:
 - `long`, `double`
 - `aget`, `aset`, `alength`, and `double-array`, `long-array`, `aclone`, which create arrays the region **owns**
 - `Math/sqrt`, `sin`, `cos`, `tan`, `exp`, `log`, `floor`, `ceil`, `pow`, `atan2`
-- your own macros, which expand inside the region, and [helpers](#helpers)
+- your own macros, which expand inside the region, [helpers](#helpers), and
+  [C functions you declare](#calling-c)
 
 A region returns a long, double, boolean, `nil`, or an array it owns, which arrives as a fresh
 `double-array` or `long-array`.
@@ -164,6 +165,50 @@ A helper can create and return arrays of its own. A helper that calls itself, or
 each other, has its result type inferred from the base case; a hint like `(defnative ^long fib [n]
 ...)` is optional and checked. Outside a region, the name is an ordinary function over the same body.
 
+### A body per platform
+
+A helper can give a body per platform, chosen by the C compiler, the way
+[Ferret](https://github.com/nakkaya/ferret)'s `defnative` does:
+
+```clojure
+(defnative sum [xs]
+  (on "defined(__aarch64__)" (loop ...))
+  (on :default (loop ...)))
+```
+
+Each guard is a C preprocessor condition, and the first one that holds is compiled. A platform no
+guard covers fails the build unless there is an `(on :default ...)`, which is also the body the Jolt
+fallback runs. The bodies must agree on their result type and on which arguments they take.
+
+## Calling C
+
+`defextern` declares a C function a region can call:
+
+```clojure
+(require '[jolt.native :refer [native defextern]])
+
+(defextern ^double fast-erf [^double x])
+(defextern ^long next-seed [^long s] {:c "xs_next" :header "xorshift.h"})
+
+(defn noise [^long seed ^long n]
+  (native [^long seed ^long n]
+    (loop [i 0 s seed acc 0.0]
+      (if (< i n) (recur (inc i) (next-seed s) (+ acc (fast-erf (double s)))) acc))))
+```
+
+Arguments and results are scalars: `^long`, `^double` or `^boolean`, and no result hint for a
+`void` function. The region's C calls the function directly. It is declared from the hints, or
+included through `:header`, which takes a quoted name (`"erf.h"`) or a system one (`"<math.h>"`).
+Use `:header` when a system header already declares the function, so the two declarations
+can't disagree. `:c` gives the C name when it isn't the Clojure name.
+
+Outside a region, and in a region's Jolt fallback, the name is a `jolt.ffi` binding of the same
+function, so both halves run the same code. A `jolt build` links the function like any other
+symbol, so it has to come from a `:static` entry in `:jolt/native`, or from libc or libm.
+
+The ownership checker can't see inside C: a region that calls one is memory safe only as far as
+that function is.
+
 ## Pinned and GC-holding regions
 
 Every region is memory safe. The choice here is only about what other threads' garbage collection
@@ -189,6 +234,14 @@ The boundary costs a few nanoseconds: a borrowed array is the Chez flvector itse
 An n-body step as a region runs about 5.5x faster than the same hinted Jolt code in an optimized
 build, with bit-identical results. Regions pay off for work per call; converting a persistent vector
 to an array first costs about 14ns an element, so keep data in primitive arrays across calls.
+
+Two things keep the C lean without giving up any checks' meaning. A range analysis proves where
+an overflow, int-cast or bounds check can't fire (loop counters, `(< i (alength a))` scans, indexes
+built from them) and leaves those checks out of a fast copy of the function. The fast copy runs
+when a guard on the array arguments' lengths holds, and the fully checked code runs otherwise, so
+results and exceptions are the same either way. And a small constant-size array (up to 256
+elements) that never leaves the function or its loop iteration lives on the C stack, with no
+allocation and no free.
 
 `(jolt.native/linked-regions)` answers, for each region that has loaded, whether it runs as C in
 this process: true in a built binary, false under `jolt run`.
