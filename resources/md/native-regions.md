@@ -196,14 +196,17 @@ fallback runs. The bodies must agree on their result type and on which arguments
       (if (< i n) (recur (inc i) (next-seed s) (+ acc (fast-erf (double s)))) acc))))
 ```
 
-Arguments and results are scalars: `^long`, `^double` or `^boolean`, and no result hint for a
-`void` function. The region's C calls the function directly. It is declared from the hints, or
+Scalar arguments and results are `^long`, `^double` or `^boolean`, and no result hint makes a
+`void` function. An array parameter, `^doubles` or `^longs`, reaches C as a pointer to its elements
+followed by their count as an `int64_t`, for the length of the call; the function may read and
+write them but must not keep the pointer. A region passes the array's own storage. A `^longs` the
+region borrowed from Jolt is stored as fixnums, so pass it as `(aclone xs)`. The region's C calls the function directly. It is declared from the hints, or
 included through `:header`, which takes a quoted name (`"erf.h"`) or a system one (`"<math.h>"`).
 Use `:header` when a system header already declares the function, so the two declarations
 can't disagree. `:c` gives the C name when it isn't the Clojure name.
 
-Outside a region, and in a region's Jolt fallback, the name is a `jolt.ffi` binding of the same
-function, so both halves run the same code. A `jolt build` links the function like any other
+Outside a region, and in a region's Jolt fallback, the name calls the same function through
+`jolt.ffi`, copying arrays into foreign memory and back, so both halves run the same code. A `jolt build` links the function like any other
 symbol, so it has to come from a `:static` entry in `:jolt/native`, or from libc or libm.
 
 The ownership checker can't see inside C: a region that calls one is memory safe only as far as
@@ -241,7 +244,8 @@ built from them) and leaves those checks out of a fast copy of the function. The
 when a guard on the array arguments' lengths holds, and the fully checked code runs otherwise, so
 results and exceptions are the same either way. And a small constant-size array (up to 256
 elements) that never leaves the function or its loop iteration lives on the C stack, with no
-allocation and no free.
+allocation and no free. When such an array is only indexed by constants, a scratch `[x y z]`, its
+elements become plain C variables and it takes no memory at all.
 
 `(jolt.native/linked-regions)` answers, for each region that has loaded, whether it runs as C in
 this process: true in a built binary, false under `jolt run`.
