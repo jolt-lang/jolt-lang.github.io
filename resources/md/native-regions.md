@@ -164,21 +164,24 @@ A helper can create and return arrays of its own. A helper that calls itself, or
 each other, has its result type inferred from the base case; a hint like `(defnative ^long fib [n]
 ...)` is optional and checked. Outside a region, the name is an ordinary function over the same body.
 
-## Safe and unsafe regions
+## Pinned and GC-holding regions
 
-While a region runs as C, other threads keep running and collecting garbage. The region locks the
-arrays it borrows in place for the duration of the call, and the call releases its thread to the
-collector, the same approach as the JVM's region pinning for JNI and GHC's safe foreign calls. That
-costs about 45ns a call.
+Every region is memory safe. The choice here is only about what other threads' garbage collection
+does while the region runs as C.
 
-For a short region on a hot path, `^:unsafe` opts into a plain call of about 2.5ns that holds every
+By default other threads keep running and collecting. The region pins the arrays it borrows in
+place for the duration of the call, and the call releases its thread to the collector, the same
+approach as the JVM's region pinning for JNI and GHC's safe foreign calls. That costs about 45ns a
+call.
+
+For a short region on a hot path, `^:hold-gc` opts into a plain call of about 2.5ns that holds every
 other thread's collection until the region returns:
 
 ```clojure
-(native ^:unsafe [^double x] (* x x))
+(native ^:hold-gc [^double x] (* x x))
 ```
 
-Use it only for regions that finish quickly: a long unsafe region stalls the whole process's GC.
+Use it only for regions that finish quickly: a long `^:hold-gc` region stalls the whole process's GC.
 
 ## Performance
 
