@@ -109,9 +109,9 @@ compiler infers it from the helper's body, and says so when it matters:
 ;; 1st argument (it returns it); use (aclone x) to keep a copy
 ```
 
-A helper can create and return arrays of its own. A helper that calls itself needs a return type
-hint, `(defnative ^long fib [n] ...)`. Outside a region, the name is an ordinary function over the
-same body.
+A helper can create and return arrays of its own. A helper that calls itself, or a pair that call
+each other, has its result type inferred from the base case; a hint like `(defnative ^long fib [n]
+...)` is optional and checked. Outside a region, the name is an ordinary function over the same body.
 
 ## Safe and unsafe regions
 
