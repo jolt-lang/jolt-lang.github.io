@@ -436,6 +436,21 @@ The list covers the class graph, the statics and constructor registries, the hos
 lazily-loaded shim provides, and reading it loads no shim. Short aliases such as `System` and a `reify`'s class are left out.
 Each call reads the tables as they are, so a class a `deftype`, `defrecord` or `register-class-supers!` adds is in the next call.
 
+## Which build is running
+
+`(jolt.host/build-id)` names the exact build of jolt that is running. It joins three things: the jolt version
+(`*jolt-version*`, from `git describe`), the runtime fingerprint jolt's own AOT cache keys its generations on, and
+the Chez release.
+
+```clojure
+*jolt-version*          ; => "v0.8.28-92-g5f44eb39f-dirty"
+(jolt.host/build-id)    ; => "v0.8.28-92-g5f44eb39f-dirty-DAA833-A5D6E999-chez-1041"
+```
+
+Key a cache of compiled code on it. Two builds of the same dirty commit, or a rebuild with other local edits, share
+`*jolt-version*`, but their build ids differ. `jolt.image/runtime-version` stays the Chez release alone (`"chez-1041"`),
+since an image holds data and only needs a compatible runtime to read it.
+
 ## Load-time values
 
 `(jolt.host/load-time-value expr)` is Common Lisp's `load-time-value`: `expr` runs **once**, when the top-level form that
