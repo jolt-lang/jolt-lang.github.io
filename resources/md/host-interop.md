@@ -81,7 +81,19 @@ are accepted but no-ops.
   matcher, which is `java.util.regex`'s own engine, takes over.
 - **`java.io.File`**: construction plus `getPath` `getName` `getAbsolutePath` `getCanonicalPath` `exists` `isDirectory` `listFiles` `toURI` (an
   existing directory's ends in `/`) …; **`java.nio.file`** `Path` / `Paths` / `Files` (read, write, size,
-  attributes, `createFile`, `walk`, `PathMatcher`).
+  `createFile`, `walk`, `PathMatcher`). Directory listings come back in the order the OS returns them, as on the JVM, so
+  sort them yourself if you need a stable order. `readAttributes` takes a single stat and returns a snapshot, so getters
+  give the values from when it was called. The attribute views match JDK 21 on each platform: `basic`, `owner`, `posix`,
+  `unix`, `dos` (Linux, read through Samba's `user.DOSATTRIB`) and `user` on Linux; `basic`, `owner`, `posix`, `unix` and
+  `user` on macOS; `basic`, `owner`, `dos`, `acl` and `user` on Windows. `user` is extended attributes on Linux and macOS
+  and alternate data streams on Windows. `Files/createSymbolicLink` and the link readers work on Windows too.
+- **`java.nio.channels.FileChannel`**: `FileChannel/open` takes the JDK's open options and validates them in the JDK's
+  order (`READ` with `APPEND` is an `IllegalArgumentException`), including `DELETE_ON_CLOSE`, `NOFOLLOW_LINKS` and
+  `SYNC`/`DSYNC`. `lock` and `tryLock` take POSIX record locks (`fcntl`) on Linux and macOS and `LockFileEx` on Windows,
+  so they interoperate with locks held by other processes, the JVM included. `lock` waits in the kernel and parks a fiber
+  rather than blocking its carrier. An interrupt ends the wait with `FileLockInterruptionException`, and a close from
+  another thread ends it with `AsynchronousCloseException`, as on the JVM. Overlapping locks within one process raise
+  `OverlappingFileLockException`.
 - **Readers, writers, streams**: `StringReader` / `StringWriter` / `PushbackReader`, `BufferedReader` (`readLine` and `.lines` end a line on `\n`, `\r`
   or `\r\n`, as the JVM's do), `InputStreamReader` / `OutputStreamWriter` with a charset, `FileInputStream` / `FileOutputStream` / `ByteArrayInputStream` /
   `ByteArrayOutputStream` / `SequenceInputStream` (over two streams or an `Enumeration` of them: each is read to its end and closed,
@@ -435,6 +447,21 @@ declares the contract and answers for one root key, and your library registers t
 The list covers the class graph, the statics and constructor registries, the host's own value classes, and classes a
 lazily-loaded shim provides, and reading it loads no shim. Short aliases such as `System` and a `reify`'s class are left out.
 Each call reads the tables as they are, so a class a `deftype`, `defrecord` or `register-class-supers!` adds is in the next call.
+
+## Which build is running
+
+`(jolt.host/build-id)` names the exact build of jolt that is running. It joins three things: the jolt version
+(`*jolt-version*`, from `git describe`), the runtime fingerprint jolt's own AOT cache keys its generations on, and
+the Chez release.
+
+```clojure
+*jolt-version*          ; => "v0.8.28-92-g5f44eb39f-dirty"
+(jolt.host/build-id)    ; => "v0.8.28-92-g5f44eb39f-dirty-DAA833-A5D6E999-chez-1041"
+```
+
+Key a cache of compiled code on it. Two builds of the same dirty commit, or a rebuild with other local edits, share
+`*jolt-version*`, but their build ids differ. `jolt.image/runtime-version` stays the Chez release alone (`"chez-1041"`),
+since an image holds data and only needs a compatible runtime to read it.
 
 ## Load-time values
 
