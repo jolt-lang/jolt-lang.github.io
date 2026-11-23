@@ -91,6 +91,7 @@ with the fix in the message rather than guess:
 | `(/ a b)` with both longs | in Clojure that is a ratio | `quot`, or make an operand a double |
 | `(= n 1.0)` with `n` a long | `=` is false across number types | `==` |
 | `(if n ...)` with `n` a number | every number is truthy | a boolean test, such as `(pos? n)` |
+| `(dotimes [i 2.5] ...)` | `dotimes` counts to `(long n)`, so 2.5 runs twice | `(dotimes [i (long n)] ...)` |
 
 ## Ownership
 
@@ -121,6 +122,8 @@ so the two give the same results and the same exceptions:
 - Long arithmetic that leaves the long range raises `ArithmeticException` ("integer overflow"). Plain
   Jolt promotes to a bignum there; C can't, so a region doesn't, in either half.
 - A variadic op folds left pair by pair: `(+ Long/MAX_VALUE 1 1.5)` overflows on the first pair.
+- `quot`, `rem` and `mod` by zero raise `ArithmeticException` ("/ by zero"), and
+  `(quot Long/MIN_VALUE -1)` wraps to `Long/MIN_VALUE` as the JVM's long division does.
 - `(/ long long)` is a compile error, because in Clojure it's a ratio. Use `quot`, or make an operand a double.
 - `=` compares values of one type; use `==` to compare numbers across types.
 - A test must be a boolean, since every non-nil value is truthy.
@@ -200,10 +203,17 @@ Scalar arguments and results are `^long`, `^double` or `^boolean`, and no result
 `void` function. An array parameter, `^doubles` or `^longs`, reaches C as a pointer to its elements
 followed by their count as an `int64_t`, for the length of the call; the function may read and
 write them but must not keep the pointer. A region passes the array's own storage. A `^longs` the
-region borrowed from Jolt is stored as fixnums, so pass it as `(aclone xs)`. The region's C calls the function directly. It is declared from the hints, or
-included through `:header`, which takes a quoted name (`"erf.h"`) or a system one (`"<math.h>"`).
-Use `:header` when a system header already declares the function, so the two declarations
-can't disagree. `:c` gives the C name when it isn't the Clojure name.
+region borrowed from Jolt is stored as fixnums, so pass it as `(aclone xs)`. Pass distinct arrays:
+the same array passed twice reaches C as one pointer, but the Jolt fallback copies each argument
+into its own buffer, so a function that reads one while it writes the other sees different values
+in the two halves.
+
+The region's C calls the function directly. Its C name is the symbol's with each character C
+doesn't allow replaced by `_` (`fast-erf` is `fast_erf`); `:c` names it otherwise. It is declared
+from the hints, or included through `:header`, which takes a quoted name (`"erf.h"`) or a system
+one (`"<math.h>"`). A function a system header already declares, such as libc's `abs` or `labs`,
+needs its `:header` (or a wrapper with another name): the prototype made from the hints would
+conflict with the one the region's C includes.
 
 Outside a region, and in a region's Jolt fallback, the name calls the same function through
 `jolt.ffi`, copying arrays into foreign memory and back, so both halves run the same code. A `jolt build` links the function like any other
@@ -244,7 +254,9 @@ built from them) and leaves those checks out of a fast copy of the function. The
 when a guard on the array arguments' lengths holds, and the fully checked code runs otherwise, so
 results and exceptions are the same either way. And a small constant-size array (up to 256
 elements) that never leaves the function or its loop iteration lives on the C stack, with no
-allocation and no free. When such an array is only indexed by constants, a scratch `[x y z]`, its
+allocation and no free. A function's frame holds at most 8KB of stack arrays, the largest going to
+the heap past that, and a recursive helper keeps its arrays on the heap, since every frame would
+push them again. When such an array is only indexed by constants, a scratch `[x y z]`, its
 elements become plain C variables and it takes no memory at all.
 
 `(jolt.native/linked-regions)` answers, for each region that has loaded, whether it runs as C in
