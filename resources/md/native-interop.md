@@ -7,6 +7,11 @@ The FFI is a thin, explicit layer. You declare the library, bind each C function
 and return types, and marshal memory by hand. There is no automatic struct introspection and no
 garbage collection of foreign memory; you manage it, the way you would in C.
 
+This page is about calling C code someone else wrote. To write a hot numeric loop in Clojure and have
+`jolt build` compile it to C for you, see [Native Regions (jolt.native)](/docs/api/native.html). A
+region can also call C functions you declare with `defextern`, which link from a `:static` library
+described [below](#static_vs_dynamic_linking_in_a_built_binary).
+
 ## Declaring the native library
 
 A library names the shared objects it needs in its `deps.edn` under `:jolt/native`. Jolt opens them before the

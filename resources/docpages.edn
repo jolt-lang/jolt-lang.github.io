@@ -29,6 +29,7 @@
   ["api/loader.md"                 "Loading Contexts (jolt.loader)"    "api"]
   ["api/time.md"                   "Date & Time (jolt-lang/time)"      "api"]
   ["api/ffi.md"                    "Foreign Functions (jolt.ffi)"      "api"]
+  ["api/native.md"                 "Native Regions (jolt.native)"      "api"]
   ["api/parser.md"                 "Parser Combinators (jolt.parser)"  "api"]
   ["api/continuations.md"          "Continuations (jolt.continuations)" "api"]
   ["api/profile.md"                "Profiling (jolt.profile)"          "api"]
