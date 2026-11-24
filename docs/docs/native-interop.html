@@ -167,6 +167,10 @@
       </li>
       
       <li >
+        <a href="/docs/api/native.html">Native Regions (jolt.native)</a>
+      </li>
+      
+      <li >
         <a href="/docs/api/parser.html">Parser Combinators (jolt.parser)</a>
       </li>
       
@@ -230,7 +234,7 @@
     </nav>
     
     <div id="content">
-      <p>Jolt has no JVM, so it has no <code>java.&#42;</code> to lean on for talking to the outside world. Instead it ships a foreign-function interface (<code>jolt.ffi</code>) that binds C shared libraries directly. This is how the real libraries work: the <a href='https://github.com/jolt-lang/db'>db</a> library binds <code>libsqlite3</code>/<code>libpq</code>, and the <a href='https://github.com/jolt-lang/http-client'>http-client</a> binds POSIX sockets, OpenSSL, and zlib. This page is the guide for writing your own.</p><p>The FFI is a thin, explicit layer. You declare the library, bind each C function with its argument and return types, and marshal memory by hand. There is no automatic struct introspection and no garbage collection of foreign memory; you manage it, the way you would in C.</p><h2 id="declaring_the_native_library">Declaring the native library</h2><p>A library names the shared objects it needs in its <code>deps.edn</code> under <code>:jolt/native</code>. Jolt opens them before the code that binds them runs, so the bindings resolve. From the db library:</p><pre><code class="clojure">:jolt/native &#91;{:name &quot;sqlite3&quot;
+      <p>Jolt has no JVM, so it has no <code>java.&#42;</code> to lean on for talking to the outside world. Instead it ships a foreign-function interface (<code>jolt.ffi</code>) that binds C shared libraries directly. This is how the real libraries work: the <a href='https://github.com/jolt-lang/db'>db</a> library binds <code>libsqlite3</code>/<code>libpq</code>, and the <a href='https://github.com/jolt-lang/http-client'>http-client</a> binds POSIX sockets, OpenSSL, and zlib. This page is the guide for writing your own.</p><p>The FFI is a thin, explicit layer. You declare the library, bind each C function with its argument and return types, and marshal memory by hand. There is no automatic struct introspection and no garbage collection of foreign memory; you manage it, the way you would in C.</p><p>This page is about calling C code someone else wrote. To write a hot numeric loop in Clojure and have <code>jolt build</code> compile it to C for you, see <a href='/docs/api/native.html'>Native Regions (jolt.native)</a>. A region can also call C functions you declare with <code>defextern</code>, which link from a <code>:static</code> library described <a href='#static_vs_dynamic_linking_in_a_built_binary'>below</a>.</p><h2 id="declaring_the_native_library">Declaring the native library</h2><p>A library names the shared objects it needs in its <code>deps.edn</code> under <code>:jolt/native</code>. Jolt opens them before the code that binds them runs, so the bindings resolve. From the db library:</p><pre><code class="clojure">:jolt/native &#91;{:name &quot;sqlite3&quot;
                :darwin &#91;&quot;libsqlite3.0.dylib&quot; &quot;libsqlite3.dylib&quot;&#93;
                :linux  &#91;&quot;libsqlite3.so.0&quot; &quot;libsqlite3.so&quot;&#93;}
               {:name &quot;pq&quot;
