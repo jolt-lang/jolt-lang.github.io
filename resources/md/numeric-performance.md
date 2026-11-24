@@ -103,6 +103,13 @@ The numeric fast paths are covered by gates in the jolt repo (`make numeric`, `n
 unboxes, those gates are the reference for what proven-numeric emission looks like, and the [`bench/`](https://github.com/jolt-lang/jolt/tree/main/bench)
 programs (mandelbrot, the numeric micro-benchmarks) are the wall-clock check.
 
+## When that is not enough
+
+If a profiled loop over arrays is still the bottleneck after hinting, [Native Regions (jolt.native)](/docs/api/native.html)
+let you mark the loop as a `native` block that `jolt build` compiles to C. The region keeps Clojure's
+results and the JVM's exceptions, frees the arrays it makes without the garbage collector, and runs
+as ordinary Jolt under `jolt run` and in the REPL.
+
 Remember the fallback is always correctness: if a value can't be proven numeric, jolt runs it
 through the generic tower and the answer is the same. Hints and structural shape only decide whether
 that happens in a register or through a dispatch.

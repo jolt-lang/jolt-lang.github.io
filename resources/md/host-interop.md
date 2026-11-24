@@ -71,7 +71,9 @@ are accepted but no-ops.
   `offer`/`poll`, the `Collection` half, a capacity below 1 refused at construction), `TimeUnit`, `atomic.*`,
   `ConcurrentHashMap`, `ConcurrentLinkedQueue` / `ConcurrentLinkedDeque`, `CopyOnWriteArrayList` / `CopyOnWriteArraySet`, `ConcurrentSkipListMap` / `ConcurrentSkipListSet`, `Semaphore`, `locks.ReentrantReadWriteLock`,
   `ThreadLocal` / `InheritableThreadLocal` (a plain `ThreadLocal` is per thread; only the inheritable one hands a forked thread
-  its parent's value).
+  its parent's value). `CyclicBarrier` has the barrier action, `await` with or without a timeout, `reset`, `isBroken` and
+  `getNumberWaiting`, and breaks the way the JDK's does (a timeout, an interrupt or a throwing action gives the other
+  waiters `BrokenBarrierException`). A fiber that awaits a barrier parks and gives its carrier up, as with `CountDownLatch`.
 - **`java.util.regex.Pattern` / `Matcher`**: `compile` (with flags), `quote`, `.split`, `.pattern`; a `Matcher`'s `find` (and `find(int)`),
   `matches`, `lookingAt`, `group`, `start`/`end`, `region`, `reset`. The engine reads Java's grammar:
   `\p{…}` classes (Unicode category names are real categories, the POSIX names are ASCII), the
@@ -98,10 +100,19 @@ are accepted but no-ops.
   or `\r\n`, as the JVM's do), `InputStreamReader` / `OutputStreamWriter` with a charset, `FileInputStream` / `FileOutputStream` / `ByteArrayInputStream` /
   `ByteArrayOutputStream` / `SequenceInputStream` (over two streams or an `Enumeration` of them: each is read to its end and closed,
   and reads after `close` are the end of input), `PrintWriter` / `PrintStream`. `RandomAccessFile` in modes `"r"`,
-  `"rw"`, `"rws"` and `"rwd"` reads, writes, `seek`s and `setLength`s (the `DataInput`/`DataOutput`
-  methods such as `readInt` are not there yet). `io/reader` and `BufferedReader` wrap a `java.io.Reader` you wrote with
+  `"rw"`, `"rws"` and `"rwd"` reads, writes, `seek`s and `setLength`s, and has the `DataInput`/`DataOutput`
+  methods (`readInt`, `writeLong`, `readUTF`, …). `io/reader` and `BufferedReader` wrap a `java.io.Reader` you wrote with
   `reify` or `proxy`, driving its `read`. **`java.nio`** `ByteBuffer` (heap and direct, `compact`), `CharBuffer`.
   `Collections/enumeration` and `Collections/list` bridge the `Enumeration` world.
+- **`DataInputStream` / `DataOutputStream`**: wrap any `InputStream` or `OutputStream`, a `proxy` included, and are
+  `instance?` of `DataInput` and `DataOutput`. `DataOutputStream` writes `writeInt`, `writeLong`, `writeShort`,
+  `writeDouble`, `writeUTF` and the rest as the JDK's big-endian bytes, answers `size`, and passes each write straight to
+  the stream it wraps. `DataInputStream` reads them back, with `readFully`, `skipBytes`, `readLine` and `readUTF`, and a
+  short read is an `EOFException`. `writeUTF` and `readUTF` use modified UTF-8: U+0000 is `C0 80`, a character outside
+  the BMP takes six bytes, and a string that encodes past 65535 bytes is a `UTFDataFormatException`. Two differences
+  from the JDK remain. Over a stream other than a `PushbackInputStream`, `readLine` after a `\r` peeks at the next byte
+  and leaves it in the wrapped stream, where the JDK consumes it, so a `read` on the wrapped stream afterwards sees that
+  byte in jolt and not on the JVM. And `readUTF` turns a lone surrogate into U+FFFD, since a jolt string cannot hold one.
 
 ### Time, net, encoding
 
