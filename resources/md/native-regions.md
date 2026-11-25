@@ -293,15 +293,31 @@ build, with bit-identical results. Regions pay off for work per call; converting
 to an array first costs about 14ns an element, so keep data in primitive arrays across calls.
 
 Two things keep the C lean without giving up any checks' meaning. A range analysis proves where
-an overflow, int-cast or bounds check can't fire (loop counters, `(< i (alength a))` scans, indexes
-built from them, an index masked with `(bit-and i 3)`) and leaves those checks out of a fast copy of the function. The fast copy runs
-when a guard on the array arguments' lengths holds, and the fully checked code runs otherwise, so
-results and exceptions are the same either way. And a small constant-size array (up to 256
+an overflow, int-cast or bounds check can't fire and leaves those checks out of a fast copy of the
+function. It covers:
+
+- loop counters, `(< i (alength a))` scans, and indexes built from them
+- an index below a long parameter, `(< i m)`, or below another array parameter's length
+- an index below a length minus a constant, such as `(< i (dec n))` reading `(aget xs (inc i))`
+- an index masked with `(bit-and i 3)`
+- an accumulator that adds a bounded step once per counted iteration, so a sum over a `^bytes`
+  array keeps no overflow check
+
+The fast copy runs when a guard at the function's entry holds (each array argument long enough, a
+long parameter such as `m` no larger than the array it bounds), and the fully checked code runs
+otherwise, so results and exceptions are the same either way. Pure arithmetic a block repeats, such
+as `(inc i)` in both a `recur` and an index, is computed once. And a small constant-size array (up to 256
 elements) that never leaves the function or its loop iteration lives on the C stack, with no
 allocation and no free. A function's frame holds at most 8KB of stack arrays, the largest going to
 the heap past that, and a recursive helper keeps its arrays on the heap, since every frame would
 push them again. When such an array is only indexed by constants, a scratch `[x y z]`, its
 elements become plain C variables and it takes no memory at all.
+
+On x86-64 Linux with glibc, `jolt build` compiles each region function that has a loop twice, once
+for AVX2 and once for the baseline, and the loader picks the one the running CPU supports. This
+needs gcc, or clang 18 or later; older clang builds one baseline copy. To turn it off, add
+`-DJN_NO_CPU_CLONES` to the compiler: `JOLT_CC="cc -DJN_NO_CPU_CLONES"`. The two copies come from one
+pass of the C preprocessor, so a `defnative` guard on `__AVX2__` still sees the baseline in both.
 
 `(jolt.native/linked-regions)` answers, for each region whose call site has loaded, how it runs in
 this process: `:linked` in a built binary, `:jit` under `jolt run` and in the REPL, or `nil` where
