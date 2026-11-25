@@ -35,9 +35,11 @@ Each entry is a map:
   versioned name first (`libsqlite3.so.0`), the bare name as a fallback.
 
 A candidate is a **name** or a **path**, and the difference is a separator: the same line `dlopen`
-    draws. `libsqlite3.so.0` is searched for on the loader path; `native/libfoo.so` is a path, resolved **relative to the project** (the
-    directory holding `deps.edn`), not to wherever you happened to run `jolt` from. Absolute paths are
-    used as given.
+    draws. `native/libfoo.so` is a path, resolved **relative to the project** (the directory holding `deps.edn`), not to
+    wherever you happened to run `jolt` from. Absolute paths are used as given. A name such as `libcrypto.3.dylib` is
+    **looked for**: first beside the `deps.edn` that declared it, then on the loader path, and if neither opens it,
+    by [autodiscovery](/docs/api/configure.html#discovery_at_load_time), which searches pkg-config's libdirs, Homebrew, the linker's configured
+    directories and the system directories for that exact file. `JOLT_NATIVE_DISCOVER=0` turns the last step off.
 - `:optional true`: a missing library is skipped instead of erroring. Use it for feature-gated drivers (the
   db library makes Postgres optional). Check `(jolt.ffi/loaded? "libpq.so.5")` before using such a binding: from code in the
   library itself, since a dependency's libraries are opened only when one of its namespaces is
@@ -49,6 +51,27 @@ A candidate is a **name** or a **path**, and the difference is a separator: the 
   file is missing, jolt runs the task in the library's root and loads the result (see [Shipping your own C](#shipping_your_own_c) below).
 - `:process true`: bind symbols already in the running process (libc, POSIX) rather than loading a file. The
   http-client uses this for `socket`/`connect`/`send`/`recv`:
+
+### Pointing at a library on this machine
+
+Where a library is installed differs per machine, and that path does not belong in a `deps.edn` that others use.
+Put it in the project's [`deps.local.edn`](/docs/building-and-deps.html#local_overrides:_deps.local.edn) instead, which is not committed. A spec there overrides
+only the keys it states, for a library the project **or any of its dependencies** declares:
+
+```clojure
+;; deps.local.edn
+{:jolt/native [{:name "crypto" :darwin ["/opt/homebrew/opt/openssl@3/lib/libcrypto.3.dylib"]}]}
+```
+
+The dependency's other platforms, `:static` and `:build` are kept, and the library still opens on the dependency's
+first require. To have the paths found and written for you, run the [`jolt.configure`](/docs/api/configure.html) task:
+
+```clojure
+{:tasks {configure {:exec-fn jolt.configure/configure!}}}
+```
+
+The same merge applies along the dependency chain. Your project's spec for a library overrides a dependency's key
+by key, and a library's overrides those of the libraries it depends on.
 
 ### When the libraries load
 

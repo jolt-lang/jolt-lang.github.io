@@ -283,7 +283,9 @@ class miss the runtime loads the declared namespace once and retries. Names are 
 the simple spelling is derived. Core declares only the classes it implements itself (the base
 `java.time` value types, the `java.net` socket surface) and names no library.
 
-Two dependencies claiming one class is an error at resolve time naming both (whichever won would
+A closer declaration overrides a farther one: the project's claim takes a class from a dependency's, and a
+library's from the libraries it depends on, which is how an app swaps a library's shim for its own. Two
+**unrelated** dependencies claiming one class are an error at resolve time naming both (whichever won would
 decide what `java.sql.Connection` means for the whole program), and a claim on a class the runtime already
 implements is refused. A class nothing provides says so:
 
@@ -326,6 +328,12 @@ own symbols, e.g. libc sockets, no external file). A project inherits its depend
 a dependency's libraries are opened on the first require of one of its namespaces, not at startup,
 unless its spec says `:eager true`. A spec can also name a `:build` task that produces a missing library;
 see [Native interop](/docs/native-interop.html#when_the_libraries_load).
+
+Declarations of the same library merge key by key, closest first: `deps.local.edn`, then the project, then each
+library ahead of the libraries it depends on (`jolt.deps` orders the resolved libraries dependents-first for this).
+Path-valued keys (the platform candidates and `:static`) keep the root of the `deps.edn` that declared them, and each
+`:build` task is kept under its own root, so a dependency's task is run only for the files it produces. A bare
+filename candidate is looked for beside its `deps.edn`, then on the loader path, then by [autodiscovery](/docs/api/configure.html#discovery_at_load_time).
 
 ### Static vs dynamic linking
 

@@ -143,12 +143,50 @@ Every top-level key Jolt reads, and where each is covered in full:
 | `:tasks` | named shell commands or Jolt invocations, run as `jolt <task>` ([below](#what's_supported)) |
 | `:mvn/repos` | extra Maven repositories, consulted after Clojars and Central |
 | `:mvn/local-repo` | relocate the local Maven repository (default `~/.m2/repository`) |
-| `:jolt/native` | shared libraries a project or library needs, loaded before its code ([Native interop](/docs/native-interop.html)) |
+| `:jolt/native` | shared libraries a project or library needs, loaded before its code ([Native interop](/docs/native-interop.html); found per machine by [jolt.configure](/docs/api/configure.html)) |
 | `:jolt/build` | `jolt build` options (`:opt`, `:direct-link`, `:closed-world`, `:boot`, `:embed`, `:exclude-resources`, `:dynamic-natives`; [below](#deps.edn_build_options)) |
 | `:nrepl/middleware` | nREPL middleware a library contributes ([REPL-driven development](/docs/repl-driven-development.html)) |
 
-A user-level `deps.edn` (`$CLJ_CONFIG`, else `$XDG_CONFIG_HOME/clojure`, else `~/.clojure`) is merged underneath the project's, and
-`-Sdeps '{…}'` merges a map on top of both, the same chain tools.deps uses. `JOLT_NO_USER_DEPS=1` skips the user file.
+A user-level `deps.edn` (`$CLJ_CONFIG`, else `$XDG_CONFIG_HOME/clojure`, else `~/.clojure`) is merged underneath the project's,
+the project's [`deps.local.edn`](#local_overrides:_deps.local.edn) on top of it, and `-Sdeps '{…}'` on top of all of them, the same chain
+tools.deps uses with a per-checkout layer added. `JOLT_NO_USER_DEPS=1` skips the user file.
+
+### Local overrides: deps.local.edn
+
+A project's `deps.local.edn` holds what is true only for this checkout on this machine: where a native library
+lives, a `:local/root` checkout of a dependency you are working on, an extra alias. It merges over `deps.edn` the way
+`deps.edn` merges over the user file, and it is meant to stay out of version control (add it to `.gitignore`).
+
+```clojure
+;; deps.local.edn
+{:jolt/native [{:name "sqlite3" :linux ["/opt/sqlite/lib/libsqlite3.so.0"]}]
+ :aliases {:dev {:extra-deps {my/lib {:local/root "../lib"}}}}}
+```
+
+- `$JOLT_DEPS_LOCAL` names a different file, relative to the project when it is not absolute. A file it names must
+  exist.
+- Its `:jolt/native` specs are the closest declarations of all. A spec with the `:name` of a library the project
+  or **any dependency** declares overrides only the keys it states and keeps the rest: other platforms,
+  `:static`, `:build`, and when the library loads. The example above moves sqlite3 on Linux and nothing else.
+- `-Srepro` leaves the file out, along with the user `deps.edn`. `-Sdescribe` (`:config-local`) and `-Sverbose`
+  (`local_deps`) name it.
+- The [`jolt.configure`](/docs/api/configure.html) task writes it: it finds the project's native libraries on this machine and records
+  the paths, like `./configure`.
+
+### Which declaration wins
+
+Configuration merges from the farthest declaration to the closest: a library B, then the library A that depends on it,
+then the project, then `deps.local.edn`. The closer declaration wins each key it states, and the farther ones fill
+in the rest:
+
+- **`:jolt/native`**: specs for the same library (same `:name`) merge key by key. A project that sets only `:linux` for a
+  dependency's library keeps that dependency's `:darwin`/`:windows` candidates, its `:static` archive and its `:build` task.
+  Each value still resolves against the `deps.edn` that declared it, and a `:build` task only builds the files its own
+  `deps.edn` names.
+- **`:jolt/provides`**: a project's claim on a host class takes it from a dependency's, and a library's from the libraries it
+  depends on. Two unrelated libraries claiming the same class are still an error.
+- **Source roots**: a library's roots come before the roots of the libraries it depends on, even when the project lists the
+  inner library first, so the closer copy of a namespace is the one loaded.
 
 `:deps/prep-lib` is recognized but not run: Jolt has no prep step, so a dependency declaring one is named in
 a warning rather than silently contributing a half-built source root. A native library that has to
