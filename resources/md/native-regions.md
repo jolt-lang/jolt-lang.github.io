@@ -1,5 +1,5 @@
-A native region is a block of numeric code that `jolt build` compiles to C and links into the binary.
-It is for the hot loop that the [numeric optimizations](/docs/numeric-performance) can't make fast
+A native region is a block of numeric code that runs as C: `jolt build` compiles it and links it
+into the binary, and in the REPL and under `jolt run` a JIT compiles the same C in process. It is for the hot loop that the [numeric optimizations](/docs/numeric-performance) can't make fast
 enough: a kernel over arrays of doubles, a simulation step, an inner loop of a codec. The region is
 checked when it is compiled, the arrays it creates are freed deterministically, and nothing it
 allocates can leak out of it, so the C it becomes is memory safe.
@@ -15,9 +15,17 @@ allocates can leak out of it, so the C it becomes is memory safe.
         (Math/sqrt s)))))
 ```
 
-In a binary built with `jolt build` the body runs as C. Under `jolt run` and in the REPL the same
-checked program runs as Jolt, so the two agree, and you develop it like any other Clojure code. A
-build with regions needs a C compiler (`JOLT_CC`, or `cc` on `PATH`).
+In a binary built with `jolt build` the body runs as C linked into it. Under `jolt run` and in the
+REPL, the first time the call site loads, jolt compiles the region's C in process with
+[MIR](https://github.com/vnmakarov/mir)'s C compiler, which is linked into jolt. Both compile the
+same C, so a hot loop runs at native speed while you tune it at the REPL, and gives the same answers
+in the binary. A build with regions needs a C compiler (`JOLT_CC`, or `cc` on `PATH`); the JIT
+needs none, not even system headers.
+
+Where there is no native path, calling a region raises `UnsupportedOperationException` with the
+reason: on the Gambit target, on a machine MIR has no code generator for, and in a jolt built with
+`JOLT_NO_MIR=1`. A source checkout of jolt gets the JIT from `make mirlib`, or from the library
+`JOLT_MIR_LIB` names.
 
 ## What a region can do
 
@@ -27,12 +35,14 @@ The vector names the locals the region reads, each with its type:
 |---|---|
 | `^long`, `^double`, `^boolean` | a scalar, converted as `long`, `double` convert; a boolean must be one |
 | `^doubles`, `^longs` | an array the region **borrows**: it reads and writes the caller's array in place, with no copy, and cannot keep it |
+| `^bytes` | a byte array the region reads in place, each element a signed byte as a long; a region can't write, clone or create one |
 
 The body is a subset of Clojure:
 
 - `let`, `if`, `when`, `when-not`, `do`, `loop`/`recur`, `dotimes`, `and`, `or`, `not`
 - `+ - * /`, `inc`, `dec`, `quot`, `rem`, `mod`, `< <= > >= == = not=`, `zero?`, `pos?`, `neg?`
 - `long`, `double`
+- `bit-and`, `bit-or`, `bit-xor`, `bit-not`, `bit-shift-left`, `bit-shift-right`, `unsigned-bit-shift-right`
 - `aget`, `aset`, `alength`, and `double-array`, `long-array`, `aclone`, which create arrays the region **owns**
 - `Math/sqrt`, `sin`, `cos`, `tan`, `exp`, `log`, `floor`, `ceil`, `pow`, `atan2`
 - your own macros, which expand inside the region, [helpers](#helpers), and
@@ -114,22 +124,26 @@ would use it again); the path that leaves the loop may. The rules for `if`, `let
 error exits are proved with z3 alongside the implementation, and every program in the test suite runs
 under an allocator that fails on any leak or double free.
 
-## Same answers as Jolt
+## Same answers as Clojure
 
-A region follows the JVM's primitive semantics, and its Jolt fallback runs the same checked program,
-so the two give the same results and the same exceptions:
+A region follows the JVM's primitive semantics, so it gives the results and exceptions the same body
+gives as hinted Clojure on the JVM, whether it was linked into a binary or compiled by the JIT:
 
 - Long arithmetic that leaves the long range raises `ArithmeticException` ("integer overflow"). Plain
-  Jolt promotes to a bignum there; C can't, so a region doesn't, in either half.
+  Jolt promotes to a bignum there; C can't, so a region doesn't.
 - A variadic op folds left pair by pair: `(+ Long/MAX_VALUE 1 1.5)` overflows on the first pair.
 - `quot`, `rem` and `mod` by zero raise `ArithmeticException` ("/ by zero"), and
   `(quot Long/MIN_VALUE -1)` wraps to `Long/MIN_VALUE` as the JVM's long division does.
 - `(/ long long)` is a compile error, because in Clojure it's a ratio. Use `quot`, or make an operand a double.
 - `=` compares values of one type; use `==` to compare numbers across types.
 - A test must be a boolean, since every non-nil value is truthy.
-- Indexes and sizes follow the JVM: an out-of-range index raises `ArrayIndexOutOfBoundsException`,
+- Shift counts are masked to 0..63 as the JVM's long shifts are, where C would leave a count of 64
+  or more undefined.
+- A helper that recurses deeper than the thread's stack raises `StackOverflowError` instead of
+  crashing the process, and frees the arrays it held.- Indexes and sizes follow the JVM: an out-of-range index raises `ArrayIndexOutOfBoundsException`,
   and `(double-array n)` takes `n` through `intValue`.
-- The C is compiled with `-ffp-contract=off`, so floating point rounds exactly as Jolt's does.
+- Floating point rounds exactly as Jolt's does: MIR never fuses a multiply and an add, and a build
+  compiles with `-ffp-contract=off` so the C compiler doesn't either.
 
 A borrowed `long-array` is stored as Chez fixnums, so storing a value outside -2^60..2^60-1 into one
 raises; widen the array outside the region first. An owned long array has no such limit.
@@ -180,8 +194,32 @@ A helper can give a body per platform, chosen by the C compiler, the way
 ```
 
 Each guard is a C preprocessor condition, and the first one that holds is compiled. A platform no
-guard covers fails the build unless there is an `(on :default ...)`, which is also the body the Jolt
-fallback runs. The bodies must agree on their result type and on which arguments they take.
+guard covers fails the build unless there is an `(on :default ...)`. The bodies must agree on their
+result type and on which arguments they take. Outside a region the name is an ordinary function over
+the `:default` body, or the first one.
+
+A guard can also test a CPU feature. `jolt build` compiles for its C compiler's default target,
+usually the baseline, where macros like `__AVX2__` are off. The JIT compiles on the machine that runs
+the code, and defines the macro of each feature that CPU has: `__SSE4_1__`, `__SSE4_2__`,
+`__POPCNT__`, `__AVX__`, `__AVX2__`, `__FMA__`, `__BMI2__`, `__AVX512F__` and `__ARM_NEON`, plus
+`__SSE__` and `__SSE2__` on any x86-64. So a SIMD body and a portable one can sit side by side, and
+each machine runs the one it can:
+
+```clojure
+(defextern ^double dot-avx2 [^doubles xs ^doubles ys])   ; built with -mavx2, in a :jolt/native lib
+
+(defnative dot [xs ys]
+  (on "defined(__AVX2__)" (dot-avx2 xs ys))
+  (on :default (loop [i 0 s 0.0]
+                 (if (< i (alength xs))
+                   (recur (inc i) (+ s (* (aget xs i) (aget ys i))))
+                   s))))
+```
+
+MIR's C compiler has no SIMD intrinsics, so the SIMD body calls C that has them, through
+[`defextern`](#calling-c). `(jolt.native/cpu-features)` answers the features the JIT targets in this
+process, as keywords (`#{:avx2 :fma ...}`), and is empty without a JIT. `JOLT_MIR_CPU=baseline` makes
+the JIT target the baseline, to reproduce a build's choice in the REPL.
 
 ## Calling C
 
@@ -203,10 +241,10 @@ Scalar arguments and results are `^long`, `^double` or `^boolean`, and no result
 `void` function. An array parameter, `^doubles` or `^longs`, reaches C as a pointer to its elements
 followed by their count as an `int64_t`, for the length of the call; the function may read and
 write them but must not keep the pointer. A region passes the array's own storage. A `^longs` the
-region borrowed from Jolt is stored as fixnums, so pass it as `(aclone xs)`. Pass distinct arrays:
-the same array passed twice reaches C as one pointer, but the Jolt fallback copies each argument
-into its own buffer, so a function that reads one while it writes the other sees different values
-in the two halves.
+region borrowed from Jolt is stored as fixnums, so pass it as `(aclone xs)`. A `^bytes` can't be
+passed to C. Pass distinct arrays: the same array passed twice reaches C as one pointer from a
+region, but the name called outside a region copies each argument into its own buffer, so a
+function that reads one while it writes the other sees different values in the two.
 
 The region's C calls the function directly. Its C name is the symbol's with each character C
 doesn't allow replaced by `_` (`fast-erf` is `fast_erf`); `:c` names it otherwise. It is declared
@@ -215,9 +253,15 @@ one (`"<math.h>"`). A function a system header already declares, such as libc's 
 needs its `:header` (or a wrapper with another name): the prototype made from the hints would
 conflict with the one the region's C includes.
 
-Outside a region, and in a region's Jolt fallback, the name calls the same function through
-`jolt.ffi`, copying arrays into foreign memory and back, so both halves run the same code. A `jolt build` links the function like any other
-symbol, so it has to come from a `:static` entry in `:jolt/native`, or from libc or libm.
+Outside a region, the name calls the same function through `jolt.ffi`, copying arrays into foreign
+memory and back. A `jolt build` links the function like any other symbol, so it has to come from a
+`:static` entry in `:jolt/native`, or from libc or libm. The JIT finds it among the libraries the
+process has loaded.
+
+The JIT reads a `:header` itself, from the system include directories and any listed in
+`JOLT_MIR_INCLUDE`. MIR's C compiler can't parse every system's headers (Android's bionic ones among
+them), and a region whose header it can't read raises outside a build. A header that only declares
+the function can be swapped for the prototype made from the hints.
 
 The ownership checker can't see inside C: a region that calls one is memory safe only as far as
 that function is.
@@ -250,7 +294,7 @@ to an array first costs about 14ns an element, so keep data in primitive arrays 
 
 Two things keep the C lean without giving up any checks' meaning. A range analysis proves where
 an overflow, int-cast or bounds check can't fire (loop counters, `(< i (alength a))` scans, indexes
-built from them) and leaves those checks out of a fast copy of the function. The fast copy runs
+built from them, an index masked with `(bit-and i 3)`) and leaves those checks out of a fast copy of the function. The fast copy runs
 when a guard on the array arguments' lengths holds, and the fully checked code runs otherwise, so
 results and exceptions are the same either way. And a small constant-size array (up to 256
 elements) that never leaves the function or its loop iteration lives on the C stack, with no
@@ -259,5 +303,75 @@ the heap past that, and a recursive helper keeps its arrays on the heap, since e
 push them again. When such an array is only indexed by constants, a scratch `[x y z]`, its
 elements become plain C variables and it takes no memory at all.
 
-`(jolt.native/linked-regions)` answers, for each region that has loaded, whether it runs as C in
-this process: true in a built binary, false under `jolt run`.
+`(jolt.native/linked-regions)` answers, for each region whose call site has loaded, how it runs in
+this process: `:linked` in a built binary, `:jit` under `jolt run` and in the REPL, or `nil` where
+there is no native path and calling it raises.
+
+## Specializing on values
+
+The range analysis drops more checks when it knows real numbers. `^{:specialize [...]}` on the
+region's vector compiles a variant of the region for each distinct value of those parameters the
+call site sees, with the value as a constant:
+
+```clojure
+(defn msum [^long n ^doubles m]
+  (native ^{:specialize [n]} [^long n ^doubles m]
+    (loop [i 0 s 0.0]
+      (if (< i n)
+        (recur (inc i)
+               (loop [j 0 s s]
+                 (if (< j n) (recur (inc j) (+ s (aget m (+ (* i n) j)))) s)))
+        s))))
+```
+
+For `n = 4` the index `(+ (* i n) j)` is known to be in 0..15, so the variant checks once that `m`
+has at least 16 elements and leaves out the overflow, cast and bounds checks inside the loops; the
+generic region has to check `(* i n)` for overflow even in its fast copy. A 512×512 matrix sum runs
+about 1.7x faster specialized.
+
+Each variant is compiled by the JIT the first time its values arrive, up to `:max-variants` of them
+per call site (8 by default, `^{:specialize [n] :max-variants 16}`). Values past that, a variant that
+fails to compile, and a binary `jolt build` made (which has no JIT) run the region as written. The
+answers are the same either way. Values are cast as the region casts its arguments, so `2` and `2.0`
+for a `^double` share a variant. Only `^long`, `^double` and `^boolean` parameters can be
+specialized; to specialize on an array's size, pass the size as a `^long`.
+`(jolt.native/specializations)` lists the values each call site has compiled variants for.
+
+## Regions built at runtime
+
+`native-fn` compiles a region from data, at runtime, and answers a function that runs it as native
+code. The vector and body are the ones `native` takes, quoted:
+
+```clojure
+(require '[jolt.native :refer [native-fn]])
+
+(def sq (native-fn '[^long n] '((* n n))))
+(sq 7) ;=> 49
+```
+
+The region is compiled before `native-fn` returns, and a compile error throws from the call. Helpers,
+`defextern`s and macros in the body resolve in the current namespace, or in the one passed as a
+third argument. So a program can generate a region from what it only learns at runtime, a schema, a
+record layout, a size, and run it with no interpretation left. It needs the JIT: in a binary `jolt
+build` made, `native-fn` raises `UnsupportedOperationException`. `(jolt.native/jit?)` says which case
+you're in.
+
+`jolt.native.layout` is built on it. A binary record layout is data, and each function lowers it into
+a region with the offsets, widths, byte order and sign extension as constants in the C:
+
+```clojure
+(require '[jolt.native.layout :as layout])
+
+(def header [[:magic :u32] [:version :u8] [:pad 1] [:count :u16] [:size :i64]])
+
+(def parse (layout/parser header))
+(vec (parse buf 0))            ;=> [magic version count size], from the byte-array buf at offset 0
+
+(def sizes (layout/column header :size))
+(vec (sizes buf))              ;=> the :size of every whole record in buf
+```
+
+A field is `[name type]`, with type one of `:u8 :i8 :u16 :i16 :u32 :i32 :i64`, or `[:pad n]` for `n`
+bytes skipped. An unsigned field reads as a non-negative long. `:endian :little` is the default;
+pass `:endian :big` after the layout for the other order. `layout/record-size` gives a layout's size
+in bytes. A read past the end of the array raises `ArrayIndexOutOfBoundsException`, as `aget` does.
