@@ -283,9 +283,12 @@ class miss the runtime loads the declared namespace once and retries. Names are 
 the simple spelling is derived. Core declares only the classes it implements itself (the base
 `java.time` value types, the `java.net` socket surface) and names no library.
 
-Two dependencies claiming one class is an error at resolve time naming both (whichever won would
-decide what `java.sql.Connection` means for the whole program), and a claim on a class the runtime already
-implements is refused. A class nothing provides says so:
+A closer claim takes a class from a farther one, the same precedence `:jolt/native` specs follow: the
+project's claim wins over any dependency's, and a library's over those of the libraries it depends on,
+so an app can swap a library's shim for its own. Two unrelated libraries claiming one class, neither
+depending on the other, is an error at resolve time naming both (whichever won would decide what
+`java.sql.Connection` means for the whole program), and a claim on a class the runtime already
+implements is refused. Before 0.8.31 every second claim was refused, the project's included. A class nothing provides says so:
 
 ```
 No dependency provides java.time.ZoneOffset — a concrete implementation of the
@@ -326,6 +329,14 @@ own symbols, e.g. libc sockets, no external file). A project inherits its depend
 a dependency's libraries are opened on the first require of one of its namespaces, not at startup,
 unless its spec says `:eager true`. A spec can also name a `:build` task that produces a missing library;
 see [Native interop](/docs/native-interop.html#when_the_libraries_load).
+
+Two specs with the same `:name` are reconciled key by key rather than one replacing the other. The
+resolved libraries are ordered so each one precedes the libraries it depends on, with the project
+first, and the first spec to state a key wins it: the project over library A, A over the library B it
+depends on. A `deps.local.edn` spec is closer still. That order is also the order of the source roots,
+so a project that lists B ahead of A in `:deps` now gets A's roots first. See
+[Native interop](/docs/native-interop.html#when_two_declarations_name_the_same_library) and
+[deps.local.edn](/docs/building-and-deps.html#per-machine_overrides_with_deps.local.edn).
 
 ### Static vs dynamic linking
 

@@ -106,9 +106,9 @@ programs (mandelbrot, the numeric micro-benchmarks) are the wall-clock check.
 ## When that is not enough
 
 If a profiled loop over arrays is still the bottleneck after hinting, [Native Regions (jolt.native)](/docs/api/native.html)
-let you mark the loop as a `native` block that `jolt build` compiles to C. The region keeps Clojure's
-results and the JVM's exceptions, frees the arrays it makes without the garbage collector, and runs
-as ordinary Jolt under `jolt run` and in the REPL.
+let you mark the loop as a `native` block that compiles to C: `jolt build` links it into the binary,
+and under `jolt run` and in the REPL a JIT compiles the same C in process. The region keeps Clojure's
+results and the JVM's exceptions, and frees the arrays it makes without the garbage collector.
 
 Remember the fallback is always correctness: if a value can't be proven numeric, jolt runs it
 through the generic tower and the answer is the same. Hints and structural shape only decide whether

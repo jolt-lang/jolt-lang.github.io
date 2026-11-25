@@ -138,9 +138,9 @@ Every top-level key Jolt reads, and where each is covered in full:
 | key | what it does |
 | --- | --- |
 | `:paths` | source directories for the project itself (default `["src"]`) |
-| `:deps` | dependency coordinates (git, local, or Maven; [below](#what's_supported)) |
-| `:aliases` | named argument maps selected with `-A`/`-M`/`-X`/`-T` ([below](#what's_supported)) |
-| `:tasks` | named shell commands or Jolt invocations, run as `jolt <task>` ([below](#what's_supported)) |
+| `:deps` | dependency coordinates (git, local, or Maven; [below](#what%27s_supported)) |
+| `:aliases` | named argument maps selected with `-A`/`-M`/`-X`/`-T` ([below](#what%27s_supported)) |
+| `:tasks` | named shell commands or Jolt invocations, run as `jolt <task>` ([below](#what%27s_supported)) |
 | `:mvn/repos` | extra Maven repositories, consulted after Clojars and Central |
 | `:mvn/local-repo` | relocate the local Maven repository (default `~/.m2/repository`) |
 | `:jolt/native` | shared libraries a project or library needs, loaded before its code ([Native interop](/docs/native-interop.html)) |
@@ -153,6 +153,34 @@ A user-level `deps.edn` (`$CLJ_CONFIG`, else `$XDG_CONFIG_HOME/clojure`, else `~
 `:deps/prep-lib` is recognized but not run: Jolt has no prep step, so a dependency declaring one is named in
 a warning rather than silently contributing a half-built source root. A native library that has to
 be compiled names its build task in its `:jolt/native` spec (`:build`), which Jolt does run; see [Native interop](/docs/native-interop.html#building_it_for_the_projects_that_use_it).
+
+### Per-machine overrides with deps.local.edn
+
+A `deps.local.edn` beside the project's `deps.edn` holds settings for this checkout only: where a
+native library lives on this machine, a `:local/root` checkout of a dependency you are working on, an
+extra alias or task. It merges over `deps.edn` the way `deps.edn` merges over the user file, so the
+full chain is user file, project `deps.edn`, `deps.local.edn`, then `-Sdeps`. Keep it out of version
+control; it is the file a [`jolt.configure`](/docs/native-interop.html#finding_libraries_on_this_machine)
+task writes.
+
+```clojure
+;; deps.local.edn
+{:deps {my/helpers {:local/root "../helpers"}}
+ :jolt/native [{:name "sqlite3" :linux ["/opt/sqlite/lib/libsqlite3.so.0"]}]}
+```
+
+Its `:jolt/native` specs are not merged as a vector (that would replace the project's list). Each one
+overrides, key by key, the spec of the same `:name` that the project or any dependency declares. The
+spec above changes only the Linux path of `sqlite3`: its other platforms, its `:static` archive and its
+`:build` task stay as declared, and a dependency's library still loads on the first require of that
+dependency rather than at startup. A spec naming a library nobody declares adds it as the project's
+own. A relative path in the file resolves against the directory the file is in.
+
+`$JOLT_DEPS_LOCAL` names a different file, relative to the project directory unless it is absolute.
+If the file it names does not exist, jolt warns and carries on without one. `-Srepro` leaves
+`deps.local.edn` out along with the user file (`JOLT_NO_USER_DEPS=1` skips only the user file).
+`-Sdescribe` shows the file under `:config-local` (and in `:config-files` when it exists), and
+`-Sverbose` prints it as `local_deps`; both say `nil` / `(skipped)` under `-Srepro`.
 
 ### What's supported
 

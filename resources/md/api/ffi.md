@@ -374,7 +374,8 @@ Argument and return types are keywords:
 - `:pointer` (alias `:void*`): any pointer (a machine address)
 - `:string`: `char *`, marshaled both ways (UTF-8 both directions)
 - `:bool` (a one-byte C boolean (`_Bool`/`stdbool.h`), `true`/`false` in Jolt. Jolt truthiness decides
-  the byte going out, so `nil` and `false` send 0 and everything else sends 1) a C predicate answers
+  the byte going out, so `nil` and `false` send 0 and every other non-number sends 1; a number
+  throws `IllegalArgumentException`, since a C-style `0` would otherwise send true) a C predicate answers
   `true`/`false` rather than the truthy number `0`. It travels as one byte, not as an int-sized
   `boolean`, which would be the wrong width for `_Bool` and read three bytes of whatever the callee
   left above the result: a `bool` function bound as `:int` can read a false as a nonzero number.
