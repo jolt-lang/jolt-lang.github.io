@@ -189,6 +189,18 @@ To reload a file from disk rather than evaluating form by form, use the nREPL `l
 CIDER, *Load Current File* in Calva). It re-reads the file in its namespace, so every changed definition lands
 at once. This is the usual move after a batch of edits.
 
+`load-file` reloads one file. It doesn't touch the namespaces that require it, so they keep the old
+definitions. To reload everything a change affects, use [`jolt.reload`](/docs/api/reload.html). It
+finds the files that changed since the last call, unloads them along with every namespace that
+depends on them, and loads them back in dependency order. `defonce` state survives, and so do vars
+marked `^:jolt.reload/keep`:
+
+```clojure
+(require '[jolt.reload :as reload])
+(reload/reload)
+;; => {:unloaded [app.core app.db], :loaded [app.db app.core]}
+```
+
 ## Middleware
 
 The core server is intentionally small. A library can add the heavier nREPL ops as middleware (a
