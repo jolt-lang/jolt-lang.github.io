@@ -86,6 +86,15 @@ Strings are Chez strings: codepoint-indexed, with no UTF-16 surrogate pairs. `co
 `subs`, and `nth` all index codepoints, so `(count "😀")` is 1 where the JVM answers 2, and `subs`
 never splits a character in half. Only code doing UTF-16 unit arithmetic notices the difference.
 
+The same model holds at a `Writer`: `write(int)` with a supplementary code point (U+10000 to U+10FFFF) writes it whole, where
+the JDK keeps the int's low 16 bits and writes a different character without an error. A library that writes text char by
+char with `(.write w (int c))` keeps its emoji. Ints past U+10FFFF or below 0 keep the low 16 bits, as on the JDK.
+
+```clojure
+(let [w (java.io.StringWriter.)] (.write w (int 0x1F512)) (mapv int (str w)))
+;; Jolt: [128274]   JVM: [62738]
+```
+
 ## Regex engine
 
 Patterns compile through [irregex](https://github.com/ashinn/irregex) (vendored), not `java.util.regex`, behind a translator that reads Java's
@@ -194,6 +203,12 @@ superset: portable JVM code behaves identically, and only code that *depends on 
 
 `(.-field m)` reading a map as an object is the one worth calling out. It makes a map interchangeable with
 a record for field access, and it will not port back.
+
+A static call whose argument Jolt cannot type stays lenient. `((fn [x] (Double/valueOf x)) 2)` answers `2.0`, where the
+JVM's Reflector finds no `valueOf` taking a `Long` and throws `IllegalArgumentException`. Jolt types fewer primitive
+expressions than the JVM compiler, so it cannot tell an untyped argument from a primitive one. With every argument's
+class known it refuses as the JVM does: `(Float/valueOf (Double/valueOf "1"))` throws "No matching method valueOf found
+taking 1 args" on both.
 
 On the I/O side, `line-seq` and `file-seq` are duck-typed and accept a path string, `with-open` closes
 anything carrying a `:close` function, and `spit` is atomic: a failure leaves the original file
