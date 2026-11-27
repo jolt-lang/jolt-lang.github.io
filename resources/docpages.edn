@@ -18,6 +18,7 @@
   ["extension-points.md"           "Extension Points"                  "topic"]
   ["embedding-sci.md"              "Embedding SCI"                     "topic"]
   ["numeric-performance.md"        "Numeric Performance"               "topic"]
+  ["native-regions.md"             "Native Regions"                    "topic"]
   ["performance-idioms.md"         "Performance Idioms"                "topic"]
   ["libraries.md"                  "Libraries"                          "topic"]
 
