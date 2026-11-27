@@ -46,7 +46,8 @@ are accepted but no-ops.
   run, unset for `-e` and stdin; see [Running a script](/docs/getting-started.html#running_a_script)). `java.version` is nil **deliberately**. Jolt has no JDK to report, and
   claiming one would flip JVM-only code paths in libraries that parse it. Branch on `jolt.version` (or a
   `:jolt` reader conditional) instead.
-- **`java.lang.Thread`**: `sleep` (real), `yield`/`interrupted` (no-ops), `currentThread`.
+- **`java.lang.Thread`**: `sleep` (real), `yield`/`interrupted` (no-ops), `currentThread`; `MIN_PRIORITY`, `NORM_PRIORITY` and
+  `MAX_PRIORITY` (1, 5 and 10).
 
 ### Strings, collections, I/O
 
@@ -56,6 +57,12 @@ are accepted but no-ops.
   exception class and message (a flag on the wrong conversion, a duplicate flag, `-` with no
   width, a missing argument).
 - **`StringBuilder`**: `append` `toString` `length` `charAt` `setLength`.
+- **`java.util.StringJoiner`**: `add`, `toString`, `length`, `setEmptyValue` and `merge`, with the JDK's answers for nil
+  parts, empty values and merging.
+- **`java.util.Arrays`**: besides `sort`, `fill`, `copyOf` and the rest, `compare`, `compareUnsigned` and `mismatch`, with
+  their range forms (`(Arrays/compareUnsigned a aFrom aTo b bFrom bTo)`). `compare` orders elements as the element type's
+  own compare does (`Double.compare` puts NaN last and -0.0 before 0.0), then by length, with a null array first.
+  `compareUnsigned` takes byte, short, int and long arrays; on bytes its order is the order UTF-8 keys sort in.
 - **`java.util.ArrayList` / `HashMap`**: the mutable `add`/`get`/`put`/`size`/`remove`/`keySet`/… surface. `LinkedHashMap` and
   `LinkedHashSet` keep insertion order with O(1) operations and JDK 21's sequenced methods (`putFirst`, `pollLastEntry`,
   `reversed`, `addFirst`, …); an access-ordered map (`(LinkedHashMap. 16 0.75 true)`) moves what `get` and `put` reach to
@@ -74,6 +81,8 @@ are accepted but no-ops.
   its parent's value). `CyclicBarrier` has the barrier action, `await` with or without a timeout, `reset`, `isBroken` and
   `getNumberWaiting`, and breaks the way the JDK's does (a timeout, an interrupt or a throwing action gives the other
   waiters `BrokenBarrierException`). A fiber that awaits a barrier parks and gives its carrier up, as with `CountDownLatch`.
+  `ScheduledThreadPoolExecutor` has `setRemoveOnCancelPolicy` / `getRemoveOnCancelPolicy`: with the policy on, a cancelled
+  task leaves `getQueue` at once instead of waiting out its delay there.
 - **`java.util.regex.Pattern` / `Matcher`**: `compile` (with flags), `quote`, `.split`, `.pattern`; a `Matcher`'s `find` (and `find(int)`),
   `matches`, `lookingAt`, `group`, `start`/`end`, `region`, `reset`. The engine reads Java's grammar:
   `\p{…}` classes (Unicode category names are real categories, the POSIX names are ASCII), the
@@ -99,7 +108,10 @@ are accepted but no-ops.
 - **Readers, writers, streams**: `StringReader` / `StringWriter` / `PushbackReader`, `BufferedReader` (`readLine` and `.lines` end a line on `\n`, `\r`
   or `\r\n`, as the JVM's do), `InputStreamReader` / `OutputStreamWriter` with a charset, `FileInputStream` / `FileOutputStream` / `ByteArrayInputStream` /
   `ByteArrayOutputStream` / `SequenceInputStream` (over two streams or an `Enumeration` of them: each is read to its end and closed,
-  and reads after `close` are the end of input), `PrintWriter` / `PrintStream`. `RandomAccessFile` in modes `"r"`,
+  and reads after `close` are the end of input), `PrintWriter` / `PrintStream`. A `PrintWriter` over an `OutputStream` wraps it
+  in an `OutputStreamWriter` (with the charset, when one is passed) and a `BufferedWriter`, as the JDK does, and with
+  `autoFlush` set it flushes after `println`, `printf` and `format`; `(PrintWriter. "out.txt")` and `(PrintWriter. file)` open
+  the file, with an optional charset second and no autoFlush. `RandomAccessFile` in modes `"r"`,
   `"rw"`, `"rws"` and `"rwd"` reads, writes, `seek`s and `setLength`s, and has the `DataInput`/`DataOutput`
   methods (`readInt`, `writeLong`, `readUTF`, …). `io/reader` and `BufferedReader` wrap a `java.io.Reader` you wrote with
   `reify` or `proxy`, driving its `read`. **`java.nio`** `ByteBuffer` (heap and direct, `compact`), `CharBuffer`.
@@ -151,7 +163,9 @@ are accepted but no-ops.
   read (`user.dir`, `java.class.path`) stay current rather than being frozen at the call.
 - **`java.util.Base64`**: the basic, URL-safe and MIME encoders and decoders (`getMimeEncoder` wraps at 76 with CRLF or at a
   length and separator you give; the MIME decoder skips everything outside the alphabet, as the JDK's
-  does).
+  does). `Decoder.wrap` returns an `InputStream` that decodes as it reads, so over a source that stays open (a pipe, a
+  socket) it hands back what has been decoded so far; padding, an unpadded tail and its errors (`Illegal base64 character
+  0x23`) match JDK 21.
 - **`java.nio.charset`**: `Charset` (`forName`, `defaultCharset`, `availableCharsets`), `StandardCharsets`, `CharsetDecoder` with both `decode` overloads,
   `CodingErrorAction` and `CoderResult`: the chunked decode loop that leaves a partial multi-byte character in the input
   buffer for the next read works for UTF-8, ISO-8859-1 and US-ASCII; any other charset decodes its
@@ -169,11 +183,21 @@ are accepted but no-ops.
   with the `(E.)` / `(E. msg)` / `(E. msg cause)` constructors.
 
 Every exception class inherits the `java.lang.Throwable` methods, as it does on the JVM: `.getMessage` `.getLocalizedMessage` `.getCause`
-  `.toString` `.printStackTrace` (both overloads) `.getStackTrace` `.getSuppressed` `.fillInStackTrace`. This holds equally for an `ex-info`, a
+  `.toString` `.printStackTrace` (both overloads) `.getStackTrace` `.addSuppressed` `.getSuppressed` `.initCause` `.fillInStackTrace`. This holds equally for an `ex-info`, a
   constructed `(Exception. "…")`, and an error the host itself raised; the value a `catch` binds answers the
   same set whichever it is. `.printStackTrace` prints a real backtrace (see [Stack traces](/docs/tools-deps.html#stack_traces)). `.getStackTrace` is empty: Jolt
   reifies no `StackTraceElement` array, because tail-call optimization means there is no faithful per-frame array
-  to hand back.
+  to hand back. `.addSuppressed` and `.getSuppressed` behave as in JDK 21: the suppressed throwables come back as a fresh
+  `Throwable[]` in the order they were added, adding `nil` or the throwable itself is refused with the JDK's exception, and
+  `.printStackTrace` prints each one after the frames as a `Suppressed:` line, one tab in, with its own frames beneath it.
+
+A host call whose argument has the wrong class throws the `ClassCastException` the JVM throws for that call. When the
+compiler knows the receiver's class (a type hint, a constructor, a literal, a `catch` binding, a call's declared return)
+the message is the checkcast's, `class java.lang.Long cannot be cast to class java.lang.String (java.lang.Long and
+java.lang.String are in module java.base of loader 'bootstrap')`; when it does not, the call is reflective and the message is `Class.cast`'s, `Cannot cast
+java.lang.Long to java.lang.String`. Overloads are chosen as Clojure's compiler chooses them, nil included: in
+`(String/valueOf nil)` the nil is typed and picks `valueOf(char[])`, which throws `NullPointerException` as on the JVM,
+while `((fn [x] (String/valueOf x)) nil)` takes `valueOf(Object)` and answers `"null"`.
 
 `clojure.reflect` is present (`reflect` on a value or a class answers its members from the same tables interop
 dispatches through; `Reflector/getMethods` serves the interpreted call path libraries like SCI take), and so is the
@@ -214,7 +238,8 @@ Add the one it names, re-run, repeat until the library is happy. **Method, stati
 
 ### A worked example: `java.util.StringJoiner`
 
-Say a library builds strings with `java.util.StringJoiner`, which Jolt doesn't ship. A stateful object is a **tagged table**:
+Say a library builds strings with `java.util.StringJoiner`. Jolt has shipped it since 0.8.31, but it is still a compact
+example of a stateful class, and the steps are the same for one Jolt doesn't ship. A stateful object is a **tagged table**:
 `jolt.host/tagged-table` creates one carrying a `:jolt/type` tag, and `ref-put!` / `ref-get` set and read its fields. Instance
 methods are keyed by that tag.
 
