@@ -144,6 +144,8 @@ Third-party Clojure/JVM libraries confirmed to run on Jolt.
   reader conditionals, auto-resolve).
 - **[yamlstar](https://github.com/yaml/yamlstar)**: YAML load/dump (pure-Clojure parser, JSON-safe integer policy).
 - **[medley](https://github.com/weavejester/medley)**: collection utilities.
+- **[editscript](https://github.com/juji-io/editscript)**: diffing and patching Clojure data, through its `:clj` branches; its
+  suite runs 63 tests with 291 assertions passing.
 - **[ordered](https://github.com/clj-commons/ordered)**: insertion-ordered map and set (`ordered-map`/`ordered-set`), with transients and `#ordered/map` / `#ordered/set`
   reader tags.
 - **[config](https://github.com/yogthos/config)**: environment configuration.
