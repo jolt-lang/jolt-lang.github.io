@@ -66,6 +66,15 @@ for a numeric type is the code that notices.
 Two related edges: `(format "%x" -1)` prints `"ff"` (the narrowest width that holds the value) where the JVM
 pads to a 64-bit `"ffffffffffffffff"`; and `(double \a)` returns `97.0` where the JVM throws `ClassCastException`.
 
+The one integer type also means a `BigInt` inside the long range is indistinguishable from a long:
+`(Math/abs 2N)` answers `2`, where the JVM finds no `abs` taking a `BigInt` and throws.
+
+`Math` and `StrictMath` transcendentals (`sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `sinh`, `cosh`,
+`tanh`, `exp`, `expm1`, `log`, `log1p`, `pow`, `hypot`, and `clojure.math`'s same functions) come from the
+platform's libm, so their last digit can differ from the JVM's: `(Math/sinh 2.0)` is `3.6268604078470186` with
+macOS's libm and `3.626860407847019` on JDK 21. The JVM's own answer varies too, since HotSpot computes some of
+these with per-CPU intrinsics rather than StrictMath's fdlibm.
+
 ## Sequences and collections
 
 Every lazy sequence is one type. Clojure's specialised seq classes are not modelled separately:
@@ -203,12 +212,6 @@ superset: portable JVM code behaves identically, and only code that *depends on 
 
 `(.-field m)` reading a map as an object is the one worth calling out. It makes a map interchangeable with
 a record for field access, and it will not port back.
-
-A static call whose argument Jolt cannot type stays lenient. `((fn [x] (Double/valueOf x)) 2)` answers `2.0`, where the
-JVM's Reflector finds no `valueOf` taking a `Long` and throws `IllegalArgumentException`. Jolt types fewer primitive
-expressions than the JVM compiler, so it cannot tell an untyped argument from a primitive one. With every argument's
-class known it refuses as the JVM does: `(Float/valueOf (Double/valueOf "1"))` throws "No matching method valueOf found
-taking 1 args" on both.
 
 On the I/O side, `line-seq` and `file-seq` are duck-typed and accept a path string, `with-open` closes
 anything carrying a `:close` function, and `spit` is atomic: a failure leaves the original file
