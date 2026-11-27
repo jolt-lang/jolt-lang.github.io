@@ -66,6 +66,15 @@ for a numeric type is the code that notices.
 Two related edges: `(format "%x" -1)` prints `"ff"` (the narrowest width that holds the value) where the JVM
 pads to a 64-bit `"ffffffffffffffff"`; and `(double \a)` returns `97.0` where the JVM throws `ClassCastException`.
 
+The one integer type also means a `BigInt` inside the long range is indistinguishable from a long:
+`(Math/abs 2N)` answers `2`, where the JVM finds no `abs` taking a `BigInt` and throws.
+
+`Math` and `StrictMath` transcendentals (`sin`, `cos`, `tan`, `asin`, `acos`, `atan`, `atan2`, `sinh`, `cosh`,
+`tanh`, `exp`, `expm1`, `log`, `log1p`, `pow`, `hypot`, and `clojure.math`'s same functions) come from the
+platform's libm, so their last digit can differ from the JVM's: `(Math/sinh 2.0)` is `3.6268604078470186` with
+macOS's libm and `3.626860407847019` on JDK 21. The JVM's own answer varies too, since HotSpot computes some of
+these with per-CPU intrinsics rather than StrictMath's fdlibm.
+
 ## Sequences and collections
 
 Every lazy sequence is one type. Clojure's specialised seq classes are not modelled separately:
@@ -85,6 +94,15 @@ it. Code that depends on chunk-boundary side effects sees a different number of 
 Strings are Chez strings: codepoint-indexed, with no UTF-16 surrogate pairs. `count`, `seq`,
 `subs`, and `nth` all index codepoints, so `(count "😀")` is 1 where the JVM answers 2, and `subs`
 never splits a character in half. Only code doing UTF-16 unit arithmetic notices the difference.
+
+The same model holds at a `Writer`: `write(int)` with a supplementary code point (U+10000 to U+10FFFF) writes it whole, where
+the JDK keeps the int's low 16 bits and writes a different character without an error. A library that writes text char by
+char with `(.write w (int c))` keeps its emoji. Ints past U+10FFFF or below 0 keep the low 16 bits, as on the JDK.
+
+```clojure
+(let [w (java.io.StringWriter.)] (.write w (int 0x1F512)) (mapv int (str w)))
+;; Jolt: [128274]   JVM: [62738]
+```
 
 ## Regex engine
 

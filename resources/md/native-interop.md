@@ -8,7 +8,7 @@ and return types, and marshal memory by hand. There is no automatic struct intro
 garbage collection of foreign memory; you manage it, the way you would in C.
 
 This page is about calling C code someone else wrote. To write a hot numeric loop in Clojure and have
-`jolt build` compile it to C for you, see [Native Regions (jolt.native)](/docs/api/native.html). A
+jolt compile it to C for you, see [Native Regions (jolt.native)](/docs/api/native.html). A
 region can also call C functions you declare with `defextern`, which link from a `:static` library
 described [below](#static_vs_dynamic_linking_in_a_built_binary).
 
@@ -37,7 +37,8 @@ Each entry is a map:
 A candidate is a **name** or a **path**, and the difference is a separator: the same line `dlopen`
     draws. `libsqlite3.so.0` is searched for on the loader path; `native/libfoo.so` is a path, resolved **relative to the project** (the
     directory holding `deps.edn`), not to wherever you happened to run `jolt` from. Absolute paths are
-    used as given.
+    used as given. A name is also tried beside the `deps.edn` that declared it first, and looked for
+    further when nothing opens it (see [Where a bare filename is looked for](#where_a_bare_filename_is_looked_for)).
 - `:optional true`: a missing library is skipped instead of erroring. Use it for feature-gated drivers (the
   db library makes Postgres optional). Check `(jolt.ffi/loaded? "libpq.so.5")` before using such a binding: from code in the
   library itself, since a dependency's libraries are opened only when one of its namespaces is
@@ -49,6 +50,152 @@ A candidate is a **name** or a **path**, and the difference is a separator: the 
   file is missing, jolt runs the task in the library's root and loads the result (see [Shipping your own C](#shipping_your_own_c) below).
 - `:process true`: bind symbols already in the running process (libc, POSIX) rather than loading a file. The
   http-client uses this for `socket`/`connect`/`send`/`recv`:
+- `:pkg-config`, `:brew`, `:search`: hints for finding the library when the candidates do not open
+  (see [Finding libraries on this machine](#finding_libraries_on_this_machine)). Jolt ignores them
+  when a candidate loads.
+
+### Where a bare filename is looked for
+
+A candidate with no separator in it, like `"libcrypto.3.dylib"`, names a library rather than a place,
+so jolt looks for it in three steps and stops at the first file that opens:
+
+1. beside the `deps.edn` that declared the spec, so a project that builds or ships the library into
+   its own folder gets that copy;
+2. wherever the platform's loader finds it (`dlopen` / `LoadLibrary` search rules);
+3. **autodiscovery**: the same places [`jolt.configure`](#finding_libraries_on_this_machine) searches,
+   for that exact filename. Those are the spec's `:search` directories, its pkg-config libdirs, Homebrew's
+   `opt/<formula>/lib`, `$JOLT_LIBRARY_PATH` and the platform's library-path variables, the dynamic
+   linker's configured directories (`/etc/ld.so.conf` and its includes), the usual system directories,
+   and last every Homebrew formula's `lib`, so `libcrypto.3.dylib` is found under `openssl@3`.
+
+Discovery runs only after every candidate has failed, so a library that already loads costs nothing
+more, and it reads files and directories itself without running pkg-config, ldconfig or brew. It
+looks for the filename as written: a spec that names only `libsqlite3.so.9` does not pick up a
+`libsqlite3.so.0` it finds. When it finds nothing, the missing-library error says so and points at
+`deps.local.edn` and `jolt.configure`. `JOLT_NATIVE_DISCOVER=0` turns the third step off. A `:static`
+spec is not discovered, and a binary from `jolt build` loads its candidates as before.
+
+### When two declarations name the same library
+
+The project, its dependencies and theirs can all declare the same library (by `:name`). Jolt
+loads it once, and reconciles the specs **key by key**, closest first: the project's declaration
+wins over library A's, and A's over that of the library B it depends on. A key the closer spec leaves
+out is filled in from the farther one. So a project that adds only the `:windows` candidates a
+dependency is missing writes just that:
+
+```clojure
+:jolt/native [{:name "sqlite3" :windows ["sqlite3.dll"]}]
+```
+
+and keeps the dependency's `:darwin` and `:linux` lists, its `:static` archive and its `:build` task.
+A path keeps resolving against the `deps.edn` that wrote it, and each `:build` task still runs only
+for the files its own `deps.edn` declares, never for a path the project pinned somewhere else.
+A [`deps.local.edn`](/docs/building-and-deps.html#per-machine_overrides_with_deps.local.edn) is closer
+than all of them.
+
+Before 0.8.31 the closer spec replaced the farther one whole, so a project that pinned one platform's
+path dropped the dependency's `:static` and `:build` with it.
+
+### Finding libraries on this machine
+
+A `deps.edn` names a library portably. Where the file actually is differs per machine: a Homebrew
+prefix, a Nix store path, `/opt`, a distro's multiarch directory, a library built into `~/.local`.
+`jolt.configure` finds it and records the path in the project's
+[`deps.local.edn`](/docs/building-and-deps.html#per-machine_overrides_with_deps.local.edn), the way
+`./configure` does for a C project. Add a task:
+
+```clojure
+:tasks {configure {:exec-fn jolt.configure/configure!}}
+```
+
+```
+$ jolt run configure
+jolt.configure: 2 native libraries on darwin
+  sqlite3              found    /opt/homebrew/opt/sqlite3/lib/libsqlite3.dylib (brew)
+  z                    present  (a declared candidate opens)
+wrote /path/to/project/deps.local.edn
+```
+
+It looks at every `:jolt/native` library the project resolves to, its own and its dependencies',
+and for each one whose declared candidates do not open it searches, in order:
+
+1. the libdir (and any `-L` directories) of the library's pkg-config `.pc` file, found on
+   `$PKG_CONFIG_PATH` and the usual prefixes;
+2. Homebrew's `opt/<formula>/lib` (macOS);
+3. the spec's `:search` directories;
+4. `$JOLT_LIBRARY_PATH`, `$LD_LIBRARY_PATH` / `$DYLD_LIBRARY_PATH` / `$DYLD_FALLBACK_LIBRARY_PATH`,
+   `$LIBRARY_PATH` (and `$PATH` on Windows), `~/.local/lib`, `~/.nix-profile/lib`, the common prefixes,
+   the dynamic linker's configured directories, then the system directories;
+5. every Homebrew formula's `lib`.
+
+It reads all of this itself, without running pkg-config, ldconfig or brew, so it gives the same answer
+in a container with none of them installed. In each directory it matches the platform's names for the
+library (`libfoo.so`, `libfoo.so.1`, `libfoo.1.dylib`, `foo.dll`), preferring a filename the spec
+already lists, then the unversioned name, then the soname over the fully versioned file it links to,
+so an upgrade keeps the recorded path working. A file counts only if it opens, so a library built
+for another architecture, or one whose own dependencies are missing, is passed over.
+
+The found paths are written as specs that set only this platform's key, merged into whatever
+`deps.local.edn` already holds:
+
+```clojure
+{:jolt/native
+ [{:name "sqlite3",
+   :darwin ["/opt/homebrew/opt/sqlite3/lib/libsqlite3.dylib"]}]}
+```
+
+A spec can steer the search:
+
+| key | meaning | default |
+| --- | --- | --- |
+| `:pkg-config` | a package name, or a list of them | the `:name`, then `lib<name>` |
+| `:brew` | a Homebrew formula, or a list of them | the `:name` |
+| `:search` | a directory or a list of them, relative to the declaring `deps.edn` | none |
+
+```clojure
+{:name "crypto" :pkg-config "libcrypto" :brew "openssl@3"
+ :darwin ["libcrypto.3.dylib"] :linux ["libcrypto.so.3"]}
+```
+
+Flags, after the task name:
+
+| flag | effect |
+| --- | --- |
+| `LIB ...` | look only for these libraries (by `:name`) |
+| `--all` | look for libraries whose declared candidates already open, too |
+| `--dry-run`, `-n` | report what it finds without writing |
+| `--no-verify` | take the first matching file without opening it (for a library you cannot load on this machine) |
+| `--file PATH` | write somewhere other than the project's `deps.local.edn` (or `$JOLT_DEPS_LOCAL`) |
+| `--dir PATH` | configure the project in another directory |
+
+It exits 1 when a required library is still missing (an `:optional` one is reported, not fatal), so a
+task chain stops there. `:process` specs, and `:static` specs that declare no shared object for this
+platform, are skipped. `jolt -m jolt.configure` with the same flags works without a task.
+
+The pieces are callable too:
+
+```clojure
+(require '[jolt.configure :as configure])
+
+(configure/find-library "sqlite3")
+;; => {:path "/opt/homebrew/opt/sqlite3/lib/libsqlite3.dylib", :via :brew}
+
+(configure/find-library {:name "pq" :brew "libpq"} {:verify? false})
+
+(configure/discover [{:name "sqlite3" :darwin ["libsqlite3.9.dylib"]}] {:only #{"sqlite3"}})
+;; => ({:name "sqlite3", :optional false, :status :found,
+;;      :path "/opt/homebrew/opt/sqlite3/lib/libsqlite3.dylib", :via :brew})
+
+(configure/pkg-config "libcrypto")
+;; => {:file "/opt/homebrew/lib/pkgconfig/libcrypto.pc", :version "3.5.0",
+;;     :libdir "/opt/homebrew/Cellar/openssl@3/3.5.0/lib", :includedir "...",
+;;     :cflags ["-I..."], :libs ["-L..." "-lcrypto"]}
+```
+
+`find-library` takes a spec or a library name and answers `{:path :via}` (`:via` is `:pkg-config`,
+`:brew`, `:search` or `:system`) or `nil`. `discover` answers one map per spec with `:status`
+`:found`, `:present` (a declared candidate already opens; skipped unless `:all?`) or `:missing`.
+`pkg-config` answers what `pkg-config` would for a package, read from its `.pc` file, or `nil`.
 
 ### When the libraries load
 
@@ -320,7 +467,18 @@ The argument and return types are keywords. The full set:
 
 A `:bool` reads only the low byte C defines for a `_Bool`, so a callee that leaves garbage above it
 still reads right; binding a `bool` function as `:int` does not. Going out, `nil` and `false`
-send 0 and any other value sends 1. As a struct field it is one byte at one-byte alignment, as in C.
+send 0 and any other non-number sends 1. A number throws `IllegalArgumentException`: 0 is truthy in
+Clojure, so a C-style `0` for false, or `(if on? 1 0)`, would otherwise send true without a word.
+
+```clojure
+(set-enabled! 0)
+;; IllegalArgumentException: jolt.ffi: :bool got the number 0, and 0 is truthy, so pass true or false
+```
+
+Pass `true` or `false`, or the value whose truthiness you mean. This holds for call arguments,
+`write` and layout fields, and the result of a foreign-callable bound to return `:bool`; since 0.8.31
+code that passed `1` for true has to change too. As a struct field a `:bool` is one byte at one-byte
+alignment, as in C.
 
 A `:string` argument is copied to a NUL-terminated C string for the call; a `:string` return reads a
 NUL-terminated C string back, decoding UTF-8 (falling back to Latin-1). Pointers are plain integers;
