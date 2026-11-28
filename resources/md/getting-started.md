@@ -193,6 +193,12 @@ and `totalMemory`/`freeMemory` report the heap inside it. Unlike the JVM's colle
 place, so near the ceiling a collection needs some working room: the total stays within about 10% of
 it.
 
+The ceiling leaves out the runtime's own image (the compiled runtime and standard library, about
+90 MB), the way `-Xmx` leaves out the JVM's code cache and metaspace. So the whole ceiling is room
+for your program's data, and the process as a whole uses the image's size on top of it.
+`jolt.host/static-memory-bytes` reports the image's size. Before 0.8.32 the ceiling counted the
+image too.
+
 **`JOLT_MAX_HEAP`** overrides the default, the way `-Xmx` does. An integer of bytes with an optional `k`,
 `m` or `g` suffix:
 
@@ -206,18 +212,15 @@ Raise it for a workload that legitimately needs more than a quarter of the machi
 generative test suite, or compiling a big dependency tree. `off` restores the behaviour of
 releases before 0.8.5, where nothing bounded the heap at all.
 
-There is a floor. The runtime's own image is live before your program starts, so a ceiling under
-that cannot be satisfied and Jolt says so rather than failing somewhere inside namespace loading:
+Since the image isn't counted, size the ceiling for your data, as you would `-Xmx`: even a small
+setting starts, and a program raises `OutOfMemoryError` once what it holds no longer fits:
 
 ```bash
-$ JOLT_MAX_HEAP=16m jolt -e '(println :hi)'
-JOLT_MAX_HEAP is smaller than the runtime's own live heap: asked for 16777216
-bytes, already using 125831840. Give it at least twice that, or
-JOLT_MAX_HEAP=off for no ceiling.
+$ JOLT_MAX_HEAP=16m jolt -e '(println (count (vec (range 1000000))))'
+Unhandled exception (OutOfMemoryError): jolt: out of memory: the heap ceiling of
+16777216 bytes was exceeded (live 17008992). Raise or disable it with
+JOLT_MAX_HEAP=<n>[k|m|g] or JOLT_MAX_HEAP=off.
 ```
-
-In practice **256 MB is the smallest useful setting**, and a built binary that embeds an application needs more than a bare `jolt`
-does.
 
 ### Why there is a ceiling
 
@@ -251,7 +254,7 @@ The defaults suit most programs. For the rest, each knob is named after the JVM 
 
 | Variable | JVM flag | Default | Meaning |
 |---|---|---|---|
-| `JOLT_MAX_HEAP` | `-Xmx` | 25% of RAM | the heap ceiling (its total size), above |
+| `JOLT_MAX_HEAP` | `-Xmx` | 25% of RAM | the heap ceiling (its total size, without the runtime image), above |
 | `JOLT_MAX_RAM_PERCENTAGE` | `-XX:MaxRAMPercentage` | `25` | the ceiling as a percentage of RAM (or of the cgroup limit), when `JOLT_MAX_HEAP` is not set |
 | `JOLT_GC_TIME_RATIO` | `-XX:GCTimeRatio` | `9` | aim for at most 1/(1+N) of the time in collection; lower it to trade memory for speed |
 | `JOLT_MAX_HEAP_FREE_RATIO` | `-XX:MaxHeapFreeRatio` | `50` | how much of the heap may be nursery headroom over the live data (50 = a nursery up to the size of the live data); raise it to trade memory for speed |
